@@ -1,0 +1,21 @@
+name: Static checks
+on:
+  push:
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JS syntax
+        run: node --check assets/game.js
+      - name: Check Pages entry and asset links
+        shell: python
+        run: |
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          assert 'href="./assets/style.css"' in html
+          assert 'src="./assets/game.js"' in html
+          assert Path('assets/style.css').is_file()
+          assert Path('assets/game.js').is_file()
+          print('Static Pages layout OK')
