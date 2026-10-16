@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<title>パリィの塔 | 刃が届く瞬間 v0.3</title>
+<title>パリィの塔 | モーション刷新 v0.4</title>
 <style>
 :root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--panel2:#192337;--line:#303d52;--ink:#f2f3ff;--muted:#9baac3;--gold:#f4c772;--cyan:#76e4f1;--mint:#78e4b8;--red:#ff7987}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif}
@@ -16,6 +16,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .battlefoot{padding:12px 15px 14px}.bars{display:grid;grid-template-columns:1fr 1fr;gap:13px}.barhead{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:6px}.barhead strong{font-size:11px;font-variant-numeric:tabular-nums}.progress{height:9px;border:1px solid #33415a;border-radius:99px;background:#080e19;overflow:hidden}.progress>i{display:block;width:100%;height:100%;border-radius:99px;transition:width .15s;box-shadow:0 0 14px #ffffff33}.hpfill{background:linear-gradient(90deg,#c4466e,#ff8298)}.enemyfill{background:linear-gradient(90deg,#cd7a56,#f0be70)}.battlehint{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:11px;color:#8fa0ba}.battlehint span:nth-child(2){color:#e8d0a4}
 .aside{display:flex;flex-direction:column;gap:12px}.panel{background:linear-gradient(160deg,#18233a,#111a2d);border:1px solid #34435e;border-radius:15px;padding:15px}.panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;font-weight:800;letter-spacing:.03em}.side-sub{color:var(--muted);font-size:11px}.statsgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.stat{background:#0d1729;padding:12px;border-radius:10px;border:1px solid #27374e}.stat .num{font-size:24px;line-height:1.1;font-weight:900;color:#f7d18b;font-variant-numeric:tabular-nums}.stat .label{color:#9bacbf;margin-top:6px;font-size:10px}.build-list{display:flex;flex-direction:column;gap:7px;max-height:350px;overflow-y:auto}.build-item{border:1px solid #30415a;background:#0d1728;border-radius:9px;padding:9px;display:flex;align-items:center;gap:9px}.build-symbol{width:31px;height:31px;display:grid;place-items:center;background:#283750;border-radius:8px;font-size:17px;flex-shrink:0}.build-name{font-size:12px;font-weight:800}.build-desc{font-size:10px;color:#9eadc5;margin-top:3px}.level{margin-left:auto;border:1px solid #53678a;border-radius:5px;font-size:10px;color:#cfe3fb;padding:3px 5px;white-space:nowrap}.empty{text-align:center;color:#7e91ac;font-size:12px;line-height:1.8;padding:16px 5px}.synergy{border:1px solid #836c46;background:#2b2735;border-radius:9px;padding:9px 10px;margin-top:8px;font-size:12px;color:#f6dfaf}.synergy small{display:block;font-size:10px;color:#c6b6a2;margin-top:4px}.help{font-size:11px;line-height:1.8;color:#9cacc6}.mini-divider{height:1px;background:#2b3c56;margin:12px 0}.muted{color:#8e9eb9}
 .reward-modal{width:min(100%,660px)}.reward-modal h2{margin:7px 0 5px;font-size:clamp(24px,4vw,33px)}.reward-modal p{margin:5px 0 12px}.reward-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px;text-align:left}.reward-card{min-height:188px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;border-radius:12px;padding:13px 10px;border:1px solid #596886;background:linear-gradient(155deg,#24304a,#162239);color:#ecf3ff;text-align:left;transition:transform .12s,border-color .12s;position:relative}.reward-card:hover{transform:translateY(-4px);border-color:#f9d999}.reward-card .emoji{font-size:29px}.reward-card .rarity{font-size:9px;color:#9abcf5;letter-spacing:.1em;font-weight:800}.reward-card.rare{border-color:#567da9;background:linear-gradient(145deg,#203650,#142337)}.reward-card.epic{border-color:#ae81d9;background:linear-gradient(145deg,#3b2854,#201d37)}.reward-card .rname{font-size:15px;font-weight:900}.reward-card .rdesc{font-size:11px;line-height:1.5;color:#c8d4e5;flex:1}.reward-card .rtag{font-size:10px;color:#e4c58e;border-top:1px solid #ffffff26;padding-top:6px;width:100%}.reward-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}.shop{margin:12px auto 0;text-align:left;max-width:500px;border:1px solid #46506a;border-radius:11px;background:#0c1628b8;padding:10px}.shop-head{font-weight:800;font-size:12px;display:flex;justify-content:space-between;color:#e5d0a4;margin:2px 2px 9px}.shop-row{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #ffffff13;padding:8px 2px}.shop-name{font-size:12px;font-weight:800}.shop-desc{color:#9eacc2;font-size:10px;margin-top:3px}.buy{white-space:nowrap;background:#293a52;color:#e9e2bf;border:1px solid #675f4a;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800}.buy:hover:not(:disabled){background:#40516c}.records{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:15px 0;color:#bfcfe8;font-size:12px}.records span{border:1px solid #3c4a61;background:#152239;border-radius:9px;padding:7px 10px}.smallnote{font-size:11px;color:#9aabc4;margin-top:10px}.footer{font-size:11px;color:#6f819c;text-align:center;margin-top:18px;line-height:1.8}
+.practice-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;background:#15243c;border:1px solid #425775;border-radius:10px 10px 0 0;padding:10px 13px;font-size:11px;color:#e9d49d}.practice-tools select{background:#23334f;color:#fff;border:1px solid #6780a1;border-radius:7px;padding:7px 9px;font-size:12px}.practice-desc{color:#9caec9}.practice-tools[hidden]{display:none!important}
 @media(max-width:1000px){.layout{grid-template-columns:minmax(0,1fr) 260px}.brand h1 span{display:none}}
 @media(max-width:760px){.app{padding:10px 10px 24px}.topbar{margin:0 1px 11px}.layout{grid-template-columns:1fr;gap:10px}.arena canvas{height:clamp(345px,57svh,490px)}.aside{display:grid;grid-template-columns:1fr 1fr;gap:9px}.aside .panel:first-child{grid-column:1/-1}.statsgrid{grid-template-columns:repeat(4,1fr)}.stat{padding:10px}.stat .num{font-size:21px}.panel{padding:12px}.brandmark{width:38px;height:38px}.topbar .pill{display:none}}
 @media(max-width:520px){.topbar{align-items:center}.brand{gap:8px}.brand h1{font-size:19px}.eyebrow{font-size:8px}.toolrow{gap:5px}.toolbtn{padding:7px 9px;font-size:11px}.arena canvas{height:clamp(355px,56svh,460px)}.cover{padding:9px}.modal{padding:5px}.modal h2{font-size:27px}.modal p{font-size:12px;line-height:1.7}.reward-cards{gap:5px}.reward-card{padding:9px 7px;min-height:179px}.reward-card .emoji{font-size:23px}.reward-card .rname{font-size:12px}.reward-card .rdesc{font-size:10px}.reward-card .rarity{font-size:8px}.reward-card .rtag{font-size:9px}.aside{grid-template-columns:1fr 1fr}.aside .panel{grid-column:1/-1}.statsgrid{gap:5px}.stat{padding:8px}.stat .num{font-size:20px}.stat .label{font-size:9px}.battlehead{padding:10px 12px}.battlefoot{padding:10px}.battlehint{font-size:10px}.shop{padding:7px}.shop-row{padding:6px 2px}}
@@ -25,15 +26,15 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 <body>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><div class="eyebrow">ONE-TAP ROGUELITE</div><h1>パリィの塔 <span>CONTACT & PARRY · v0.3</span></h1></div></div>
+  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><div class="eyebrow">ONE-TAP ROGUELITE</div><h1>パリィの塔 <span>MOTION REWORK · v0.4</span></h1></div></div>
   <div class="toolrow"><span class="pill">OFFLINE / SINGLE FILE</span><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♪ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <div class="layout">
   <main class="main">
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span></div><div class="righthead"><span id="enemyName">塔の入口</span><span>COMBO <strong id="comboLabel">0</strong></span></div></div>
-    <div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><div class="modal-kicker">ONE TAP. ENDLESS TOWER.</div><h2>パリィの塔</h2><p>敵が距離を詰め、振りかぶり、刃が盾に届く。<br>振り下ろしを見て、衝突の一瞬前に盾を構えよう。<br>死ぬたびに、間合いとリズムを覚えていく。</p><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">⚔ 稽古場で練習</button></div><div class="tip">画面タップ / クリック / <span class="key">SPACE</span> でパリィ<br>バー・リングは一切なし。敵が踏み込み、攻撃が主人公に届く動きを見よう。</div><div id="titleShop"></div></div></div>
+    <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="稽古相手を選択"><option value="slime">残響スライム</option><option value="knight">錆びた騎士</option><option value="rogue">影の暗殺者</option><option value="wraith">塔の亡霊</option><option value="guardian">鐘楼の守護者</option></select><span class="practice-desc">モーションを見比べて練習</span></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
+     <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><div class="modal-kicker">ONE TAP. ENDLESS TOWER.</div><h2>パリィの塔</h2><p>敵の身構え、踏み込み、刃の軌道を見極めろ。<br>振り下ろしを見て、衝突の一瞬前に盾を構えよう。<br>死ぬたびに、間合いとリズムを覚えていく。</p><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">⚔ 稽古場で練習</button></div><div class="tip">画面タップ / クリック / <span class="key">SPACE</span> でパリィ<br>バー・リングは一切なし。接触する刹那に盾を構えよう。</div><div id="titleShop"></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><p>次の階層に持ち込む能力を1つ選択</p><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button></div><div id="deathShop"></div></div></div>
      <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><p>次の一撃まで、時間は止まっています。</p><button class="primary" id="resumeBtn">戦闘に戻る</button><p class="tip">スマホでは画面の好きな位置をタップ</p></div></div>
@@ -45,7 +46,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
   <aside class="aside">
    <div class="panel"><div class="panel-title">RUN STATUS <span class="side-sub" id="runStateLabel">READY</span></div><div class="statsgrid"><div class="stat"><div class="num" id="perfectStat">0</div><div class="label">JUST PARRY</div></div><div class="stat"><div class="num" id="damageStat">0</div><div class="label">TOTAL DAMAGE</div></div><div class="stat"><div class="num" id="bestComboStat">0</div><div class="label">MAX COMBO</div></div><div class="stat"><div class="num" id="chargeStat">0 / 7</div><div class="label">奥義 CHARGE</div></div></div></div>
    <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">塔を登るとここにスキルが増えていく</div></div><div id="synergyList"></div></div>
-   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作方法</span></div><div class="help">敵が実際に距離を詰め、武器の先端が盾に届きます。<b style="color:#f5d6a3">接触する約100ms前</b>にタップして盾を構えましょう。構え音→剣の風切り音→着弾音が連動します。風切り音から約130ms後が最初の目安です。<br>ジャスト <b>±11ms</b>、通常パリィ <b>±28ms</b> は厳しいまま。ただし<b>稽古場</b>では被弾せず、入力が何ms早いか遅いかを攻撃後に確認できます。<div class="mini-divider"></div>毎階クリア後に3択で強化。<b style="color:#f5d6a3">5階ごとにボス</b>が出現。2つの特定スキルを揃えると進化能力が発動します。<div class="mini-divider"></div>毎階クリア後に3択で強化。<b style="color:#f5d6a3">5階ごとにボス</b>が出現。2つの特定スキルを揃えると進化能力が発動します。</div></div>
+   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作方法</span></div><div class="help">敵が実際に距離を詰め、武器の先端が盾に届きます。<b style="color:#f5d6a3">接触する約100ms前</b>にタップして盾を構えましょう。構え音→風切り音→着弾音が連動します。敵ごとに振り下ろしの速さが違うため、姿勢と間合いを覚えましょう。<br>ジャスト <b>±11ms</b>、通常パリィ <b>±28ms</b> は厳しいまま。ただし<b>稽古場</b>では被弾せず、入力が何ms早いか遅いかを攻撃後に確認できます。<div class="mini-divider"></div>毎階クリア後に3択で強化。<b style="color:#f5d6a3">5階ごとにボス</b>が出現。2つの特定スキルを揃えると進化能力が発動します。</div></div>
   </aside>
  </div>
 </div>
@@ -95,7 +96,19 @@ let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],t
 let pausedFrom='combat',pauseAt=0,screenOffset=0;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 // 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
-const PARRY_STARTUP=100, RELEASE_CUE=230, SWING_DURATION=230;
+const PARRY_STARTUP=100;
+// 攻撃の発生タイミングはすべて「武器／身体が盾に触れる瞬間」。
+// 攻撃モーションの長さだけを種類ごとに変え、判定時刻は同じ基準に揃える。
+const MOTIONS={
+ slime:{swing:315,prepare:830,reach:49,stage:110,recovery:410,accent:'#8ef9de'},
+ knight:{swing:270,prepare:850,reach:110,stage:130,recovery:380,accent:'#eee0ff'},
+ rogue:{swing:175,prepare:635,reach:110,stage:155,recovery:330,accent:'#ffc0d2'},
+ wraith:{swing:300,prepare:790,reach:108,stage:110,recovery:440,accent:'#a2dbff'},
+ guardian:{swing:360,prepare:980,reach:130,stage:145,recovery:520,accent:'#ffdb92'}
+};
+const mix=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
+const motionFor=e=>MOTIONS[e.kind]||MOTIONS.knight;
 function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){if(!audioEnabled)return;try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+dur+.02)}catch(e){}}
 function chord(){sound(570,.17,'triangle',.045,310);setTimeout(()=>sound(920,.25,'sine',.028,260),45)}
 // 剣が動き始める音。250ms前の電子音ではなく斬撃に追従する風切り音。
@@ -115,16 +128,16 @@ function lvl(id){return game.lv?.[id]||0}
 function has(a,b){return lvl(a)>0&&lvl(b)>0}
 function getPerfectWindow(){return 11+lvl('focus')*2}
 function getParryWindow(){return 28+lvl('stability')*3}
-function setMode(mode){game.mode=mode;$('exitPracticeBtn').hidden=!game.practice;for(const name of ['title','reward','death','pause'])$(name+'Cover').hidden=name!==({title:'title',reward:'reward',gameover:'death',pause:'pause'}[mode]);$('pauseBtn').disabled=!['combat','pause'].includes(mode);$('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';$('runStateLabel').textContent={title:'READY',combat:'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED'}[mode]||'';}
-function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=String(game.floor||1).padStart(2,'0');$('floorBadge').textContent=enemy?.boss?'✦ BOSS':'';$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('timingInfo').textContent=game.practice?'稽古中 · 判定結果は攻撃後に表示':'踏み込み → 風切り → 接触'}
+function setMode(mode){game.mode=mode;$('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);$('exitPracticeBtn').hidden=!game.practice;for(const name of ['title','reward','death','pause'])$(name+'Cover').hidden=name!==({title:'title',reward:'reward',gameover:'death',pause:'pause'}[mode]);$('pauseBtn').disabled=!['combat','pause'].includes(mode);$('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';$('runStateLabel').textContent={title:'READY',combat:'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED'}[mode]||'';}
+function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=String(game.floor||1).padStart(2,'0');$('floorBadge').textContent=enemy?.boss?'✦ BOSS':'';$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('timingInfo').textContent=game.practice?'稽古中 · 敵を切り替えて比較可能':'身構え → 踏み込み → 接触'}
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
 function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">まだスキルはありません。<br>1階を突破して能力を獲得しよう。</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');}
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
 function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化（死亡後も引き継ぎ）</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
 function title(){game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild()}
-function start(practice=false){const t=performance.now();particles=[];texts=[];game={mode:'combat',practice,floor:1,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
-function spawnEnemy(t){const boss=game.floor%5===0;const archetype=game.practice?ENEMIES[1]:boss?BOSS:game.floor===1?ENEMIES[0]:ENEMIES[(Math.floor((game.floor-2)/2)+Math.floor(rand(0,3)))%ENEMIES.length];const maxHp=game.practice?999999:Math.round(49*Math.pow(1.18,game.floor-1)*(boss?2.15:1));const atk=Math.max(13,Math.round(14*Math.pow(1.09,game.floor-1)*(boss?1.25:1)));game.enemy={...archetype,boss,maxHp,hp:maxHp,atk,burn:0,index:0};game.attackAt=t+1900;game.telegraphStart=t;game.attackSpan=1900;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;game.nextFloorHint=boss?'BOSS FLOOR':'FLOOR '+game.floor;game.nextFloorHintAt=t;syncHUD()}
+function start(practice=false){const t=performance.now();particles=[];texts=[];game={mode:'combat',practice,practiceEnemy:practice?$('practiceEnemy').value:null,floor:1,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+function spawnEnemy(t){const boss=game.floor%5===0;const archetype=game.practice?(ENEMIES.find(e=>e.id===(game.practiceEnemy||'knight'))|| (game.practiceEnemy==='guardian'?BOSS:ENEMIES[1])):boss?BOSS:game.floor===1?ENEMIES[0]:ENEMIES[(Math.floor((game.floor-2)/2)+Math.floor(rand(0,3)))%ENEMIES.length];const maxHp=game.practice?999999:Math.round(49*Math.pow(1.18,game.floor-1)*(boss?2.15:1));const atk=Math.max(13,Math.round(14*Math.pow(1.09,game.floor-1)*(boss?1.25:1)));game.enemy={...archetype,boss:boss||(game.practice&&archetype.id==='guardian'),maxHp,hp:maxHp,atk,burn:0,index:0};game.attackAt=t+1900;game.telegraphStart=t;game.attackSpan=1900;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;game.nextFloorHint=boss?'BOSS FLOOR':'FLOOR '+game.floor;game.nextFloorHintAt=t;syncHUD()}
 function nextStrike(){const e=game.enemy;if(!e)return;const interval=e.rhythm[e.index%e.rhythm.length];e.index++;const span=Math.max(740,Math.round(interval*(1+lvl('tempo')*.07)));game.attackAt+=span;game.telegraphStart=game.attackAt-span;game.attackSpan=span;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
@@ -219,67 +232,126 @@ function hero(now){
 }
 function enemy(now){
  const e=game.enemy;if(!e)return;
- const d=game.attackAt-now,span=game.attackSpan||1900;
- const base=Math.min(w/550,h/470)*1.23,sc=base*(e.boss?1.34:1);
- const heroX=w*.28,restX=w*.73,contactX=heroX+39*base;
- // 明確な三段階：構え（最大700ms前）、溜め、実際に踏み込む斬撃（230ms間）。
- const prepareAt=Math.min(700,Math.max(420,span-250));
- const wind=clamp((prepareAt-d)/Math.max(130,prepareAt-310),0,1);
- const swing=clamp((SWING_DURATION-d)/SWING_DURATION,0,1);
- const swingEase=swing*swing*(3-2*swing);
+ const m=motionFor(e),d=game.attackAt-now,span=game.attackSpan||1900;
+ const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
+ const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
+ const prepare=Math.min(m.prepare,Math.max(m.swing+120,span-130));
+ const prep=smooth((prepare-d)/(prepare-m.swing));
+ const p=clamp((m.swing-d)/m.swing,0,1);
+ // 速度に明確な変化をつける。弾速を表示するゲージではなく、動きの重さが予兆になる。
+ const dash=p*p*(1+.12*(1-p));
  const after=now-(game.lastImpactAt||-99999);
- const recovery=after>=0&&after<280?1-after/280:0;
- const approach=Math.max(swingEase,recovery);
- // 最終フレームでスライムの身体、剣先、亡霊の爪が盾と同じ位置に到達する。
- const reach=e.kind==='slime'?43:e.kind==='wraith'?106:e.kind==='rogue'?99:e.boss?130:110;
- const contactBodyX=contactX+reach*sc;
- const x=restX+(contactBodyX-restX)*approach;
- const y=h*.80+Math.sin(now/470+1)*1.4*(1-approach);
- ctx.save();ctx.translate(x,y);ctx.scale(-sc,sc);
- if(e.kind==='slime'){
-  const squash=wind*(1-swing)*.27;
-  ctx.scale(1+squash,1-squash+swing*.1);
+ const rec=after>=0&&after<m.recovery?1-smooth(after/m.recovery):0;
+ const contactBodyX=hitX+m.reach*scale;
+ const stageX=contactBodyX+m.stage*scale;
+ const preparedX=mix(restX,stageX,prep);
+ const normalX=mix(preparedX,contactBodyX,dash);
+ const x=mix(normalX,contactBodyX,rec);
+ const impact=after>=0&&after<175;
+ const charge=prep*(1-p)*(1-rec);
+ const action=Math.max(p,rec); // 衝突直後も突き出した形を維持し、自然に引き戻す
+ const hover=e.kind==='wraith'?Math.sin(now/180)*5:Math.sin(now/480+1)*1.1;
+ const ground=h*.80;
+ const y=ground+hover*(1-action)*(1-rec);
+ const squishHit=impact?Math.sin(Math.PI*smooth(after/175))*.12:0;
+ // 共通の足元と接地演出。接近速度は地面を移動する量として必ず表現する。
+ ctx.save();ctx.fillStyle='#050916a0';ctx.beginPath();ctx.ellipse(x,ground+3,Math.max(26,37*scale)*(1+.25*prep),9*scale,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ if(action>.15&&action<1){
+  ctx.save();ctx.globalAlpha=.12+.18*action;
+  const dustX=x+scale*(e.kind==='slime'?-15:8);
+  for(let j=0;j<3;j++){round(dustX+(j*19+6)*scale,ground-(j%2)*7*scale,3.8*scale,m.accent)}
+  ctx.restore();
  }
- const crouch=wind*(1-swing)*7;
- ctx.translate(0,crouch*.3);
- ctx.fillStyle='#080c1aa0';ctx.beginPath();ctx.ellipse(0,0,e.boss?56:40,9,0,0,Math.PI*2);ctx.fill();
+ ctx.save();ctx.translate(x,y);ctx.scale(-scale,scale);
+ const color=m.accent;
  if(e.kind==='slime'){
-  ctx.fillStyle='#43aaa3';ctx.beginPath();ctx.moveTo(-42,0);ctx.bezierCurveTo(-48,-26,-35,-79,0,-79);ctx.bezierCurveTo(33,-77,50,-28,43,0);ctx.closePath();ctx.fill();
-  round(-9,-43,7,'#f9e8ba');round(16,-43,7,'#f9e8ba');round(-7,-42,3,'#183142');round(16,-42,3,'#183142');line([[-4,-20],[10,-21]],'#206564',3);round(-15,-60,8,'#9ef5e84f');
-  if(swing>.2){ctx.strokeStyle='#79f3d988';ctx.lineWidth=4;ctx.beginPath();ctx.arc(2,-35,40,.2,1.2);ctx.stroke();}
+  // スライムは「圧縮→前傾→頭から飛びかかる」。盾に当たるのは左前方のこぶ。
+  // 先端のローカル座標(+49,-58)を全員共通のhitX/hitYに揃える。
+  const bulge=charge*.30,leap=smooth(p),stretch=leap*.23;
+  const flatten=charge*.29;
+  const backX=-38-charge*9-leap*15;
+  const crestX=m.reach-11*(1-leap);
+  const crestY=-58+28*charge+8*(1-leap);
+  const topY=-82+31*charge-5*leap;
+  ctx.fillStyle='#42ada5';ctx.beginPath();
+  ctx.moveTo(backX,0);
+  ctx.bezierCurveTo(backX-14,-18,-40,-59+19*charge,-21,topY+3);
+  ctx.bezierCurveTo(-2,topY-10,crestX-22,topY-13,crestX,crestY);
+  ctx.bezierCurveTo(crestX+2,crestY+17,38+10*stretch,-18,43,0);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#b0ffe4';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(crestX-12,crestY-10);ctx.quadraticCurveTo(crestX-3,crestY-14,crestX,crestY);ctx.stroke();
+  // 接触点に達する柔らかい突起。輪郭が盾の高さまで来ているのを示す。
+  if(leap>.03){fillPoly([[crestX-9,crestY+8],[crestX,crestY],[crestX-4,crestY-10]],'#81e9d0')}
+  const eyeX=-9+8*leap,eyeY=-45+16*charge-7*leap;
+  round(eyeX,eyeY,7,'#f7f4d7');round(eyeX+24,eyeY,7,'#f7f4d7');
+  round(eyeX+2,eyeY+1,3,'#173344');round(eyeX+26,eyeY+1,3,'#173344');
+  line([[eyeX+10,eyeY+18],[eyeX+19,eyeY+18]],'#226a67',3.2);
+  round(-19,-63+20*charge,7,'#b5fdeb60');
+  if(charge>.1){line([[-25,1],[24,1]],'#6fe5b78a',3)}
  }else if(e.kind==='wraith'){
-  fillPoly([[-26,-66],[-11-wind*5,-91-wind*12],[13,-92-wind*13],[30,-59],[25,-17],[39,0],[12,-9],[-4,0],[-16,-13],[-37,1]],'#6266a6');
-  fillPoly([[-18,-78],[-1,-103],[19,-77],[12,-46],[-12,-46]],'#292d5e');round(-8,-71,3,'#9feeff');round(8,-71,3,'#9feeff');
-  const clawX=24+(106-24)*swingEase,clawY=-72+14*swingEase;
-  line([[21,-57],[clawX,clawY]],'#a7c7ff',8);round(clawX,clawY,5,'#d8faff');
+  // 亡霊は溜めで体が上がり、腕と爪が鞭のように伸びる。
+  const lift=charge*14,lean=action*10;
+  fillPoly([[-33,-63+lift],[-16,-97-lift],[13,-103-lift],[32,-74+lift],[33,-24],[44,0],[18,-10],[0,-2],[-17,-15],[-39,2]],'#6269a5');
+  fillPoly([[-22,-87-lift],[0,-111-lift],[20,-82-lift],[13,-52],[-16,-52]],'#2a2e60');
+  round(-8,-77-lift,3.7,'#8be9ff');round(8,-77-lift,3.7,'#8be9ff');
+  const handX=22+69*action,handY=-38-19*charge-19*action;
+  const tipX=32+(m.reach-32)*action,tipY=-89+31*action;
+  line([[18,-62-lift],[handX,handY]],'#8595d2',10);
+  line([[handX,handY],[tipX,tipY]],'#b8d8ff',7);
+  for(const off of [-7,0,7])line([[tipX-8,tipY+off*.3],[tipX,tipY+off]],'#d9f8ff',2.6);
+  if(action>.1){ctx.globalAlpha=action*.35;line([[12,-69],[tipX-14,tipY-12]],'#8cd9ff',14);ctx.globalAlpha=1}
+ }else if(e.kind==='rogue'){
+  // 暗殺者は低い溜めから短剣を一直線に突く。軌道は盾の中央で止まる。
+  const crouch=charge*19,recoil=impact?squishHit*15:0;
+  fillPoly([[-26,-78+crouch],[-42,-52+crouch],[-35,-4],[-8,-12],[26,0],[18,-68+crouch]],'#562c49');
+  fillPoly([[-10,-41+crouch],[-4,-37+crouch],[-8,0],[-22,0]],'#565a74');
+  fillPoly([[6,-39+crouch],[18,-33+crouch],[29,0],[10,0]],'#80819a');
+  fillPoly([[-23,-83+crouch],[15,-84+crouch],[25,-47+crouch],[-14,-39+crouch]],'#62667f');
+  fillPoly([[-18,-110+crouch],[-3,-120+crouch],[18,-108+crouch],[17,-86+crouch],[-16,-85+crouch]],'#322b46');
+  line([[-9,-97+crouch],[9,-97+crouch]],'#f19ec6',3.3);
+  // 刀身は行動開始時に胸元で止まり、踏み込みと共に水平に伸びる。
+  const fistX=22+41*action-recoil,fistY=-53+7*charge-5*action;
+  const tipX=50+(m.reach-50)*action-recoil,tipY=-68+10*action;
+  line([[11,-48+crouch],[fistX,fistY]],'#9b829d',10);
+  line([[fistX,fistY],[tipX,tipY]],'#ffcfed',6.5);
+  line([[fistX,fistY],[tipX,tipY]],'#fff8ff',1.7);
+  line([[fistX-5,fistY-10],[fistX+5,fistY+10]],'#846580',5);
+  if(action>.1){ctx.globalAlpha=action*.32;line([[fistX-20,fistY+12],[tipX-13,tipY+10]],'#ff9dbf',9);ctx.globalAlpha=1}
  }else{
-  const cloak=e.kind==='rogue'?'#5a304b':e.boss?'#7b4d44':'#625578';
-  fillPoly([[-18,-76],[-29-wind*5,-59],[-35,-4],[-9,-13],[25,-5],[20,-65]],cloak);
-  fillPoly([[-13,-38],[-3,-36],[-6,0],[-22,0]],'#66677d');fillPoly([[3,-38],[17,-38],[23,0],[9,0]],'#77778c');
-  fillPoly([[-21,-81],[17,-81],[26,-40],[-17,-36]],e.boss?'#a78366':'#778399');
-  fillPoly([[-17,-106],[0,-119],[18,-108],[17,-85],[-15,-83]],e.kind==='rogue'?'#342d47':'#acb4c5');
-  line([[-8,-96],[8,-96]],e.boss?'#ffbc72':'#ed8fc9',4);
-  if(e.boss){fillPoly([[-17,-108],[-35,-136],[-22,-130],[-7,-114]],'#d5a985');fillPoly([[15,-108],[33,-136],[25,-109]],'#d5a985');round(0,-70,8,'#ffd08d50');}
-  // 先端は swing=1 のとき必ず contactX に一致するように体位置と一体計算。
-  const length=e.boss?108:e.kind==='rogue'?77:88;
-  const angle=recovery>0?-.92*(1-recovery):swing>0?-2.02+2.02*swingEase:wind>0?-1.0-1.02*wind:-.92;
-  const pivotY=-58/(e.boss?1.34:1);
-  const tipX=22+length*Math.cos(angle),tipY=pivotY+length*Math.sin(angle);
-  const bladeCol=e.boss?'#ffdaa0':e.kind==='rogue'?'#e8b8ef':'#dedbed';
-  if(swing>.06&&swing<1){ctx.globalAlpha=.36*swing;line([[22,pivotY],[tipX-14,tipY-6]],e.boss?'#ffb971':'#f0c8f4',13);ctx.globalAlpha=1;}
-  line([[22,pivotY],[tipX,tipY]],bladeCol,e.boss?11:8);
-  line([[22,pivotY],[tipX,tipY]],e.boss?'#eaa75f':'#fffaff',2.5);
-  line([[15,pivotY-10],[29,pivotY+10]],'#b8a3b0',6);
+  // 騎士とボスは肩・腕・剣が一体で旋回する。剣先が盾に届く時刻だけが命中判定。
+  const isBoss=e.kind==='guardian',lean=charge*8+action*10;
+  fillPoly([[-18,-76],[-30-charge*9,-60],[-36,-4],[-8,-11],[27,0],[19,-68]],isBoss?'#7d5048':'#645676');
+  fillPoly([[-14,-37],[-4,-34],[-7,0],[-23,0]],'#76738b');
+  fillPoly([[3,-36],[16,-32],[24,0],[9,0]],'#777d96');
+  fillPoly([[-22,-84-lean],[17,-83-lean],[27,-42-lean],[-16,-36-lean]],isBoss?'#b99571':'#7e8fa4');
+  fillPoly([[-17,-108-lean],[0,-119-lean],[19,-107-lean],[17,-85-lean],[-15,-83-lean]],isBoss?'#b9ac9d':'#b5baca');
+  line([[-8,-96-lean],[8,-96-lean]],isBoss?'#ffd392':'#ed98d0',4);
+  if(isBoss){fillPoly([[-17,-108-lean],[-36,-134-lean],[-23,-129-lean],[-7,-112-lean]],'#e9b98d');fillPoly([[16,-107-lean],[37,-132-lean],[26,-109-lean]],'#e9b98d');round(0,-69-lean,8,'#ffe8ae40')}
+  const bladeLength=isBoss?108:88;
+  const shoulder=[11,-70-lean];
+  const hand=[22,-58/(isBoss?1.34:1)];
+  // 振り上げた刃が頭上で一瞬溜まり、最後に盾の高さまで下りてくる。
+  const actualAngle=p>0?mix(-2.16,0,smooth(p*p)):(charge>0?mix(-.92,-2.16,charge):-.92);
+  const a=mix(actualAngle,0,rec);
+  const tipX=22+bladeLength*Math.cos(a),tipY=hand[1]+bladeLength*Math.sin(a);
+  line([shoulder,[hand[0]-7,hand[1]-3]],isBoss?'#d2b08d':'#a8a1b5',12);
+  round(hand[0]-7,hand[1]-3,6,isBoss?'#eed2a1':'#b7bbca');
+  if(action>.1&&action<1){ctx.globalAlpha=.1+.25*action;line([[22,hand[1]],[tipX-12,tipY-6]],isBoss?'#ffba72':'#dcc4ff',17);ctx.globalAlpha=1}
+  line([[22,hand[1]],[tipX,tipY]],isBoss?'#ffe0ab':'#e5dfed',isBoss?11:8);
+  line([[22,hand[1]],[tipX,tipY]],isBoss?'#ffbb78':'#fffaff',2.4);
+  line([[14,hand[1]-11],[30,hand[1]+11]],'#c1a6a1',7);
+  if(isBoss&&charge>.55){ctx.save();ctx.globalAlpha=(charge-.55)*.7;round(-17,-105,5,'#ffcc8a');ctx.restore()}
  }
  ctx.restore();
- // 衝突の瞬間、主人公側の盾の位置に火花が発生。事前のメーター・リングは表示しない。
- if(after>=0&&after<170){
-  const a=1-after/170;ctx.save();ctx.globalAlpha=a;
-  ctx.strokeStyle=game.lastStrikeKind==='just'?'#a2faff':game.lastStrikeKind==='miss'?'#ff7786':'#f7d498';ctx.lineWidth=3;
-  const hitY=h*.80-58*base;
-  for(let i=0;i<7;i++){
-   const v=i*Math.PI*2/7+0.14,r=14+after*.19;
-   line([[contactX+Math.cos(v)*6,hitY+Math.sin(v)*6],[contactX+Math.cos(v)*r,hitY+Math.sin(v)*r]],ctx.strokeStyle,3);
+ // パリィ／被弾の物理的接触表現。シールド中心に火花と短いインパクトが発生。
+ if(impact){
+  const a=1-after/175;ctx.save();ctx.globalAlpha=a;
+  const hitColor=game.lastStrikeKind==='just'?'#9ffff5':game.lastStrikeKind==='miss'?'#ff8c95':'#fff1b9';
+  ctx.strokeStyle=hitColor;ctx.lineCap='round';
+  for(let i=0;i<8;i++){
+   const dir=i*Math.PI/4+.21;
+   const r=(10+after*.17)*base*.7;
+   line([[hitX+Math.cos(dir)*6,hitY+Math.sin(dir)*6],[hitX+Math.cos(dir)*r,hitY+Math.sin(dir)*r]],hitColor,2.4);
   }
   ctx.restore();
  }
@@ -295,10 +367,10 @@ function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h
  for(const a of texts){const age=now-a.t,alpha=clamp(1-age/a.life,0,1);ctx.globalAlpha=alpha;ctx.shadowColor=a.color;ctx.shadowBlur=8;textDraw(a.text,a.x,a.y-age*.043,a.size,a.color);ctx.shadowBlur=0}ctx.globalAlpha=1;
 }
 function update(now,dt){const m=game.mode;if(m==='combat'){
- if(!game.windupPlayed&&now>=game.attackAt-Math.min(620,game.attackSpan*.73)){
+ if(!game.windupPlayed&&now>=game.attackAt-Math.min(motionFor(game.enemy).prepare,game.attackSpan*.83)){
   game.windupPlayed=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);
  }
- if(!game.cuePlayed&&now>=game.attackAt-RELEASE_CUE){
+ if(!game.cuePlayed&&now>=game.attackAt-motionFor(game.enemy).swing){
   game.cuePlayed=true;sfxSwing();
  }
  if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
@@ -308,7 +380,7 @@ function update(now,dt){const m=game.mode;if(m==='combat'){
 }
 function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}});
-$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',()=>start(true));$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♪ SOUND ON':'♪ SOUND OFF';if(audioEnabled)sound(600,.10,'sine',.04,160)});
+$('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){game.practiceEnemy=$('practiceEnemy').value;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()}});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',()=>start(true));$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♪ SOUND ON':'♪ SOUND OFF';if(audioEnabled)sound(600,.10,'sine',.04,160)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause()});
 resize();title();requestAnimationFrame(frame);
 })();
