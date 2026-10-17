@@ -20,7 +20,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 #musicStatus{color:#f2d49a;font-size:10px}#trackLabel{font-weight:800;color:#b8e5ea}
 
 
-/* v0.5.3: zone hint, defeated-enemy encyclopedia and arena selection */
+/* v0.5.3: zone hint, encounter bestiary and the existing safe practice mode */
 .zone-label{font-size:10px;letter-spacing:.02em;margin-left:12px;font-weight:650;text-transform:none}
 .codex-modal{width:min(100%,750px);display:flex;flex-direction:column;gap:5px}
 .codex-modal h2{margin:2px 0 1px}
@@ -38,7 +38,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .codex-card.boss{border-color:#a398ed}
 .codex-card.locked{opacity:.52;align-items:center;justify-content:center;text-align:center;border-style:dashed;background:#111b2b}
 .codex-card.locked .codex-symbol{color:#8190a7;background:#243044}
-.codex-fight{border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-weight:850;padding:8px;font-size:11px;margin-top:4px}
-.codex-fight:hover{background:#654765}
+.codex-practice{border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-weight:850;padding:8px;font-size:11px;margin-top:4px}
+.codex-practice:hover{background:#654765}
 @media(max-width:760px){.zone-label{display:block;margin:3px 0 0;font-size:9px}.codex-list{max-height:clamp(195px,46svh,370px)}}
-@media(max-width:420px){.codex-list{grid-template-columns:1fr}.codex-modal p{font-size:11px}.codex-card{min-height:120px}.codex-toolbar{flex-wrap:wrap}.codex-fight{font-size:12px}}
+@media(max-width:420px){.codex-list{grid-template-columns:1fr}.codex-modal p{font-size:11px}.codex-card{min-height:120px}.codex-toolbar{flex-wrap:wrap}.codex-practice{font-size:12px}}
