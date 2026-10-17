@@ -384,3 +384,136 @@ test('death-menu lock is restricted to the overlay, not normal menus or develope
   }
  }
 });
+
+
+test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as separate transactions',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:750,life:2,attack:1,ward:1,bestFloor:6,runs:2})};
+ const g=makeHarness(seed);
+ assert.equal(g.el.get('upgradeCover').hidden,true);
+ g.press('upgradeOpenBtn');
+ assert.equal(g.state().mode,'upgrade');
+ assert.equal(g.el.get('upgradeCover').hidden,false);
+ assert.equal(g.state().permanent.slots,0);
+ assert.match(g.el.get('upgradeList').innerHTML,/スロット 1/);
+ g.upgradeBuy('slot',0);
+ assert.equal(g.state().permanent.slots,1);
+ assert.equal(g.state().souls,730);
+ g.upgradeTab('skills');
+ assert.match(g.el.get('upgradeList').innerHTML,/18/);
+ assert.match(g.el.get('upgradeList').innerHTML,/奥義紋/);
+ g.upgradeBuy('skill','rune');
+ assert.equal(g.state().souls,430,'epic is exactly 300 shards');
+ g.upgradeBuy('skill','blood');
+ assert.equal(g.state().souls,405);
+ g.upgradeBuy('skill','rune');
+ assert.equal(g.state().souls,405,'an unlocked skill is not purchasable twice');
+ g.upgradeTab('loadout');
+ g.upgradeEquip(0,'rune');
+ assert.deepEqual(Array.from(g.state().permanent.equipped),['rune',null]);
+ g.upgradeBuy('slot',1);
+ assert.equal(g.state().souls,340);
+ g.upgradeEquip(1,'blood');
+ assert.deepEqual(Array.from(g.state().permanent.equipped),['rune','blood']);
+ g.upgradeEquip(1,'rune');
+ assert.deepEqual(Array.from(g.state().permanent.equipped),['rune','blood'],'duplicate equipment is rejected');
+ g.press('upgradeCloseBtn');
+ assert.equal(g.state().mode,'title');
+ g.press('startBtn');
+ assert.equal(g.state().runSkills.rune,1);
+ assert.equal(g.state().runSkills.blood,1);
+ assert.equal(g.state().maxHp,85,'legacy +20HP upgrade still applies');
+ assert.equal(g.state().shield,8,'legacy +8 ward still applies');
+ assert.equal(g.state().souls,340);
+ const old=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.equal(old.life,2);
+ assert.equal(old.attack,1);
+ assert.equal(old.ward,1);
+ const permanent=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
+ assert.deepEqual(permanent.equipped,['rune','blood']);
+});
+test('shop purchases prevent insufficient funds, unknown skills, locked slots, and repeated upgrades',()=>{
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:19})});
+ g.press('upgradeOpenBtn');
+ g.upgradeBuy('slot',0);
+ assert.equal(g.state().permanent.slots,0);
+ g.upgradeBuy('slot',1);
+ g.upgradeBuy('skill','nonexistent');
+ assert.equal(g.state().souls,19);
+ g.upgradeEquip(0,'blood');
+ assert.equal(g.state().permanent.equipped[0],null);
+ g.upgradeTab('base');
+ g.upgradeBuy('legacy','life');
+ assert.equal(g.state().souls,11,'existing life upgrades use the old price formula');
+ g.upgradeBuy('extra','regen');
+ assert.equal(g.state().souls,11,'cannot buy a 12-shard upgrade with 11 shards');
+ g.upgradeBuy('legacy','life');
+ assert.equal(g.state().souls,11,'next life level costs 21 shards');
+});
+test('new survival upgrades heal each floor and grant boss-start barriers',()=>{
+ const permanent={regen:3,bossWard:3};
+ const g=makeHarness({'parryTowerPermanent_v1':JSON.stringify(permanent)});
+ g.press('startBtn');
+ g.frame(g.state().attackAt+1);
+ const hurt=g.state().hp;
+ assert.ok(hurt<65);
+ for(let i=0;i<4&&g.state().mode==='combat';i++){
+  const impact=g.state().attackAt;g.clock(impact-100);g.parry();g.frame(impact+1);
+ }
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().hp,Math.min(65,hurt+Math.ceil(65*.15)));
+ const dev=makeHarness({'parryTowerPermanent_v1':JSON.stringify(permanent)},true);
+ assert.equal(dev.dev().launch(5,'guardian:normal'),true);
+ assert.equal(dev.state().shield,15);
+});
+test('four-choice loot and extra reroll only appear when permanently purchased',()=>{
+ const p={'parryTowerPermanent_v1':JSON.stringify({choice4:1,extraReroll:1})};
+ const g=makeHarness(p);
+ g.press('startBtn');
+ assert.equal(g.state().rerolls,2);
+ for(let i=0;i<4&&g.state().mode==='combat';i++){
+  const impact=g.state().attackAt;g.clock(impact-100);g.parry();g.frame(impact+1);
+ }
+ assert.equal(g.state().mode,'victory');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'reward');
+ assert.equal((g.el.get('rewardCards').innerHTML.match(/class="reward-card/g)||[]).length,4);
+ assert.equal(g.el.get('rewardCards').className,'reward-cards four');
+ const vanilla=makeHarness();
+ vanilla.press('startBtn');
+ assert.equal(vanilla.state().rerolls,1);
+});
+test('soul gains and once-per-run revive apply while preserving combat timing',()=>{
+ const p={'parryTowerPermanent_v1':JSON.stringify({soulGain:3,revive:1})};
+ const g=makeHarness(p);g.press('startBtn');
+ for(let i=0;i<9&&!g.state().reviveUsed;i++)g.frame(g.state().attackAt+1);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().reviveUsed,true);
+ assert.equal(g.state().hp,Math.ceil(g.state().maxHp*.3));
+ for(let i=0;i<10&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+ assert.equal(g.state().mode,'gameover','the second fatal blow ends the run');
+ assert.equal(g.state().souls,4,'floor one death bonus 3 rounded up by +15%');
+ g.frame(g.now+500);
+ g.press('deathUpgradeBtn');
+ assert.equal(g.state().mode,'upgrade','death menu can open upgrades after the guard');
+ g.press('upgradeCloseBtn');
+ assert.equal(g.state().mode,'gameover');
+});
+test('practice and developer page do not write permanent progression',()=>{
+ const raw=JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:3,bossWard:3});
+ const meta=JSON.stringify({coins:350,life:1,runs:3});
+ const seed={'parryTowerPrototype_v1':meta,'parryTowerPermanent_v1':raw,
+  'parryTowerBestiary_v1':JSON.stringify({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1}},defeated:{}})};
+ const normal=makeHarness(seed);normal.press('practiceBtn');
+ normal.clickers.get('slime:normal')();
+ assert.equal(normal.state().practice,true);
+ assert.deepEqual(Object.keys(normal.state().runSkills),[],'practice uses its original no-starting-skill rules');
+ const dev=makeHarness(seed,true);
+ dev.press('upgradeOpenBtn');dev.upgradeBuy('slot',1);
+ dev.upgradeTab('skills');dev.upgradeBuy('skill','rune');
+ assert.equal(dev.storage.get('parryTowerPrototype_v1'),meta);
+ assert.equal(dev.storage.get('parryTowerPermanent_v1'),raw);
+ dev.press('upgradeCloseBtn');dev.dev().launch(5,'guardian:normal');
+ assert.equal(dev.state().runSkills.blood,1);
+ assert.equal(dev.state().permanent.unlockedSkills.includes('rune'),true,'read-only dev upgrades are ephemeral');
+ assert.equal(dev.storage.get('parryTowerPermanent_v1'),raw);
+});
