@@ -127,3 +127,38 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .relic-owned-title{font-size:12px;font-weight:800;color:#f6e3c2}
 .relic-owned-desc{font-size:10px;line-height:1.5;color:#a9c2da;margin-top:3px}
 @media(max-width:520px){.relic-modal{padding:6px 4px 14px}.relic-offer-cards{gap:5px}.relic-reward-card{min-height:205px;padding:10px 5px}.relic-reward-symbol{font-size:27px}.relic-reward-card strong{font-size:12px}.relic-reward-desc,.relic-reward-card small{font-size:10px}}
+
+/* v0.7.0 · The Tower's Crossroads. Event/merchant rooms use the existing modal system. */
+.tower-money{color:#f8d79a!important;font-size:12px}
+.tower-money strong{color:#fff3be;font-variant-numeric:tabular-nums}
+.crossroads-modal{width:min(100%,640px);max-height:100%;overflow-y:auto;padding:10px 9px 18px}
+.crossroads-modal h2{font-size:clamp(22px,4.5vw,34px);margin:7px 0}
+.crossroads-modal p{margin:5px auto 11px}
+.route-cards,.room-actions{display:flex;flex-direction:column;gap:10px;text-align:left;margin-top:12px}
+.route-card,.room-choice{width:100%;display:flex;align-items:center;gap:12px;min-height:81px;
+ background:linear-gradient(120deg,#243650,#14213a);color:#ecf3ff;border:1px solid #546c91;border-radius:12px;
+ padding:12px 14px;text-align:left;cursor:pointer;transition:border-color .14s,transform .14s}
+.route-card:hover:not(:disabled),.room-choice:hover:not(:disabled){border-color:#ecd19a;transform:translateY(-1px)}
+.route-card:focus-visible,.room-choice:focus-visible{outline:3px solid #f4c772;outline-offset:2px}
+.route-symbol{flex-shrink:0;width:46px;height:46px;border-radius:11px;background:#33405e;display:grid;place-items:center;font-size:25px}
+.route-card-body{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+.route-card-body b{font-size:15px;color:#ffe0a4}
+.route-card-body small,.room-choice small{font-size:11px;line-height:1.5;color:#bdd0e8}
+.route-warning{color:#a6b0c8;font-size:10px;line-height:1.4}
+.route-card>span:last-child,.room-choice>span:last-child{margin-left:auto;font-size:24px;color:#f1d8a8}
+.room-choice{min-height:63px}
+.room-choice>span:first-child{flex:1;display:flex;flex-direction:column;gap:5px}
+.room-choice b{font-size:13px}
+.room-choice:disabled{opacity:.42;cursor:not-allowed}
+#roomNote{font-variant-numeric:tabular-nums;color:#f0d7aa}
+@media(max-width:520px){
+ .crossroads-modal{padding:5px 3px 12px}
+ .route-cards,.room-actions{gap:7px;margin-top:8px}
+ .route-card{min-height:75px;padding:9px 8px;gap:9px}
+ .route-symbol{width:39px;height:39px;font-size:22px}
+ .route-card-body b{font-size:13px}
+ .route-card-body small,.room-choice small{font-size:10px}
+ .route-warning{font-size:9px}
+ .room-choice{min-height:61px;padding:9px}
+}
+@media(prefers-reduced-motion:reduce){.route-card,.room-choice{transition:none}}
