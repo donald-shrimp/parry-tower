@@ -716,7 +716,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.7\.0 PREVIEW/);
+  assert.match(html,/v0\.7\.0/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -914,7 +914,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
   assert.match(html,/src="\.\/assets\/relics\.js"/);
-  assert.match(html,/v0\.7\.0 PREVIEW/);
+  assert.match(html,/v0\.7\.0/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1233,7 +1233,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
   for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js"'),asset);
-  assert.match(html,/v0\.7\.0 PREVIEW/);
+  assert.match(html,/v0\.7\.0/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
