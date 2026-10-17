@@ -39,25 +39,41 @@ test('random elite spawn is separate from rare and is stronger than normal',()=>
  assert.ok(P.baseStats(elite,18).maxHp>P.baseStats(basic,18).maxHp);
  assert.ok(P.baseStats(elite,18).atk>P.baseStats(basic,18).atk);
 });
-test('arena rematches use baseline stats, not deep-floor exponential HP',()=>{
+test('practice sessions use baseline stats, not deep-floor exponential HP',()=>{
  const elite=P.buildEnemy(P.byId.clockwork,true);
  assert.ok(P.baseStats(elite,40).maxHp>P.baseStats(elite,40,true).maxHp);
  const boss=P.buildEnemy(P.byId.timewarden);
  assert.equal(P.baseStats(boss,99,true).maxHp,P.baseStats(boss,5).maxHp);
 });
-test('codex only grants legal encounter keys and persists defeated counts',()=>{
+test('one encounter unlocks practice even without a defeat, while wins remain separate',()=>{
  const expected=8*2+4*2+2;
  assert.equal(P.codexEntries().length,expected);
- const book=P.emptyBook(),normal=P.encounterForFloor(1),key=normal.bookKey;
- assert.equal(Object.keys(book.defeated).length,0);
- assert.equal(P.recordDefeat(book,normal,1),true);
- assert.equal(P.recordDefeat(book,normal,3),false);
- assert.equal(book.defeated[key].wins,2);
- assert.equal(book.defeated[key].firstFloor,1);
- const recovered=P.normalizeBook({defeated:{...book.defeated,'not_real:rare':{wins:999},'rogue:elite':{wins:-5}}});
- assert.equal(Object.keys(recovered.defeated).length,1);
+ const book=P.emptyBook(),slime=P.encounterForFloor(1),key=slime.bookKey;
+ assert.equal(Object.keys(book.seen).length,0);
+ assert.equal(P.recordEncounter(book,slime,1),true);
+ assert.equal(book.seen[key].encounters,1);
+ assert.equal(book.defeated[key],undefined,'a mere encounter is not a victory');
+ assert.equal(P.recordEncounter(book,slime,3),false);
+ assert.equal(book.seen[key].encounters,2);
+ assert.equal(book.seen[key].firstFloor,1);
+ assert.equal(P.recordDefeat(book,slime,3),true);
+ assert.equal(book.defeated[key].wins,1);
+ assert.equal(book.seen[key].encounters,2,'defeating does not double-register an encounter');
  assert.equal(P.findByKey(key).id,'slime');
  assert.equal(P.findByKey('not_real:rare'),null);
+});
+test('codex v1 defeated-only saves migrate to an encounter unlock and invalid data is ignored',()=>{
+ const old={version:1,defeated:{'knight:elite':{wins:3,firstFloor:9},'bogus:rare':{wins:12,firstFloor:1}}};
+ const migrated=P.normalizeBook(old);
+ assert.equal(migrated.version,2);
+ assert.equal(migrated.seen['knight:elite'].firstFloor,9);
+ assert.equal(migrated.seen['knight:elite'].encounters,3);
+ assert.equal(migrated.defeated['knight:elite'].wins,3);
+ assert.equal(migrated.seen['bogus:rare'],undefined);
+ const newBook=P.normalizeBook({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1},'rogue:elite':{encounters:-5}},defeated:{}});
+ assert.equal(newBook.seen['slime:normal'].encounters,1);
+ assert.equal(newBook.seen['rogue:elite'],undefined);
+ assert.equal(newBook.defeated['slime:normal'],undefined);
 });
 test('rare enemy reward values are defined but not automatically written to persistent coins',()=>{
  const rare=P.encounterForFloor(6,()=>0);
