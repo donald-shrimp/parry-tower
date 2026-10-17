@@ -10,18 +10,18 @@
  const monsters=[
   {id:'slime',name:'残響スライム',kind:'slime',rhythm:[4,4],color:'#76dec5',desc:'大きく縮んでから飛び込んでくる。'},
   {id:'knight',name:'錆びた騎士',kind:'knight',rhythm:[2,2,3,1],color:'#d0a5da',desc:'素直な振り下ろしと休符が特徴。'},
-  {id:'rogue',name:'影の暗殺者',kind:'rogue',rhythm:[1.5,1.5,2,3],color:'#ee819a',desc:'裏拍からの鋭い突きを繰り返す。'},
+  {id:'rogue',name:'影の暗殺者',kind:'rogue',hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[1.5,1.5,2,3],color:'#ee819a',desc:'裏拍からの鋭い突きを繰り返す。'},
   {id:'wraith',name:'塔の亡霊',kind:'wraith',rhythm:[3,2,2,4],color:'#89b0fa',desc:'予備動作の長い爪撃を仕掛ける。'},
-  {id:'sentinel',name:'鉄壁の番兵',kind:'knight',rhythm:[3,2,3,2],color:'#8cb3dc',desc:'間を取る重い剣戟。'},
-  {id:'duelist',name:'紅刃の剣士',kind:'rogue',rhythm:[2,1.5,1.5,3],color:'#f2a3aa',desc:'鋭い突きを短く連ねる。'},
-  {id:'cantor',name:'残響の詠み手',kind:'wraith',rhythm:[3,1.5,2.5,3],color:'#c4a1e9',desc:'休符と裏拍を織り交ぜる幻影。'},
-  {id:'clockwork',name:'時計仕掛けの兵士',kind:'knight',rhythm:[2,1,3,2],color:'#e4ae80',desc:'一定の拍と急な連撃を切り替える。'}
+  {id:'sentinel',name:'鉄壁の番兵',kind:'knight',hpMultiplier:1.10,atkMultiplier:1.00,rhythm:[3,2,3,2],color:'#8cb3dc',desc:'間を取る重い剣戟。'},
+  {id:'duelist',name:'紅刃の剣士',kind:'rogue',hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[2,1.5,1.5,3],color:'#f2a3aa',desc:'鋭い突きを短く連ねる。'},
+  {id:'cantor',name:'残響の詠み手',kind:'wraith',hpMultiplier:1.00,atkMultiplier:0.90,rhythm:[3,1.5,2.5,3],color:'#c4a1e9',desc:'休符と裏拍を織り交ぜる幻影。'},
+  {id:'clockwork',name:'時計仕掛けの兵士',kind:'knight',hpMultiplier:1.10,atkMultiplier:0.95,rhythm:[2,1,3,2],color:'#e4ae80',desc:'一定の拍と急な連撃を切り替える。'}
  ];
  const bosses=[
-  {id:'guardian',name:'鐘楼の守護者',kind:'guardian',rhythm:[2,2,1,3,1,3],color:'#ffcc86',boss:true,desc:'鐘の拍に合わせて大剣を振り下ろす。'},
-  {id:'ironwarden',name:'鉄血の監督官',kind:'guardian',rhythm:[2,1,2,1,3,3],color:'#f6a58c',boss:true,desc:'兵舎を統率する連撃型の守護者。'},
-  {id:'dirgekeeper',name:'弔鐘の司祭',kind:'guardian',rhythm:[3,1.5,1.5,2,4],color:'#abb6ff',boss:true,desc:'休符を読めなければ崩される。'},
-  {id:'timewarden',name:'時の監視者',kind:'guardian',rhythm:[1,2,1,3,1,4],color:'#f9d2a0',boss:true,desc:'短い斬撃と長い溜めを交互に使う。'}
+  {id:'guardian',name:'鐘楼の守護者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,2,1,3,1,3],color:'#ffcc86',boss:true,desc:'鐘の拍に合わせて大剣を振り下ろす。'},
+  {id:'ironwarden',name:'鉄血の監督官',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,1,2,1,3,3],color:'#f6a58c',boss:true,desc:'兵舎を統率する連撃型の守護者。'},
+  {id:'dirgekeeper',name:'弔鐘の司祭',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[3,1.5,1.5,2,4],color:'#abb6ff',boss:true,desc:'休符を読めなければ崩される。'},
+  {id:'timewarden',name:'時の監視者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[1,2,1,3,1,4],color:'#f9d2a0',boss:true,desc:'短い斬撃と長い溜めを交互に使う。'}
  ];
  const rares=[
   {id:'golden_tone',name:'黄金の音叉',kind:'wraith',rhythm:[3,3,2],color:'#ffe0a1',rare:true,soulBonus:8,desc:'黄金の鐘の音を響かせる希少な亡霊。'},
@@ -83,8 +83,15 @@
   const atkGrowth=Math.pow(1.09,Math.min(actualFloor-1,9))*Math.pow(1.045,Math.max(0,actualFloor-10));
   const hpScale=(enc.boss?2.15:1)*(enc.elite?1.30:1)*(enc.rare?1.12:1);
   const atkScale=(enc.boss?1.25:1)*(enc.elite?1.15:1)*(enc.rare?.95:1);
-  return {maxHp:Math.max(1,Math.round(49*hpGrowth*hpScale)),
-   atk:Math.max(13,Math.round(14*atkGrowth*atkScale))};
+  // Preserve the pre-v0.5.4 floor/elite/rare curve and minimum attack floor,
+  // then apply the enemy's own profile. Applying 0.80 before Math.max(13,...)
+  // would erase most of the intended damage reduction on early floors.
+  const baseHp=Math.max(1,Math.round(49*hpGrowth*hpScale));
+  const baseAtk=Math.max(13,Math.round(14*atkGrowth*atkScale));
+  const hpMultiplier=enc.hpMultiplier??1;
+  const atkMultiplier=enc.atkMultiplier??1;
+  return {maxHp:Math.max(1,Math.round(baseHp*hpMultiplier)),
+   atk:Math.max(1,Math.round(baseAtk*atkMultiplier))};
  }
  function emptyBook(){return {version:2,seen:{},defeated:{}}}
  function normalizeBook(input){
