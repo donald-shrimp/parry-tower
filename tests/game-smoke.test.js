@@ -1039,7 +1039,7 @@ test('rare relic: serene crystal reacts to three consecutive JUSTs and ignores n
 test('rare relic: emperor conduit creates autonomous lightning only when lightning skills are absent',()=>{
  const {g,d}=makeRelicFight(['emperor_conduit']);
  for(let i=0;i<5;i++)resolveBloodParry(g,20);
- assert.deepEqual(d.hits().filter(h=>h.label==='雷帝').map(h=>h.dealt),[25]);
+ assert.deepEqual(Array.from(d.hits().filter(h=>h.label==='雷帝'),h=>h.dealt),[25]);
  const withThunder=makeRelicFight(['emperor_conduit']);
  withThunder.d.setSkill('thunder',1);
  for(let i=0;i<5;i++)resolveBloodParry(withThunder.g,20);
