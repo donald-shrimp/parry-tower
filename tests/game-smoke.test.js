@@ -500,7 +500,7 @@ test('soul gains and once-per-run revive apply while preserving combat timing',(
 });
 test('practice and developer page do not write permanent progression',()=>{
  const raw=JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:3,bossWard:3});
- const meta=JSON.stringify({coins:350,life:1,runs:3});
+ const meta=JSON.stringify({coins:450,life:1,runs:3});
  const seed={'parryTowerPrototype_v1':meta,'parryTowerPermanent_v1':raw,
   'parryTowerBestiary_v1':JSON.stringify({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1}},defeated:{}})};
  const normal=makeHarness(seed);normal.press('practiceBtn');
