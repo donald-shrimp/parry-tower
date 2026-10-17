@@ -2,11 +2,11 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const P=require('../assets/encounters.js');
 
-function makeHarness(){
- let clock=10000,animation=null;const clickers=new Map(),storage=new Map();
+function makeHarness(seed={}){
+ let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync('index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','arenaResultCover','codexBtn','arenaAgainBtn','zoneLabel','gameCanvas'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -15,9 +15,9 @@ function makeHarness(){
    addEventListener(k,cb){this.listeners[k]=cb;},
    getBoundingClientRect(){return {width:800,height:500}},
    querySelectorAll(selector){
-    if(selector==='[data-arena]'){
-     return [...this.innerHTML.matchAll(/data-arena="([^"]+)"/g)].map(m=>{
-      const key=m[1],b={dataset:{arena:key},addEventListener(type,cb){clickers.set(key,cb)}};return b;
+    if(selector==='[data-practice]'){
+     return [...this.innerHTML.matchAll(/data-practice="([^"]+)"/g)].map(m=>{
+      const key=m[1],b={dataset:{practice:key},addEventListener(type,cb){clickers.set(key,cb)}};return b;
      });
     }
     return [];
@@ -70,40 +70,65 @@ function makeHarness(){
   get now(){return clock}
  };
 }
-test('loaded game starts at title with all new overlays hidden',()=>{
+test('title exposes the encyclopedia and only previously encountered enemies become trainable',()=>{
  const g=makeHarness();
  assert.equal(g.state().mode,'title');
  assert.equal(g.el.get('codexCover').hidden,true);
- assert.equal(g.el.get('arenaResultCover').hidden,true);
  assert.equal(g.el.get('zoneLabel').textContent,'忘れられた地下墓地');
- assert.match(g.el.get('codexCount').textContent,/0体登録/);
+ assert.match(g.el.get('codexCount').textContent,/0体遭遇済み/);
+ g.press('practiceBtn');
+ assert.equal(g.state().mode,'codex');
+ assert.equal(g.clickers.size,0,'no default unlocked enemies before first encounter');
+ assert.match(g.el.get('codexList').innerHTML,/未遭遇/);
 });
-test('tower victory registers defeated enemy; unlocked arena replay does not grant souls',()=>{
+test('meeting a slime unlocks safe training even when the tower run ends without a kill',()=>{
  const g=makeHarness();
  g.press('startBtn');
  assert.equal(g.state().enemy,'slime');
- assert.equal(g.state().arena,false);
- for(let i=0;i<2;i++){
+ assert.equal(g.state().practice,false);
+ assert.ok(g.state().discovered.includes('slime:normal'),'registered at spawn');
+ const bookBefore=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
+ assert.equal(bookBefore.seen['slime:normal'].encounters,1);
+ assert.equal(bookBefore.defeated['slime:normal'],undefined);
+ for(let i=0;i<5;i++){
   const due=g.state().attackAt;
-  g.clock(due-100);g.parry();
+  g.frame(due+1);  // no tap: take a hit and lose the run
+ }
+ assert.equal(g.state().mode,'gameover');
+ const beforeSouls=g.state().souls;
+ g.press('deathCodexBtn');
+ assert.equal(g.state().mode,'codex');
+ assert.match(g.el.get('codexList').innerHTML,/data-practice="slime:normal"/);
+ g.clickers.get('slime:normal')();
+ assert.equal(g.state().practice,true);
+ assert.equal(g.state().encounterKey,'slime:normal');
+ const hpBefore=g.state().hp;
+ for(let i=0;i<9;i++){
+  const due=g.state().attackAt;
   g.frame(due+1);
  }
- assert.ok(g.state().discovered.includes('slime:normal'));
- const saved=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
- assert.equal(saved.defeated['slime:normal'].wins,1);
- const beforeSouls=g.state().souls;
- g.press('homeBtn');g.press('codexBtn');
- assert.equal(g.state().mode,'codex');
- assert.match(g.el.get('codexList').innerHTML,/data-arena="slime:normal"/);
+ assert.equal(g.state().mode,'combat','practice is immortal');
+ assert.equal(g.state().hp,hpBefore,'practice ignores incoming damage');
+ assert.equal(g.state().souls,beforeSouls,'practice never grants soul rewards');
+ const bookAfter=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
+ assert.equal(bookAfter.seen['slime:normal'].encounters,1,'practice does not count as another encounter');
+ assert.equal(bookAfter.defeated['slime:normal'],undefined);
+});
+test('practicing another encountered variant via dropdown never unlocks unencountered variants',()=>{
+ const seedBook={version:2,seen:{'slime:normal':{encounters:1,firstFloor:1},'guardian:elite':{encounters:1,firstFloor:10}},defeated:{}};
+ const g=makeHarness({'parryTowerBestiary_v1':JSON.stringify(seedBook)});
+ g.press('practiceBtn');
+ assert.match(g.el.get('codexList').innerHTML,/data-practice="guardian:elite"/);
+ assert.doesNotMatch(g.el.get('codexList').innerHTML,/data-practice="knight:normal"/);
  g.clickers.get('slime:normal')();
- assert.equal(g.state().arena,true);
- for(let i=0;i<2;i++){
-  const due=g.state().attackAt;
-  g.clock(due-100);g.parry();g.frame(due+1);
- }
- assert.equal(g.state().mode,'arenaresult');
- assert.equal(g.state().souls,beforeSouls);
- assert.equal(JSON.parse(g.storage.get('parryTowerBestiary_v1')).defeated['slime:normal'].wins,1);
- g.press('arenaReturnBtn');
- assert.equal(g.state().mode,'codex');
+ assert.equal(g.state().practice,true);
+ const select=g.el.get('practiceEnemy');
+ assert.match(select.innerHTML,/guardian:elite/);
+ assert.doesNotMatch(select.innerHTML,/knight:normal/);
+ select.value='guardian:elite';
+ select.listeners.change();
+ assert.equal(g.state().encounterKey,'guardian:elite');
+ assert.equal(g.state().bpm,136);
+ assert.equal(g.state().souls,0);
+ assert.equal(JSON.parse(g.storage.get('parryTowerBestiary_v1')).seen['guardian:elite'].encounters,1);
 });
