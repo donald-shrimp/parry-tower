@@ -1218,3 +1218,301 @@ test('relic discovery does not consume purchased four-choice ordinary loot or re
  assert.equal(g.state().rerolls,beforeRerolls,'relic choice cannot spend ordinary rerolls');
  assert.equal((g.el.get('rewardCards').innerHTML.match(/class="reward-card/g)||[]).length,4);
 });
+
+
+function makeCrossroads(floor=4){
+ const g=makeHarness({},true);
+ assert.equal(g.dev().launch(floor),true);
+ assert.equal(g.state().mode,'route');
+ assert.equal(g.state().floor,floor);
+ return {g,d:g.bloodTest()};
+}
+test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctly',()=>{
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
+   'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js"'),asset);
+  assert.match(html,/v0\.7\.0 PREVIEW/);
+ }
+ const {g,d}=makeCrossroads(4);
+ assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
+ assert.equal(g.el.get('routeCover').hidden,false);
+ assert.equal(g.el.get('towerCoinsLabel').textContent,'0');
+ assert.match(g.el.get('routeCards').innerHTML,/安息の間/);
+ assert.match(g.el.get('routeCards').innerHTML,/行商人の隠れ処/);
+ assert.match(g.el.get('routeCards').innerHTML,/血闘の間/);
+ const later=makeCrossroads(8);
+ assert.deepEqual(Array.from(later.d.getRouteOptions()),['rest','event','trial']);
+ assert.match(later.g.el.get('routeCards').innerHTML,/奇遇の間/);
+ const next=makeCrossroads(14);
+ assert.deepEqual(Array.from(next.d.getRouteOptions()),['rest','merchant','trial']);
+});
+test('real 3F relic + regular reward leads into 4F crossroads, without a normal enemy spawn',()=>{
+ const g=makeHarness({},true);
+ g.dev().launch(3,'slime:normal');
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g);
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic');
+ g.relicSelect(g.state().relicOffer[0]);
+ assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ assert.equal(g.state().floor,4);
+ assert.equal(g.state().mode,'route');
+ assert.equal(g.state().enemy,undefined);
+ assert.equal(g.el.get('routeCover').hidden,false);
+});
+test('rest recovers 35 percent, consumes room and resets combo, without ordinary skill rewards',()=>{
+ const {g,d}=makeCrossroads();
+ d.setCombo(18);d.setJustStreak(2);d.setHp(10);
+ g.routeSelect('rest');
+ assert.equal(g.state().mode,'room');
+ assert.equal(g.state().combo,0);
+ assert.equal(g.state().justStreak,0);
+ const originalSkills=JSON.stringify(g.state().runSkills);
+ g.roomChoose('rest:heal');
+ assert.equal(g.state().hp,33);
+ assert.equal(g.state().roomStage,'result');
+ assert.equal(g.state().mode,'room','room stays open until confirmation');
+ g.roomChoose('rest:heal');
+ assert.equal(g.state().hp,33,'double click cannot heal twice');
+ g.press('healBtn');
+ assert.equal(g.state().mode,'room','ordinary reward controls cannot be used in room');
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,5);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().enemy,'guardian');
+ assert.equal(JSON.stringify(g.state().runSkills),originalSkills);
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,5,'late click cannot skip another floor');
+});
+test('rest meditation grants capped shield and one reroll; future 8F rest leads to fixed 9F elite',()=>{
+ const {g,d}=makeCrossroads(8);
+ d.setCombo(99);d.setShield(95);
+ const rerolls=g.state().rerolls;
+ g.routeSelect('rest');
+ g.roomChoose('rest:meditate');
+ assert.equal(g.state().shield,100,'ward uses regular shield limit');
+ assert.equal(g.state().rerolls,rerolls+1);
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,9);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().encounterElite,true);
+ assert.equal(g.state().combo,0);
+});
+test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus normal loot',()=>{
+ const {g,d}=makeCrossroads();
+ d.setCombo(9);
+ g.routeSelect('trial');
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().routeTrial,true);
+ assert.equal(g.state().encounterElite,true);
+ assert.equal(g.state().combo,9);
+ g.random(.99);
+ d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().towerCoins,14);
+ assert.equal(g.state().towerCoinsEarned,14);
+ assert.equal(g.el.get('towerCoinsLabel').textContent,'14');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'reward','trial retains normal skill reward');
+ g.press('healBtn');
+ assert.equal(g.state().floor,5);
+ assert.equal(g.state().routeTrial,false);
+ assert.equal(g.state().encounterElite,false);
+ assert.equal(g.state().encounterKey,'guardian:normal');
+});
+test('normal, elite/rare, boss victories grant distinct tower coins and no permanent spend',()=>{
+ for(const [floor,key,expected] of [[1,'slime:normal',6],[7,'gem_slime:rare',12],
+  [9,'knight:elite',12],[5,'guardian:normal',10]]){
+  const g=makeHarness({},true);
+  g.dev().launch(floor,key);
+  g.random(.99);g.bloodTest().setEnemyHp(1);
+  resolveBloodParry(g,20);
+  assert.equal(g.state().towerCoins,expected,key);
+  assert.equal(g.state().souls,0===g.state().souls?0:g.state().souls);
+ }
+});
+test('merchant requires run coins, limits purchases to one per visit and keeps soul currency separate',()=>{
+ const {g,d}=makeCrossroads();
+ d.setTowerCoins(18);
+ const rerolls=g.state().rerolls;
+ g.routeSelect('merchant');
+ assert.equal(g.state().mode,'room');
+ const soul=g.state().souls;
+ g.roomChoose('buy:skill');
+ assert.equal(g.state().mode,'room','26-coin scroll is unaffordable at 18');
+ g.roomChoose('buy:reroll');
+ assert.equal(g.state().towerCoins,6);
+ assert.equal(g.state().rerolls,rerolls+1);
+ assert.equal(g.state().souls,soul);
+ assert.equal(g.state().roomStage,'result');
+ g.roomChoose('buy:barrier');
+ assert.equal(g.state().towerCoins,6,'cannot purchase a second time');
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,5);
+});
+test('merchant can buy barrier, or leave with all tower coins without fighting',()=>{
+ const first=makeCrossroads();
+ first.d.setTowerCoins(20);first.g.routeSelect('merchant');
+ first.g.roomChoose('buy:barrier');
+ assert.equal(first.g.state().shield,20);
+ assert.equal(first.g.state().towerCoins,4);
+ first.g.roomChoose('continue');
+ const second=makeCrossroads();
+ second.d.setTowerCoins(31);second.g.routeSelect('merchant');
+ second.g.roomChoose('leave');
+ assert.equal(second.g.state().towerCoins,31);
+ second.g.roomChoose('continue');
+ assert.equal(second.g.state().floor,5);
+});
+test('merchant skill scroll uses existing sealed skill pool and gives only ONE selectable upgrade',()=>{
+ const old={'parryTowerPermanent_v1':JSON.stringify({sealSlots:1,sealedSkills:['blood']})};
+ const g=makeHarness(old,true),d=g.bloodTest();
+ g.dev().launch(4);d.setTowerCoins(60);g.routeSelect('merchant');
+ g.roomChoose('buy:skill');
+ assert.equal(g.state().mode,'routeSkill');
+ assert.equal(g.state().towerCoins,34);
+ assert.equal(g.state().routeSkillSet.includes('blood'),false);
+ assert.ok(g.state().routeSkillSet.length>=1);
+ const id=g.state().routeSkillSet[0],before=g.state().runSkills[id]||0;
+ g.routeSkillSelect('blood');
+ assert.equal(g.state().mode,'routeSkill','invalid or sealed choice cannot be purchased');
+ g.routeSkillSelect(id);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().floor,5);
+ assert.equal(g.state().runSkills[id],before+1);
+ assert.equal(g.state().rerolls,1,'no boss reroll or extra standard reward');
+});
+test('merchant relic chest costs 42, offers nonlegendary relics and never adds an ordinary skill reward',()=>{
+ const {g,d}=makeCrossroads();
+ d.setTowerCoins(50);g.routeSelect('merchant');
+ g.roomChoose('buy:relic');
+ assert.equal(g.state().towerCoins,8);
+ assert.equal(g.state().mode,'relic');
+ const offer=g.state().relicOffer;
+ assert.equal(offer.length,3);
+ const RR=require('../assets/relics.js');
+ assert.ok(offer.every(id=>RR.BY_ID[id].rarity!=='legendary'));
+ g.relicSelect(offer[0]);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().floor,5);
+ assert.equal(g.state().relics.length,1);
+ assert.equal(Object.keys(g.state().runSkills).length,0);
+});
+test('altar sacrifice spends only HP, never activates injury procs and gives a filtered skill',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('altar');
+ d.setHp(15);d.setSkill('fortitude',1);d.grantRelic('blood_pact_chalice');
+ g.roomChoose('event:sacrifice');
+ assert.equal(g.state().hp,7,'cost is ceil(65 * 12%) = 8');
+ assert.equal(g.state().mode,'routeSkill');
+ assert.equal(g.state().fortitudeReady,false);
+ assert.equal(d.relicInfo().pactReady,false);
+ const id=g.state().routeSkillSet[0],before=g.state().runSkills[id]||0;
+ g.routeSkillSelect(id);
+ assert.equal(g.state().floor,9);
+ assert.equal(g.state().runSkills[id],before+1);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().encounterElite,true);
+});
+test('altar cannot kill, shield alternative is available, and never issues a combat hit',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('altar');d.setHp(7);
+ g.roomChoose('event:sacrifice');
+ assert.equal(g.state().mode,'room');
+ assert.equal(g.state().hp,7);
+ g.roomChoose('event:ward');
+ assert.equal(g.state().shield,12);
+ assert.equal(g.state().hp,7);
+ g.roomChoose('event:ward');
+ assert.equal(g.state().shield,12,'only once');
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,9);
+});
+test('forgotten mirror can exchange a relic without increasing count and marks the old one discarded',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('mirror');
+ assert.equal(d.grantRelic('rusty_crest'),true);
+ g.roomChoose('event:swap');
+ assert.equal(g.state().roomStage,'mirror');
+ g.roomChoose('mirror:rusty_crest');
+ assert.equal(g.state().mode,'relic');
+ const choice=g.state().relicOffer[0];
+ g.relicSelect(choice);
+ assert.equal(g.state().floor,9);
+ assert.equal(g.state().mode,'combat');
+ assert.deepEqual(Array.from(g.state().relics),[choice]);
+ assert.deepEqual(Array.from(g.state().relicDiscarded),['rusty_crest']);
+ assert.equal(g.state().relics.length,1);
+});
+test('mirror skip returns to the same event, allowing the +12 coin choice',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('mirror');d.grantRelic('rusty_crest');
+ g.roomChoose('event:swap');g.roomChoose('mirror:rusty_crest');
+ g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'room');
+ assert.equal(g.state().roomStage,null);
+ assert.equal(g.state().relics[0],'rusty_crest');
+ g.roomChoose('event:coins');
+ assert.equal(g.state().towerCoins,12);
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,9);
+});
+test('traveler offers either 18 coins or one reroll and 10 shield, without an extra reward',()=>{
+ for(const [action,coins,shield] of [['event:coins',18,0],['event:ward',0,10]]){
+  const {g,d}=makeCrossroads(8);
+  g.routeSelect('event');d.setEvent('traveler');
+  const before=g.state().rerolls;g.roomChoose(action);
+  assert.equal(g.state().towerCoins,coins);
+  assert.equal(g.state().shield,shield);
+  assert.equal(g.state().rerolls,before+(action==='event:ward'?1:0));
+  g.roomChoose('continue');
+  assert.equal(g.state().mode,'combat');
+  assert.equal(g.state().floor,9);
+ }
+});
+test('chest failure never kills, cannot trigger fortitude and cannot be rolled again',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('chest');d.setHp(8);
+ d.setSkill('fortitude',1);
+ g.random(.99);g.roomChoose('event:open');
+ assert.equal(g.state().hp,1);
+ assert.equal(g.state().mode,'room');
+ assert.equal(g.state().fortitudeReady,false);
+ assert.equal(g.state().roomStage,'result');
+ g.roomChoose('event:open');
+ assert.equal(g.state().hp,1);
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,9);
+});
+test('chest success offers a relic on 40% roll and does not invoke ordinary skill rewards',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('event');d.setEvent('chest');
+ g.random(0);g.roomChoose('event:open');
+ assert.equal(g.state().mode,'relic');
+ assert.equal(g.state().relicOffer.length,3);
+ g.relicSelect(g.state().relicOffer[0]);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().floor,9);
+ assert.equal(g.state().relics.length,1);
+});
+test('events and merchant purchases never rewrite legacy permanent save; tower coins expire on new run',()=>{
+ const raw={'parryTowerPermanent_v1':JSON.stringify({sealSlots:1,sealedSkills:['thorns'],slots:1,unlockedSkills:['blood'],equipped:['blood',null]}),
+ 'parryTowerPrototype_v1':JSON.stringify({coins:173,runs:2,bestFloor:19,life:1})};
+ const {g,d}=makeCrossroads(4);
+ d.setTowerCoins(200);g.routeSelect('merchant');g.roomChoose('buy:reroll');g.roomChoose('continue');
+ assert.equal(g.storage.has('parryTowerRoutes_v1'),false);
+ const dev=makeHarness(raw,true),tester=dev.bloodTest();
+ dev.dev().launch(4);tester.setTowerCoins(100);
+ dev.routeSelect('merchant');dev.roomChoose('buy:reroll');dev.roomChoose('continue');
+ assert.equal(dev.storage.get('parryTowerPermanent_v1'),raw.parryTowerPermanent_v1);
+ assert.equal(dev.storage.get('parryTowerPrototype_v1'),raw.parryTowerPrototype_v1);
+ dev.dev().reset();
+ assert.equal(dev.state().towerCoins,0);
+ dev.dev().launch(1,'slime:normal');
+ assert.equal(dev.state().towerCoins,0);
+ assert.equal(dev.state().runSkills.blood,1);
+});
