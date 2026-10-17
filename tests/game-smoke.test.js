@@ -773,13 +773,13 @@ test('Fortitude boosts the next parry after HP damage, consumed once; Immortal S
  w.incoming(5);
  assert.equal(withWard.state().hp,65,'barrier absorbs the hit');
  assert.equal(withWard.state().fortitudeReady,true,'broken barrier activates Immortal Shield');
- resolveBloodParry(withWard);
+ resolveBloodParry(withWard,20);
  assert.equal(withWard.state().shield,5,'next successful parry restores five ward');
 });
 test('Heartbeat charges once at three consecutive JUSTs, or twice with Focus synergy',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
  d.setSkill('heartbeat',1);d.setEnemyHp(10000);
- resolveBloodParry(g);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
+ resolveBloodParry(g,20);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
  resolveBloodParry(g,0);resolveBloodParry(g,0);resolveBloodParry(g,0);
  assert.equal(d.hits().filter(x=>x.label==='拍動').length,1);
  assert.equal(g.state().justStreak,0);
