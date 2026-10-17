@@ -2,9 +2,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const P=require('../assets/encounters.js');
 
-function makeHarness(seed={}){
+function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const html=fs.readFileSync('index.html','utf8');
+ const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
@@ -48,9 +48,10 @@ function makeHarness(seed={}){
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
  const window={
-  ParryEncounters:P,AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
+  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
  };
  const document={
+  documentElement:{dataset:{parryDev:devMode?'true':'false'}},
   getElementById(id){if(!el.has(id))throw new Error('Unknown DOM id: '+id);return el.get(id)},
   addEventListener:noop,querySelectorAll:()=>[],hidden:false
  };
@@ -62,7 +63,7 @@ function makeHarness(seed={}){
  };
  vm.runInNewContext(fs.readFileSync('assets/game.js','utf8'),context,{filename:'game.js'});
  return {
-  el,clickers,storage,state:()=>window.__parryV05(),
+  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
   parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
@@ -144,4 +145,50 @@ test('practicing another encountered variant via dropdown never unlocks unencoun
  assert.equal(g.state().bpm,136);
  assert.equal(g.state().souls,0);
  assert.equal(JSON.parse(g.storage.get('parryTowerBestiary_v1')).seen['guardian:elite'].encounters,1);
+});
+
+test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
+ const main=fs.readFileSync('index.html','utf8');
+ const dev=fs.readFileSync('dev.html','utf8');
+ const control=fs.readFileSync('assets/dev-tools.js','utf8');
+ assert.doesNotMatch(main,/dev\.html|dev-tools|data-parry-dev|id="devLaunch"/);
+ assert.match(dev,/data-parry-dev="true"/);
+ assert.match(dev,/id="devFloor"/);
+ assert.match(dev,/id="devEnemy"/);
+ assert.match(dev,/id="devLaunch"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js"/);
+ assert.match(control,/engine\.launch/);
+ assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
+});
+test('developer page jumps to arbitrary floor and enemy without writing the public saves',()=>{
+ const oldMeta=JSON.stringify({coins:27,bestFloor:12,bestCombo:3,runs:2,life:1,attack:0,ward:0});
+ const oldBook=JSON.stringify({version:2,seen:{'slime:normal':{encounters:3,firstFloor:1}},defeated:{}});
+ const seed={'parryTowerPrototype_v1':oldMeta,'parryTowerBestiary_v1':oldBook,'parryTowerAudioOffset_v05':'5'};
+ const g=makeHarness(seed,true),dev=g.dev();
+ assert.ok(dev?.isolated);
+ assert.equal(dev.list().length,26);
+ assert.equal(dev.launch(21,'cantor:normal'),true);
+ assert.equal(g.state().floor,21);
+ assert.equal(g.state().enemy,'cantor');
+ assert.equal(g.state().practice,false);
+ assert.equal(g.state().bpm,112);
+ assert.equal(g.state().souls,27);
+ assert.equal(g.storage.get('parryTowerPrototype_v1'),oldMeta);
+ assert.equal(g.storage.get('parryTowerBestiary_v1'),oldBook);
+ assert.equal(dev.launch(40,'timewarden:elite'),true);
+ assert.equal(g.state().floor,40);
+ assert.equal(g.state().enemy,'timewarden');
+ assert.equal(g.state().bpm,136);
+ assert.equal(dev.launch(30,'golden_tone:rare'),true);
+ assert.equal(g.state().enemy,'golden_tone');
+ assert.equal(g.state().encounterRare,true);
+ assert.equal(g.storage.get('parryTowerBestiary_v1'),oldBook);
+ assert.equal(dev.launch(31,'bogus:normal'),false);
+ assert.equal(g.state().floor,30);
+ dev.reset();
+ assert.equal(g.state().mode,'title');
+ const slider=g.el.get('latencySlider');
+ slider.listeners.input({target:{value:'35'}});
+ assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'5');
 });
