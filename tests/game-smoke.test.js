@@ -3,7 +3,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const P=require('../assets/encounters.js');
 
 function makeHarness(seed={},devMode=false){
- let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
+ let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
+ const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs','relicCover','relicOfferCards','relicReplaceList','relicList','relicCount','routeCover','routeCards','roomCover','roomActions','routeSkillCover','routeSkillCards','towerCoinsLabel'];
@@ -61,7 +62,7 @@ function makeHarness(seed={},devMode=false){
   window,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   navigator:{vibrate:noop},performance:{now:()=>clock},
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
-  ResizeObserver:undefined,console
+  ResizeObserver:undefined,console,Math:math
  };
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
@@ -141,6 +142,7 @@ function makeHarness(seed={},devMode=false){
 
 
   parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
+  random(value){randomOverride=value},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
   clock(at){clock=at},
   get now(){return clock}
