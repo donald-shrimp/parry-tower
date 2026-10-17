@@ -162,3 +162,18 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .room-choice{min-height:61px;padding:9px}
 }
 @media(prefers-reduced-motion:reduce){.route-card,.room-choice{transition:none}}
+
+/* v0.7.1: non-destructive build inconsistency warning; no interaction is hidden. */
+.version-warning{
+ position:fixed;z-index:99999;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+ width:min(calc(100% - 24px),660px);box-sizing:border-box;padding:12px 16px;
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+ background:#352237;color:#fff4ef;border:2px solid #ffc27b;
+ border-radius:12px;box-shadow:0 12px 35px #000b;
+ font-family:inherit;font-size:13px;line-height:1.55
+}
+.version-warning strong{font-size:14px;color:#ffe0a3}
+.version-warning p{flex:1 1 290px;margin:0;color:#fff4ef}
+.version-warning button{padding:9px 14px;border-radius:8px;border:1px solid #ffd99c;background:#ffe0aa;color:#292030;font-weight:800;cursor:pointer}
+.version-warning button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media(max-width:540px){.version-warning{padding:10px;font-size:12px;gap:8px}.version-warning p{flex-basis:100%}}
