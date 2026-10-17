@@ -41,6 +41,8 @@ const ENEMIES=[
 const BOSS={id:'guardian',name:'鐘楼の守護者',kind:'guardian',rhythm:[2,2,1,3,1,3],color:'#ffcc86'};
 let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,audioContext=null,choiceSet=[],cuePlayed=false;
 let pausedFrom='combat',pauseAt=0,screenOffset=0;
+// Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
+let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 // 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
 const PARRY_STARTUP=100;
@@ -81,9 +83,24 @@ function startScore(enemy){if(!ensureAudio()){score.active=false;return}const ac
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function scoreToPerf(t){if(audioContext&&audioContext.state!=='suspended'){if(audioContext.getOutputTimestamp){const ts=audioContext.getOutputTimestamp();if(ts&&ts.performanceTime>0&&ts.contextTime>0)return ts.performanceTime+(t-ts.contextTime)*1000+latencyOffset}return performance.now()+(t-audioContext.currentTime)*1000+latencyOffset}return score.visualOriginPerf+(t-score.origin)*1000+latencyOffset}
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat);game.telegraphStart=game.attackAt-game.attackSpan}
-function musicParry(kind){if(!score.active||!audioEnabled||!audioContext)return;const t=audioContext.currentTime+.004;if(kind==='just'){scoreTone(880,.24,.18,t,'sine',440);scoreTone(1320,.26,.07,t+.045,'triangle',110)}else if(kind==='parry'){scoreTone(660,.16,.12,t,'triangle',180)}else if(kind==='miss')scoreTone(120,.22,.12,t,'sawtooth',-60)}
+function musicParry(kind){
+ if(!audioEnabled||!audioContext||!score.bus||!score.noise)return;
+ const ac=audioContext,t=ac.currentTime+.003,just=kind==='just',miss=kind==='miss',guard=kind==='guard';
+ // A short filtered scrape and two inharmonic metal resonances. Never mask the next attack cue.
+ const src=ac.createBufferSource(),band=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;
+ band.type=miss?'lowpass':'bandpass';band.frequency.setValueAtTime(miss?480:guard?1200:just?2700:1900,t);band.Q.value=miss?.55:1.1;
+ const volume=miss?.095:guard?.055:just?.16:.115,duration=miss?.115:just?.13:.095;
+ g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);
+ src.connect(band);band.connect(g);g.connect(score.bus);src.start(t);src.stop(t+duration+.005);
+ if(!miss){
+  const fundamental=guard?240:just?490:360;
+  scoreTone(fundamental,just?.21:.15,just?.105:.07,t,'triangle',-fundamental*.12);
+  scoreTone(fundamental*(just?2.34:2.19),just?.16:.11,just?.045:.023,t+.008,'sine',-75);
+ }else scoreTone(97,.14,.055,t,'sine',-25);
+}
+
 function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){if(!audioEnabled)return;try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+dur+.02)}catch(e){}}
-function chord(){sound(570,.17,'triangle',.045,310);setTimeout(()=>sound(920,.25,'sine',.028,260),45)}
+function chord(){sound(570,.11,'triangle',.012,-85)}
 // 剣が動き始める音。250ms前の電子音ではなく斬撃に追従する風切り音。
 function sfxSwing(){if(!audioEnabled)return;try{
  audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
@@ -108,9 +125,9 @@ function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').i
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
 function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化（死亡後も引き継ぎ）</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
-function title(){stopScore();game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild()}
-function start(practice=false){const t=performance.now();particles=[];texts=[];game={mode:'combat',practice,practiceEnemy:practice?$('practiceEnemy').value:null,floor:1,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
-function spawnEnemy(t){const boss=game.floor%5===0;const archetype=game.practice?(ENEMIES.find(e=>e.id===(game.practiceEnemy||'knight'))||(game.practiceEnemy==='guardian'?BOSS:ENEMIES[1])):boss?BOSS:game.floor===1?ENEMIES[0]:ENEMIES[(Math.floor((game.floor-2)/2)+Math.floor(rand(0,3)))%ENEMIES.length];const maxHp=game.practice?999999:Math.round(49*Math.pow(1.18,game.floor-1)*(boss?2.15:1));const atk=Math.max(13,Math.round(14*Math.pow(1.09,game.floor-1)*(boss?1.25:1)));game.enemy={...archetype,boss:boss||(game.practice&&archetype.id==='guardian'),maxHp,hp:maxHp,atk,burn:0,index:0};startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170;game.telegraphStart=t;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;game.nextFloorHint=boss?'BOSS FLOOR':'FLOOR '+game.floor;game.nextFloorHintAt=t;syncAttackClock();syncHUD()}
+function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild()}
+function start(practice=false){const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceEnemy:practice?$('practiceEnemy').value:null,floor:1,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+function spawnEnemy(t){clashFX=null;const boss=game.floor%5===0;const archetype=game.practice?(ENEMIES.find(e=>e.id===(game.practiceEnemy||'knight'))||(game.practiceEnemy==='guardian'?BOSS:ENEMIES[1])):boss?BOSS:game.floor===1?ENEMIES[0]:ENEMIES[(Math.floor((game.floor-2)/2)+Math.floor(rand(0,3)))%ENEMIES.length];const maxHp=game.practice?999999:Math.round(49*Math.pow(1.18,game.floor-1)*(boss?2.15:1));const atk=Math.max(13,Math.round(14*Math.pow(1.09,game.floor-1)*(boss?1.25:1)));game.enemy={...archetype,boss:boss||(game.practice&&archetype.id==='guardian'),maxHp,hp:maxHp,atk,burn:0,index:0};startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170;game.telegraphStart=t;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;game.nextFloorHint=boss?'BOSS FLOOR':'FLOOR '+game.floor;game.nextFloorHintAt=t;syncAttackClock();syncHUD()}
 function nextStrike(){const e=game.enemy;if(!e)return;const step=e.rhythm[e.index%e.rhythm.length];e.index++;const extra=lvl('tempo')?Math.ceil(lvl('tempo')*.5):0;const beats=step+extra;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
@@ -118,7 +135,7 @@ function feedback(label,color){game.feedback=label;game.feedbackAt=performance.n
 function damageEnemy(n,color='#fff',label){const e=game.enemy;if(!e||e.hp<=0)return;const damage=Math.max(1,Math.round(n));e.hp=Math.max(0,e.hp-damage);game.damage+=damage;const x=w*.71+rand(-22,22),y=h*.43+rand(-25,18);showText(label?`${label} ${formatCompact(damage)}`:formatCompact(damage),x,y,color,label?15:19);puff(w*.71,h*.60,color,Math.min(22,4+damage/14),.72);if(e.hp<=0)clearFloor();}
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);if(game.hp>a+.1)showText('+'+Math.round(game.hp-a),w*.27,h*.47,'#8aefbd',18)}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
-function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
+function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
   game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');sound(250,.08,'triangle',.055,-80);
 }else if(kind==='miss'){
@@ -134,7 +151,7 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(perfect&&lvl('aegis')){game.shield=Math.min(100+20*lvl('aegis'),game.shield+3+3*lvl('aegis'));if(has('aegis','thorns')){damageEnemy(game.shield*.28,'#c5adff','鏡壁');if(game.mode!=='combat')return}}
   if(lvl('pulse')&&game.combo%8===0){damageEnemy(42*lvl('pulse')*(1+game.combo*.02),'#ffe298','共鳴波');if(game.mode!=='combat')return}
   if(game.charge>=7){game.charge=0;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
-  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.55;flashColor='#a6f7ff'}else sound(470,.13,'triangle',.055,150);
+  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.23;flashColor='#dff8ff'}else sound(330,.065,'triangle',.014,-65);
 }
 if(game.mode==='combat')nextStrike();syncHUD();}
 function clearFloor(){if(game.mode!=='combat')return;stopScore();game.mode='victory';game.clearAt=performance.now();game.enemy.hp=0;game.bossKills+=Number(game.enemy.boss);puff(w*.72,h*.58,game.enemy.color,40,1.8);flash=1;flashColor='#f6cb84';sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();}
@@ -188,7 +205,8 @@ function hero(now){
  const lift=clamp(since/95,0,1)*clamp((300-since)/130,0,1);
  const action=clamp(1-(now-(game.lastHitAt||-99999))/240,0,1);
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
- ctx.save();ctx.translate(x-hurt*8,y+Math.sin(now/390)*1.6+hurt*5);ctx.scale(s,s);
+ const age=now-(game.lastDeflectAt||-99999),push=(age>=0&&age<160?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:.45);
+ ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
  ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
  fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
  fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
@@ -196,7 +214,7 @@ function hero(now){
  fillPoly([[-19,-83],[13,-85],[26,-40],[9,-30],[-18,-37]],'#738aa8');fillPoly([[-12,-78],[7,-78],[7,-40],[-8,-40]],'#263950');line([[-18,-68],[24,-54]],'#bad9e1',2.6);round(3,-57,5,'#eac791');
  fillPoly([[-17,-107],[6,-117],[20,-98],[13,-80],[-14,-81]],'#b7c6d4');fillPoly([[-16,-107],[-7,-115],[4,-118],[1,-91],[-18,-91]],'#526781');fillPoly([[4,-101],[18,-98],[13,-89],[3,-90]],'#142b3f');round(9,-95,2,'#76eff3');
  // 盾は敵のいる右側。入力から100ms程度で迎撃位置まで上げる。
- ctx.save();ctx.translate(21+lift*18,-48-lift*10);ctx.rotate(-.16+lift*.18);
+ ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);ctx.rotate(-.16+lift*.18-push*.23);
  fillPoly([[-16,-25],[17,-25],[14,5],[0,24],[-14,5]],'#b5ced9');
  fillPoly([[-11,-19],[12,-19],[10,4],[0,17],[-10,4]],'#273d59');line([[0,-13],[0,10]],'#8ff0f3',3);line([[-8,-2],[8,-2]],'#8ff0f3',3);
  if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<140){ctx.shadowColor='#95faff';ctx.shadowBlur=22;round(0,0,21,'#74deff23','#95faff',2);ctx.shadowBlur=0}
@@ -236,6 +254,17 @@ function enemy(now){
   ctx.restore();
  }
  ctx.save();ctx.translate(x,y);ctx.scale(-scale,scale);
+ // A physical recoil only after contact; fades before the next telegraph.
+ const deflectAge=now-(game.lastDeflectAt||-99999);
+ const recoilTime=Math.min(195,Math.max(75,(game.attackAt-now-145)));
+ const recoilPhase=clamp(deflectAge/recoilTime,0,1);
+ const recoil=(deflectAge>=0&&deflectAge<recoilTime&&['just','parry'].includes(game.lastStrikeKind))
+  ?Math.sin(Math.PI*recoilPhase)*(game.lastStrikeKind==='just'?1:.5):0;
+ const recoilDist=e.kind==='slime'?27:e.kind==='rogue'?21:e.kind==='wraith'?17:e.kind==='guardian'?11:18;
+ ctx.translate(-recoil*recoilDist,0);
+ if(e.kind==='slime')ctx.scale(1+recoil*.20,1-recoil*.22);
+ else if(e.kind==='wraith')ctx.globalAlpha=1-recoil*.33;
+ else ctx.rotate(-recoil*(e.kind==='guardian'?.075:.13));
  const color=m.accent;
  if(e.kind==='slime'){
   // スライムは「圧縮→前傾→頭から飛びかかる」。盾に当たるのは左前方のこぶ。
@@ -267,15 +296,15 @@ function enemy(now){
   fillPoly([[-33,-63+lift],[-16,-97-lift],[13,-103-lift],[32,-74+lift],[33,-24],[44,0],[18,-10],[0,-2],[-17,-15],[-39,2]],'#6269a5');
   fillPoly([[-22,-87-lift],[0,-111-lift],[20,-82-lift],[13,-52],[-16,-52]],'#2a2e60');
   round(-8,-77-lift,3.7,'#8be9ff');round(8,-77-lift,3.7,'#8be9ff');
-  const handX=22+69*action,handY=-38-19*charge-19*action;
-  const tipX=32+(m.reach-32)*action,tipY=-89+31*action;
+  const handX=22+69*action-recoil*11,handY=-38-19*charge-19*action+recoil*13;
+  const tipX=32+(m.reach-32)*action-recoil*14,tipY=-89+31*action+recoil*15;
   line([[18,-62-lift],[handX,handY]],'#8595d2',10);
   line([[handX,handY],[tipX,tipY]],'#b8d8ff',7);
   for(const off of [-7,0,7])line([[tipX-8,tipY+off*.3],[tipX,tipY+off]],'#d9f8ff',2.6);
   if(action>.1){ctx.globalAlpha=action*.35;line([[12,-69],[tipX-14,tipY-12]],'#8cd9ff',14);ctx.globalAlpha=1}
  }else if(e.kind==='rogue'){
   // 暗殺者は低い溜めから短剣を一直線に突く。軌道は盾の中央で止まる。
-  const crouch=charge*19,recoil=impact?squishHit*15:0;
+  const crouch=charge*19,cushion=impact?squishHit*15:0;
   fillPoly([[-26,-78+crouch],[-42,-52+crouch],[-35,-4],[-8,-12],[26,0],[18,-68+crouch]],'#562c49');
   fillPoly([[-10,-41+crouch],[-4,-37+crouch],[-8,0],[-22,0]],'#565a74');
   fillPoly([[6,-39+crouch],[18,-33+crouch],[29,0],[10,0]],'#80819a');
@@ -283,8 +312,8 @@ function enemy(now){
   fillPoly([[-18,-110+crouch],[-3,-120+crouch],[18,-108+crouch],[17,-86+crouch],[-16,-85+crouch]],'#322b46');
   line([[-9,-97+crouch],[9,-97+crouch]],'#f19ec6',3.3);
   // 刀身は行動開始時に胸元で止まり、踏み込みと共に水平に伸びる。
-  const fistX=22+41*action-recoil,fistY=-53+7*charge-5*action;
-  const tipX=50+(m.reach-50)*action-recoil,tipY=-68+10*action;
+  const fistX=22+41*action-recoil*22-cushion,fistY=-53+7*charge-5*action-recoil*6;
+  const tipX=50+(m.reach-50)*action-recoil*28-cushion,tipY=-68+10*action-recoil*20;
   line([[11,-48+crouch],[fistX,fistY]],'#9b829d',10);
   line([[fistX,fistY],[tipX,tipY]],'#ffcfed',6.5);
   line([[fistX,fistY],[tipX,tipY]],'#fff8ff',1.7);
@@ -305,7 +334,7 @@ function enemy(now){
   const hand=[22,-58/(isBoss?1.34:1)];
   // 振り上げた刃が頭上で一瞬溜まり、最後に盾の高さまで下りてくる。
   const actualAngle=p>0?mix(-2.16,0,smooth(p*p)):(charge>0?mix(-.92,-2.16,charge):-.92);
-  const a=mix(actualAngle,0,rec);
+  const a=mix(actualAngle,0,rec)-recoil*(isBoss?.32:.53);
   const tipX=22+bladeLength*Math.cos(a),tipY=hand[1]+bladeLength*Math.sin(a);
   line([shoulder,[hand[0]-7,hand[1]-3]],isBoss?'#d2b08d':'#a8a1b5',12);
   round(hand[0]-7,hand[1]-3,6,isBoss?'#eed2a1':'#b7bbca');
@@ -316,20 +345,48 @@ function enemy(now){
   if(isBoss&&charge>.55){ctx.save();ctx.globalAlpha=(charge-.55)*.7;round(-17,-105,5,'#ffcc8a');ctx.restore()}
  }
  ctx.restore();
- // パリィ／被弾の物理的接触表現。シールド中心に火花と短いインパクトが発生。
- if(impact){
-  const a=1-after/175;ctx.save();ctx.globalAlpha=a;
-  const hitColor=game.lastStrikeKind==='just'?'#9ffff5':game.lastStrikeKind==='miss'?'#ff8c95':'#fff1b9';
-  ctx.strokeStyle=hitColor;ctx.lineCap='round';
-  for(let i=0;i<8;i++){
-   const dir=i*Math.PI/4+.21;
-   const r=(10+after*.17)*base*.7;
-   line([[hitX+Math.cos(dir)*6,hitY+Math.sin(dir)*6],[hitX+Math.cos(dir)*r,hitY+Math.sin(dir)*r]],hitColor,2.4);
-  }
-  ctx.restore();
- }
+
 }
-function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawBackground(now);enemy(now);hero(now);ctx.restore();
+
+function triggerClashFX(kind,at,enemyKind){
+ clashFX={kind,at,enemyKind};
+ const scale=Math.min(w/550,h/470)*1.23;
+ const x=w*.28+39*scale,y=h*.80-58*scale;
+ if(kind==='just')puff(x,y,'#e4f8fd',20,1.1);
+ else if(kind==='parry')puff(x,y,'#e6c38c',10,.75);
+ else if(kind==='miss')puff(x,y,'#cc6775',7,.48);
+}
+function drawClashFX(now){
+ if(!clashFX)return;
+ const age=now-clashFX.at;if(age<0||age>210)return;
+ const t=clamp(age/210,0,1),just=clashFX.kind==='just',miss=clashFX.kind==='miss',guard=clashFX.kind==='guard';
+ const base=Math.min(w/550,h/470)*1.23;
+ const x=w*.28+39*base,y=h*.80-58*base;
+ const color=miss?'#bb5c69':guard?'#ab8a61':just?'#e2f7ff':'#f6cb8b';
+ ctx.save();ctx.globalAlpha=(1-t)*(just?.95:.67);ctx.lineCap='round';
+ // Localised glint at the actual shield contact point, not a timing indicator.
+ const r=(just?7:4)+age*(just?.14:.085),count=just?16:miss?5:9;
+ for(let i=0;i<count;i++){
+  const angle=(i/count)*Math.PI*2+Math.sin(i*18.1)*.27;
+  const length=r*(.58+.45*((i*7)%5)/4);
+  const ax=x+Math.cos(angle)*r*.17,ay=y+Math.sin(angle)*r*.17;
+  ctx.strokeStyle=i%4===0?'#fff5de':color;ctx.lineWidth=(just?2.4:1.65)*(1-t*.6)*base;
+  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+Math.cos(angle)*length,ay+Math.sin(angle)*length);ctx.stroke();
+ }
+ if(!miss&&!guard){
+  ctx.strokeStyle=color;ctx.lineWidth=(just?2.7:1.5)*base;ctx.beginPath();
+  ctx.arc(x,y,(just?11:6)+age*.075,-.88,1.10);ctx.stroke();
+ }
+ ctx.restore();
+}
+function combatPoseTime(now){
+ // Freeze *only the character poses* for 40ms, never game time, BGM or attack scheduling.
+ if(!clashFX||clashFX.kind!=='just'||game.mode!=='combat'||game.enemy?.kind!==clashFX.enemyKind)return now;
+ const age=now-clashFX.at;
+ return age>=0&&age<40&&game.attackAt-now>220?clashFX.at:now;
+}
+
+function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawBackground(now);const poseTime=combatPoseTime(now);enemy(poseTime);hero(poseTime);ctx.restore();drawClashFX(now);
  const boss=game.enemy?.boss;if(game.mode==='combat'){if(now-game.nextFloorHintAt<1300){const alpha=clamp(1-(now-game.nextFloorHintAt-500)/800,0,1);ctx.globalAlpha=alpha;textDraw(game.nextFloorHint,w*.5,h*.14,Math.min(30,w*.075),boss?'#ffe0a2':'#cfdff5');ctx.globalAlpha=1}
  if(game.practice)textDraw('稽古場 · 被弾しても倒れない',w*.5,h*.2,Math.min(14,w*.036),'#b9f3ec');if(game.combo>1){textDraw('×'+game.combo+' COMBO',w*.5,h*.12,Math.min(19,w*.045),'#d4f5ed')}
  if(!game.enemy?.boss&&game.floor===1&&game.parries===0&&!game.practice){textDraw('敵が踏み込み、刃が届く前に盾を出せ',w*.5,h*.74,Math.min(13,w*.035),'#f8d59b')}
