@@ -97,7 +97,7 @@ function makeHarness(seed={},devMode=false){
    forceRelicAward:kind=>{game.relicRewardKind=kind},
    awardPreview:kind=>showRelicRewards(kind),
    finishRelic:()=>finishRelicReward(),
-   relicInfo:()=>({held:[...game.relics],discarded:[...game.relicDiscarded],
+   relicInfo:()=>({burn:game.enemy?.burn,held:[...game.relics],discarded:[...game.relicDiscarded],
     rustyUsed:game.relicRustyUsed,stardustUsed:game.relicStardustUsed,stopUsed:game.relicStopUsed,
     pactReady:game.relicPactReady,bellDue:game.relicBellDue,maskReady:game.relicMaskReady,
     gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
