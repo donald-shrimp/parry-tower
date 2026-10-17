@@ -63,12 +63,29 @@ function makeHarness(seed={},devMode=false){
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console
  };
- vm.runInNewContext(fs.readFileSync('assets/game.js','utf8'),context,{filename:'game.js'});
+ // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
+ const source=fs.readFileSync('assets/game.js','utf8');
+ assert.match(source,/\}\)\(\);\s*$/);
+ const debugSource=source.replace(/\}\)\(\);\s*$/, `window.__parryBloodTest={
+  bloodHealAmount,
+  setSkill:(id,level)=>{game.lv[id]=level},
+  setHp:hp=>{game.hp=hp},
+  setMaxHp:hp=>{game.maxHp=hp},
+  setEnemyHp:hp=>{game.enemy.hp=hp;game.enemy.maxHp=Math.max(game.enemy.maxHp,hp)},
+  setCombo:combo=>{game.combo=combo},
+  setCharge:charge=>{game.charge=charge},
+  setBurn:burn=>{game.enemy.burn=burn},
+  setEnemyAttack:attack=>{game.enemy.atk=attack},
+  setBaseAttack:attack=>{game.baseAtk=attack},
+  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,
+   guards:game.guards,parryDamageActive:!!game.parryDamageActive})
+ };})();`);
+ vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
   window,document,location:{search:'?floor=21&enemy=cantor%3Anormal'},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
-  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,
+  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
@@ -516,4 +533,126 @@ test('practice and developer page do not write permanent progression',()=>{
  assert.equal(dev.state().runSkills.blood,1);
  assert.equal(dev.state().permanent.unlockedSkills.includes('rune'),true,'read-only dev upgrades are ephemeral');
  assert.equal(dev.storage.get('parryTowerPermanent_v1'),raw);
+});
+
+
+function resolveBloodParry(g,delta=0){
+ const impact=g.state().attackAt;
+ g.clock(impact-100+delta);
+ g.parry();
+ g.frame(impact+1);
+}
+test('blood formula scales from 8% to 18%, retains minimum two HP and caps one parry to 25% max HP',()=>{
+ const g=makeHarness(),calc=g.bloodTest().bloodHealAmount;
+ assert.equal(calc(0,1,0,false,100),0,'no damage means no healing');
+ assert.equal(calc(300,0,0,false,100),0,'no blood skill means no healing');
+ assert.equal(calc(1,1,0,false,100),2,'minimum two HP');
+ assert.equal(calc(100,1,0,false,100),8,'Lv1 recovers eight percent');
+ assert.equal(calc(100,6,0,false,100),18,'Lv6 recovers eighteen percent');
+ assert.equal(calc(300,6,0,false,100),25,'base 25% max-HP cap');
+ assert.equal(calc(300,6,0,false,200),50,'cap scales with maximum HP');
+ assert.equal(calc(1,1,0,false,1),1,'cap remains respected for very small max HP');
+ const gUi=makeHarness();
+ gUi.press('upgradeOpenBtn');gUi.upgradeTab('skills');
+ assert.match(gUi.el.get('upgradeList').innerHTML,/パリィ与ダメの 8% 回復/);
+});
+test('Blood Rhythm adds uncapped combo percentage points to both lifesteal rate and max-HP cap',()=>{
+ const g=makeHarness(),calc=g.bloodTest().bloodHealAmount;
+ assert.equal(calc(1000,1,0,true,100),25);
+ assert.equal(calc(1000,1,5,true,100),30);
+ assert.equal(calc(1000,1,10,true,100),35);
+ assert.equal(calc(1000,1,20,true,100),45);
+ assert.equal(calc(1000,1,50,true,100),75);
+ assert.equal(calc(1000,1,100,true,100),125,'combo bonus is NOT capped at 50 or 100');
+ assert.equal(calc(1000,1,100,false,100),25,'without fury the combo gives no blood bonus');
+ assert.equal(calc(100,1,0,true,100),8,'broken combo loses its blood bonus');
+});
+test('blood heals once from the sum of actual parry direct hits, including thunder',()=>{
+ const g=makeHarness();g.press('startBtn');
+ const d=g.bloodTest();
+ d.setSkill('blood',1);d.setSkill('thunder',1);
+ d.setEnemyHp(1000);d.setHp(10);
+ const before=d.info().enemyHp;
+ resolveBloodParry(g);
+ const actual=before-d.info().enemyHp,expected=Math.min(Math.max(2,Math.round(actual*.08)),Math.ceil(65*.25));
+ assert.ok(actual>50,'normal strike and thunder should both damage the target');
+ assert.equal(g.state().hp,10+expected,'all direct hits must count toward a single heal');
+ assert.equal(d.info().parryDamageActive,false,'transaction closes after parry');
+ assert.equal(g.state().mode,'combat');
+});
+test('blood aggregates echo, resonance, pulse and ultimate on a single parry without per-hit cap resets',()=>{
+ const g=makeHarness();g.press('startBtn');
+ const d=g.bloodTest();
+ for(const [name,l] of [['blood',6],['thunder',1],['echo',1],['rune',1],['precision',1],['pulse',1]])d.setSkill(name,l);
+ d.setMaxHp(500);d.setHp(10);d.setEnemyHp(10000);
+ d.setCombo(7);d.setCharge(6);
+ const before=d.info().enemyHp;
+ resolveBloodParry(g);
+ const actual=before-d.info().enemyHp;
+ const expected=Math.min(Math.max(2,Math.round(actual*.18)),Math.ceil(500*.25));
+ assert.ok(actual>200,'the parry should include multiple damage procs and an ultimate');
+ assert.equal(g.state().hp,10+expected);
+ assert.equal(d.info().parryDamageActive,false);
+});
+test('a fatal parry heals only from enemy remaining HP, before switching to victory',()=>{
+ const g=makeHarness();g.press('startBtn');
+ const d=g.bloodTest();d.setSkill('blood',6);
+ d.setEnemyHp(40);d.setBaseAttack(200);d.setHp(10);
+ resolveBloodParry(g);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().hp,17,'40 real damage at 18%, not the much larger overkill');
+ assert.equal(d.info().parryDamageActive,false);
+ const chain=makeHarness();chain.press('startBtn');
+ const c=chain.bloodTest();c.setSkill('blood',6);c.setSkill('thunder',1);c.setEnemyHp(45);c.setHp(10);
+ resolveBloodParry(chain);
+ assert.equal(chain.state().mode,'victory','thunder can deliver the final blow');
+ assert.equal(chain.state().hp,18,'count full 45 HP lost across the normal strike and killing thunder');
+});
+test('guard reflection and burn damage do not grant blood healing; successful parry does',()=>{
+ const g=makeHarness();g.press('startBtn');
+ const d=g.bloodTest();
+ d.setSkill('blood',6);d.setSkill('thorns',2);d.setEnemyHp(1000);d.setHp(30);d.setEnemyAttack(20);
+ const before=d.info().enemyHp;
+ resolveBloodParry(g,-40);
+ assert.equal(d.info().guards,1);
+ assert.ok(d.info().enemyHp<before,'guard reflection should damage the enemy');
+ assert.equal(g.state().hp,18,'guard does 12 damage but does not heal');
+ d.setHp(15);d.setBurn(100);
+ const afterGuard=d.info().enemyHp;
+ g.frame(g.now+55);
+ assert.ok(d.info().enemyHp<afterGuard,'burn causes damage over time');
+ assert.equal(g.state().hp,15,'burn does not trigger blood healing');
+ d.setBurn(0);
+ resolveBloodParry(g);
+ assert.ok(g.state().hp>15,'the next successful parry can heal');
+});
+test('real Blood Rhythm uses the current 100+ combo with no hidden cap, and resets on guard',()=>{
+ const g=makeHarness();g.press('startBtn');
+ const d=g.bloodTest();
+ d.setSkill('blood',1);d.setSkill('fury',1);
+ d.setEnemyHp(10000);d.setMaxHp(500);d.setHp(10);d.setCombo(100);
+ const before=d.info().enemyHp;
+ resolveBloodParry(g);
+ const dealt=before-d.info().enemyHp,combo=d.info().combo;
+ assert.equal(combo,101);
+ const expected=d.bloodHealAmount(dealt,1,101,true,500);
+ assert.ok(expected>50,'100+ combo should grant more healing than a capped-50 bonus');
+ assert.equal(g.state().hp,10+expected);
+ d.setHp(250);d.setEnemyAttack(20);
+ resolveBloodParry(g,-40);
+ assert.equal(d.info().combo,0,'guard breaks the combo and Blood Rhythm bonus');
+ const hpAfterGuard=g.state().hp;
+ const beforeAgain=d.info().enemyHp;
+ resolveBloodParry(g);
+ const direct=beforeAgain-d.info().enemyHp;
+ assert.equal(d.info().combo,1);
+ assert.equal(g.state().hp,hpAfterGuard+d.bloodHealAmount(direct,1,1,true,500));
+});
+test('blood lifesteal is disabled in immortal practice mode',()=>{
+ const seed={'parryTowerBestiary_v1':JSON.stringify({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1}},defeated:{}})};
+ const g=makeHarness(seed);g.press('practiceBtn');g.clickers.get('slime:normal')();
+ const d=g.bloodTest();d.setSkill('blood',6);d.setEnemyHp(1000);d.setHp(10);
+ resolveBloodParry(g);
+ assert.equal(g.state().practice,true);
+ assert.equal(g.state().hp,10,'practice never heals through blood');
 });
