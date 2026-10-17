@@ -1,4 +1,4 @@
-# v0.6.0 — 遺物（レリック）システム（Draft PR）
+# v0.6.0 — 遺物（レリック）システム
 
 ## 基本ルール
 
@@ -69,4 +69,4 @@
 - `assets/style.css`：PC・モバイル対応のカードと交換画面。
 - `tests/relics.test.js` と `tests/game-smoke.test.js`：カタログ、希少度・入手判定、全15効果、交換、吸血・血の渇望、旧データ保存隔離、死亡/次ラン初期化を検証。
 
-**現時点ではDraft PR。mainへのマージと公開サイト反映は別途実施する。**
+**v0.6.0公開版の仕様。** 実装は [PR #15](https://github.com/donald-shrimp/parry-tower/pull/15) を参照してください。
