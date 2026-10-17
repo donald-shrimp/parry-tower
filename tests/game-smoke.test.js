@@ -63,12 +63,29 @@ function makeHarness(seed={},devMode=false){
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console
  };
- vm.runInNewContext(fs.readFileSync('assets/game.js','utf8'),context,{filename:'game.js'});
+ // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
+ const source=fs.readFileSync('assets/game.js','utf8');
+ assert.match(source,/\}\)\(\);\s*$/);
+ const debugSource=source.replace(/\}\)\(\);\s*$/, `window.__parryBloodTest={
+  bloodHealAmount,
+  setSkill:(id,level)=>{game.lv[id]=level},
+  setHp:hp=>{game.hp=hp},
+  setMaxHp:hp=>{game.maxHp=hp},
+  setEnemyHp:hp=>{game.enemy.hp=hp;game.enemy.maxHp=Math.max(game.enemy.maxHp,hp)},
+  setCombo:combo=>{game.combo=combo},
+  setCharge:charge=>{game.charge=charge},
+  setBurn:burn=>{game.enemy.burn=burn},
+  setEnemyAttack:attack=>{game.enemy.atk=attack},
+  setBaseAttack:attack=>{game.baseAtk=attack},
+  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,
+   guards:game.guards,parryDamageActive:!!game.parryDamageActive})
+ };})();`);
+ vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
   window,document,location:{search:'?floor=21&enemy=cantor%3Anormal'},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
-  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,
+  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
