@@ -46,6 +46,8 @@ let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 // 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
 const PARRY_STARTUP=100;
+// Ignore the next parry tap(s) for a moment after defeat so they cannot activate death-menu buttons.
+const DEATH_INPUT_GRACE_MS=1000;
 // 攻撃の発生タイミングはすべて「武器／身体が盾に触れる瞬間」。
 // 攻撃モーションの長さだけを種類ごとに変え、判定時刻は同じ基準に揃える。
 const MOTIONS={
@@ -123,6 +125,16 @@ function lvl(id){return game.lv?.[id]||0}
 function has(a,b){return lvl(a)>0&&lvl(b)>0}
 function getPerfectWindow(){return 11+lvl('focus')*2}
 function getParryWindow(){return 31+lvl('stability')*3}
+// Lock the entire death overlay (including dynamically rendered shop buttons).
+// Keep the retry / home / bestiary buttons natively disabled for keyboard and accessibility.
+function deathInputBlocked(now=performance.now()){
+ return game.mode==='gameover'&&now<(game.deathInputUnlockAt||0);
+}
+function syncDeathInputLock(now=performance.now()){
+ const blocked=deathInputBlocked(now);
+ $('deathCover').inert=blocked;
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn'])$(id).disabled=blocked;
+}
 function setMode(mode){
  game.mode=mode;
  $('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);
@@ -132,6 +144,7 @@ function setMode(mode){
  for(const name of ['title','reward','death','pause','codex'])$(name+'Cover').hidden=name!==covers[mode];
  $('pauseBtn').disabled=!['combat','pause'].includes(mode);
  $('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';
+ syncDeathInputLock();
  $('runStateLabel').textContent={title:'READY',combat:game.practice?'PRACTICE':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
@@ -142,7 +155,7 @@ function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)retu
 function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');}
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
-function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
+function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{if(deathInputBlocked())return;const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
 function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
@@ -221,7 +234,7 @@ function clearFloor(){
  sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();
 }
 function applyDamage(n,tag){let damage=game.practice?0:Math.max(1,Math.ceil(n));const used=Math.min(game.shield,damage);game.shield=Math.max(0,game.shield-used);damage-=used;if(damage>0)game.hp=Math.max(0,game.hp-damage);showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);shake=Math.max(shake,damage?11:4);if(game.hp<=0)die();syncHUD();}
-function die(){if(game.mode==='gameover')returnstopScore();const coins=Math.max(3,Math.floor(game.floor*2+game.bossKills*3));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();renderShop();setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
+function die(){if(game.mode==='gameover')returnstopScore();const coins=Math.max(3,Math.floor(game.floor*2+game.bossKills*3));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();renderShop();game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
 function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max),taken=[];for(let k=0;k<Math.min(3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>rarityWeight[s.rarity]*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
 function showRewards(){if(game.mode!=='victory')return;game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');}
 function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardTitle').textContent=`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>`<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span><span class="rtag">${s.hint}</span></button>`).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length}
@@ -273,7 +286,7 @@ function renderCodex(){
  for(const btn of $('codexList').querySelectorAll('[data-practice]'))btn.addEventListener('click',()=>startPractice(btn.dataset.practice));
 }
 function openCodex(){
- if(!['title','gameover','codex'].includes(game.mode))return;
+ if(deathInputBlocked()||!['title','gameover','codex'].includes(game.mode))return;
  stopScore();setMode('codex');renderCodex();
 }
 function startPractice(key){
@@ -545,13 +558,13 @@ function update(now,dt){const m=game.mode;if(m==='combat'){scheduleScore();syncA
  }else if(m==='victory'&&now-game.clearAt>900)showRewards();
  shake=Math.max(0,shake-dt*.08);flash=Math.max(0,flash-dt*.003);particles=particles.filter(p=>{p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vx*=.985;p.vy+=.025;p.life-=dt;return p.life>0});texts=texts.filter(a=>now-a.t<a.life);
 }
-function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
+function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}});
 $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){
  const key=$('practiceEnemy').value;
  if(!book.seen[key]||!P.findByKey(key))return;
  game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
- }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
+ }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause()});
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
