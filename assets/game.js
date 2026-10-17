@@ -85,22 +85,27 @@ function scoreToPerf(t){if(audioContext&&audioContext.state!=='suspended'){if(au
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat);game.telegraphStart=game.attackAt-game.attackSpan}
 function musicParry(kind){
  if(!audioEnabled||!audioContext||!score.bus||!score.noise)return;
- const ac=audioContext,t=ac.currentTime+.003,just=kind==='just',miss=kind==='miss',guard=kind==='guard';
- // A short filtered scrape and two inharmonic metal resonances. Never mask the next attack cue.
- const src=ac.createBufferSource(),band=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;
- band.type=miss?'lowpass':'bandpass';band.frequency.setValueAtTime(miss?480:guard?1200:just?2700:1900,t);band.Q.value=miss?.55:1.1;
- const volume=miss?.095:guard?.055:just?.16:.115,duration=miss?.115:just?.13:.095;
- g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);
- src.connect(band);band.connect(g);g.connect(score.bus);src.start(t);src.stop(t+duration+.005);
- if(!miss){
-  const fundamental=guard?240:just?490:360;
-  scoreTone(fundamental,just?.21:.15,just?.105:.07,t,'triangle',-fundamental*.12);
-  scoreTone(fundamental*(just?2.34:2.19),just?.16:.11,just?.045:.023,t+.008,'sine',-75);
- }else scoreTone(97,.14,.055,t,'sine',-25);
+ const t=audioContext.currentTime+.003;
+ // Musical response to a successful parry. All notes use the BGM's AudioContext clock.
+ if(kind==='just'){
+  scoreNoise(t,.085,.12,2900);
+  scoreTone(784,.16,.11,t,'triangle',125);
+  scoreTone(1175,.20,.085,t+.045,'sine',95);
+  scoreTone(1568,.22,.055,t+.092,'sine',-125);
+ }else if(kind==='parry'){
+  scoreNoise(t,.058,.085,2400);
+  scoreTone(659,.13,.082,t,'triangle',120);
+  scoreTone(988,.13,.038,t+.034,'sine',-45);
+ }else if(kind==='guard'){
+  scoreTone(245,.11,.060,t,'triangle',-60);
+ }else{
+  scoreNoise(t,.13,.065,650);
+  scoreTone(128,.16,.065,t,'sawtooth',-65);
+ }
 }
 
 function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){if(!audioEnabled)return;try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(audioContext.destination);o.start(t);o.stop(t+dur+.02)}catch(e){}}
-function chord(){sound(570,.11,'triangle',.012,-85)}
+function chord(){/* The bright chord is scheduled by musicParry on the BGM clock. */}
 // 剣が動き始める音。250ms前の電子音ではなく斬撃に追従する風切り音。
 function sfxSwing(){if(!audioEnabled)return;try{
  audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
@@ -151,7 +156,7 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(perfect&&lvl('aegis')){game.shield=Math.min(100+20*lvl('aegis'),game.shield+3+3*lvl('aegis'));if(has('aegis','thorns')){damageEnemy(game.shield*.28,'#c5adff','鏡壁');if(game.mode!=='combat')return}}
   if(lvl('pulse')&&game.combo%8===0){damageEnemy(42*lvl('pulse')*(1+game.combo*.02),'#ffe298','共鳴波');if(game.mode!=='combat')return}
   if(game.charge>=7){game.charge=0;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
-  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.23;flashColor='#dff8ff'}else sound(330,.065,'triangle',.014,-65);
+  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
 }
 if(game.mode==='combat')nextStrike();syncHUD();}
 function clearFloor(){if(game.mode!=='combat')return;stopScore();game.mode='victory';game.clearAt=performance.now();game.enemy.hp=0;game.bossKills+=Number(game.enemy.boss);puff(w*.72,h*.58,game.enemy.color,40,1.8);flash=1;flashColor='#f6cb84';sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();}
@@ -217,7 +222,7 @@ function hero(now){
  ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);ctx.rotate(-.16+lift*.18-push*.23);
  fillPoly([[-16,-25],[17,-25],[14,5],[0,24],[-14,5]],'#b5ced9');
  fillPoly([[-11,-19],[12,-19],[10,4],[0,17],[-10,4]],'#273d59');line([[0,-13],[0,10]],'#8ff0f3',3);line([[-8,-2],[8,-2]],'#8ff0f3',3);
- if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<140){ctx.shadowColor='#95faff';ctx.shadowBlur=22;round(0,0,21,'#74deff23','#95faff',2);ctx.shadowBlur=0}
+ if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<170){ctx.shadowColor='#8ef4ff';ctx.shadowBlur=32;round(0,0,23,'#74deff35','#dcfaff',3);ctx.shadowBlur=0}
  ctx.restore();
  ctx.save();ctx.translate(12,-65);ctx.rotate(action*.65+.07-lift*.1);line([[0,6],[12,-43]],'#edfcff',7);line([[0,6],[12,-43]],'#77d7ec',3);line([[-12,7],[12,10]],'#e8c28f',6);line([[0,7],[-2,23]],'#554b5e',6);ctx.restore();ctx.restore();
 }
@@ -260,7 +265,7 @@ function enemy(now){
  const recoilPhase=clamp(deflectAge/recoilTime,0,1);
  const recoil=(deflectAge>=0&&deflectAge<recoilTime&&['just','parry'].includes(game.lastStrikeKind))
   ?Math.sin(Math.PI*recoilPhase)*(game.lastStrikeKind==='just'?1:.5):0;
- const recoilDist=e.kind==='slime'?27:e.kind==='rogue'?21:e.kind==='wraith'?17:e.kind==='guardian'?11:18;
+ const recoilDist=e.kind==='slime'?36:e.kind==='rogue'?29:e.kind==='wraith'?22:e.kind==='guardian'?16:24;
  ctx.translate(-recoil*recoilDist,0);
  if(e.kind==='slime')ctx.scale(1+recoil*.20,1-recoil*.22);
  else if(e.kind==='wraith')ctx.globalAlpha=1-recoil*.33;
@@ -349,36 +354,62 @@ function enemy(now){
 }
 
 function triggerClashFX(kind,at,enemyKind){
- clashFX={kind,at,enemyKind};
+ clashFX={kind,at,enemyKind,combo:game.combo+(kind==='just'||kind==='parry'?1:0)};
  const scale=Math.min(w/550,h/470)*1.23;
  const x=w*.28+39*scale,y=h*.80-58*scale;
- if(kind==='just')puff(x,y,'#e4f8fd',20,1.1);
- else if(kind==='parry')puff(x,y,'#e6c38c',10,.75);
- else if(kind==='miss')puff(x,y,'#cc6775',7,.48);
+ if(kind==='just')puff(x,y,'#b2f5ff',27,1.65);
+ else if(kind==='parry')puff(x,y,'#9fcbff',15,1.05);
+ else if(kind==='miss')puff(x,y,'#db718b',9,.55);
 }
 function drawClashFX(now){
  if(!clashFX)return;
- const age=now-clashFX.at;if(age<0||age>210)return;
- const t=clamp(age/210,0,1),just=clashFX.kind==='just',miss=clashFX.kind==='miss',guard=clashFX.kind==='guard';
+ const age=now-clashFX.at;if(age<0||age>255)return;
+ const just=clashFX.kind==='just',normal=clashFX.kind==='parry',miss=clashFX.kind==='miss';
  const base=Math.min(w/550,h/470)*1.23;
  const x=w*.28+39*base,y=h*.80-58*base;
- const color=miss?'#bb5c69':guard?'#ab8a61':just?'#e2f7ff':'#f6cb8b';
- ctx.save();ctx.globalAlpha=(1-t)*(just?.95:.67);ctx.lineCap='round';
- // Localised glint at the actual shield contact point, not a timing indicator.
- const r=(just?7:4)+age*(just?.14:.085),count=just?16:miss?5:9;
- for(let i=0;i<count;i++){
-  const angle=(i/count)*Math.PI*2+Math.sin(i*18.1)*.27;
-  const length=r*(.58+.45*((i*7)%5)/4);
-  const ax=x+Math.cos(angle)*r*.17,ay=y+Math.sin(angle)*r*.17;
-  ctx.strokeStyle=i%4===0?'#fff5de':color;ctx.lineWidth=(just?2.4:1.65)*(1-t*.6)*base;
-  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+Math.cos(angle)*length,ay+Math.sin(angle)*length);ctx.stroke();
+ const energy=just?Math.min(1.55,1+(clashFX.combo||0)*.018):1;
+ const color=just?'#b8f6ff':normal?'#96cdff':miss?'#cf667f':'#d5bb8b';
+ // If the next windup has begun, fade away instead of masking a readable attack.
+ const cueLead=game.enemy?motionFor(game.enemy).swing:180;
+ const untilNext=game.mode==='combat'?game.attackAt-now:99999;
+ const clarity=clamp((untilNext-cueLead+65)/100,0,1);
+ const fade=(1-clamp(age/(just?255:175),0,1))*(just?1:normal?.82:.47)*clarity;
+ if(fade<=0)return;
+ ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+ // White-blue center pop, horizontal lens flare, and two expanding circular shockwaves.
+ if(just&&age<110){
+  const a=fade*(1-clamp(age/110,0,1))*.6;
+  const glow=ctx.createRadialGradient(x,y,1,x,y,Math.max(w,h)*.55);
+  glow.addColorStop(0,'rgba(224,251,255,.44)');glow.addColorStop(.25,'rgba(66,204,255,.15)');glow.addColorStop(1,'rgba(35,108,255,0)');
+  ctx.globalAlpha=a;ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
  }
- if(!miss&&!guard){
-  ctx.strokeStyle=color;ctx.lineWidth=(just?2.7:1.5)*base;ctx.beginPath();
-  ctx.arc(x,y,(just?11:6)+age*.075,-.88,1.10);ctx.stroke();
+ ctx.globalAlpha=fade;
+ const rings=just?2:normal?1:0;
+ for(let i=0;i<rings;i++){
+  const t=clamp((age-i*33)/(just?220:165),0,1);if(age<i*33)continue;
+  const radius=(10+t*(just?Math.min(w,h)*.66:Math.min(w,h)*.35))*energy;
+  ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);
+  ctx.strokeStyle=i===0?color:'#7c86ff';ctx.lineWidth=(just?4.6:2.8)*(1-t)*base;
+  ctx.shadowBlur=just?14:7;ctx.shadowColor=color;ctx.globalAlpha=fade*(1-t)*(.72-i*.22);ctx.stroke();
+ }
+ ctx.shadowBlur=0;
+ if(just&&age<150){
+  ctx.globalAlpha=fade*(1-age/150)*.8;
+  ctx.strokeStyle='#d9faff';ctx.lineWidth=(8-age*.035)*base;
+  ctx.beginPath();ctx.moveTo(x-w*.29,y+h*.13);ctx.lineTo(x+w*.36,y-h*.20);ctx.stroke();
+  ctx.strokeStyle='#558fff';ctx.lineWidth=2*base;ctx.beginPath();ctx.moveTo(x-w*.33,y+h*.16);ctx.lineTo(x+w*.39,y-h*.22);ctx.stroke();
+ }
+ const n=just?20:normal?11:5;
+ for(let i=0;i<n;i++){
+  const a=i*2.399963+(.12*i),distance=(9+age*(just?.34:.19))*(.62+(i%7)*.105)*energy;
+  const dx=Math.cos(a),dy=Math.sin(a);
+  const len=(just?18:9)*(1-clamp(age/220,0,1))*(.55+(i%4)*.2);
+  ctx.globalAlpha=fade*(just?.9:.68);ctx.strokeStyle=i%5===0?'#ffffff':color;ctx.lineWidth=(just?2.3:1.4)*base;
+  ctx.beginPath();ctx.moveTo(x+dx*distance,y+dy*distance);ctx.lineTo(x+dx*(distance+len),y+dy*(distance+len));ctx.stroke();
  }
  ctx.restore();
 }
+
 function combatPoseTime(now){
  // Freeze *only the character poses* for 40ms, never game time, BGM or attack scheduling.
  if(!clashFX||clashFX.kind!=='just'||game.mode!=='combat'||game.enemy?.kind!==clashFX.enemyKind)return now;
