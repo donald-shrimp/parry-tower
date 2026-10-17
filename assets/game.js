@@ -729,7 +729,14 @@ function die(){if(game.mode==='gameover')return;stopScore();const coins=soulRewa
 function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max&&!game.sealedSkillIds?.includes(s.id)),taken=[];for(let k=0;k<Math.min(PR.value(permanent,'choice4')||3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>(rarityWeight[s.rarity]??rarityWeight.common)*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
 function showRelicRewards(kind){
  const choices=RR.offer(kind,game.relics,game.relicDiscarded);
- if(!choices.length){showRewards();return;}
+ if(!choices.length){
+  if(game.relicReturn==='mirror'){
+   game.relicReturn=null;game.relicMirrorTarget=null;game.roomLocked=false;game.roomStage=null;
+   setMode('room');renderRoom();
+  }else if(game.relicReturn==='room')finishNoncombatRoom();
+  else showRewards();
+  return;
+ }
  game.relicOffer=choices.map(r=>r.id);
  game.relicSwapTarget=null;
  setMode('relic');
@@ -755,7 +762,7 @@ function grantRelic(id,replaceId=null){
  if(game.relics.includes(id)||game.relicDiscarded.includes(id))return false;
  if(replaceId!==null){
   const index=game.relics.indexOf(replaceId);
-  if(game.relics.length!==RR.MAX_HELD||index<0)return false;
+  if(index<0)return false;
   game.relics[index]=id;
   game.relicDiscarded.push(replaceId);
   delete game.relicCounters[replaceId];
@@ -776,17 +783,25 @@ function grantRelic(id,replaceId=null){
 }
 function selectRelic(id){
  if(game.mode!=='relic'||!game.relicOffer.includes(id))return;
- if(game.relics.length>=RR.MAX_HELD){
+ if(game.relicReturn==='mirror'){
+  if(game.relicMirrorTarget&&grantRelic(id,game.relicMirrorTarget))finishRelicReward(true);
+ }else if(game.relics.length>=RR.MAX_HELD){
   game.relicSwapTarget=id;renderRelicReward();
- }else if(grantRelic(id))finishRelicReward();
+ }else if(grantRelic(id))finishRelicReward(true);
 }
 function replaceRelic(id){
  if(game.mode!=='relic'||!game.relicSwapTarget)return;
- if(grantRelic(game.relicSwapTarget,id))finishRelicReward();
+ if(grantRelic(game.relicSwapTarget,id))finishRelicReward(true);
 }
-function finishRelicReward(){
+function finishRelicReward(acquired=false){
  if(game.mode!=='relic')return;
  game.relicOffer=[];game.relicSwapTarget=null;
+ const returned=game.relicReturn;
+ game.relicReturn=null;game.relicMirrorTarget=null;
+ if(returned==='mirror'&&!acquired){
+  game.roomLocked=false;game.roomStage=null;setMode('room');renderRoom();return;
+ }
+ if(returned==='mirror'||returned==='room'){finishNoncombatRoom();return;}
  showRewards();
 }
 function showRewards(){
@@ -1156,6 +1171,15 @@ $('relicBackBtn').addEventListener('click',()=>{
  if(game.mode!=='relic')return;game.relicSwapTarget=null;renderRelicReward();
 });
 $('relicSkipBtn').addEventListener('click',finishRelicReward);
+$('routeCards').addEventListener('click',e=>{
+ const btn=e.target.closest?.('[data-route]');if(btn)selectRoute(btn.dataset.route);
+});
+$('roomActions').addEventListener('click',e=>{
+ const btn=e.target.closest?.('[data-room-action]');if(btn)roomAction(btn.dataset.roomAction);
+});
+$('routeSkillCards').addEventListener('click',e=>{
+ const btn=e.target.closest?.('[data-route-skill]');if(btn)takeEventSkill(btn.dataset.routeSkill);
+});
 $('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
 
 $('upgradeOpenBtn').addEventListener('click',openUpgrade);
