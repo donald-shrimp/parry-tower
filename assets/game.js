@@ -124,7 +124,7 @@ function getParryWindow(){return 31+lvl('stability')*3}
 function setMode(mode){
  game.mode=mode;
  $('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);
- $('exitPracticeBtn').hidden=!(game.practice||game.arena);
+ $('exitPracticeBtn').hidden=!(game.practice||game.arena)||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').textContent=game.arena?'闘技場を退出':'稽古を終了';
  const covers={title:'title',reward:'reward',gameover:'death',pause:'pause',codex:'codex',arenaresult:'arenaResult'};
  for(const name of ['title','reward','death','pause','codex','arenaResult'])$(name+'Cover').hidden=name!==covers[mode];
@@ -133,7 +133,7 @@ function setMode(mode){
  $('runStateLabel').textContent={title:'READY',combat:game.arena?'ARENA':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',arenaresult:'ARENA RESULT'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.arena?'--':String(game.floor||1).padStart(2,'0');
- $('floorBadge').textContent=game.arena?'⚔ ARENA':enemy?.rare?'✦ RARE':enemy?.elite?'◆ ELITE':enemy?.boss?'✦ BOSS':'';
+ $('floorBadge').textContent=game.arena?'⚔ ARENA':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
  $('zoneLabel').textContent=game.arena?'闘技場':P.zoneForFloor(game.floor||1).name;
  $('zoneLabel').style.color=game.arena?'#f4d68d':P.zoneForFloor(game.floor||1).accent;$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('timingInfo').textContent=game.practice?'稽古中 · 敵を切り替えて比較可能':'身構え → 踏み込み → 接触'}
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
