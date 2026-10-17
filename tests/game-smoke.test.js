@@ -6,7 +6,7 @@ function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -49,7 +49,7 @@ function makeHarness(seed={},devMode=false){
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
  const window={
-  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
+  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
@@ -70,6 +70,9 @@ function makeHarness(seed={},devMode=false){
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
+   upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
+   upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
+   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:()=>({dataset:{equip:String(slot)},value:id||''})}})},
   parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
   clock(at){clock=at},
@@ -323,10 +326,10 @@ test('death menu ignores stray parry taps for 500ms, then restores all actions',
  const death=g.el.get('deathCover');
  assert.equal(death.hidden,false,'the death screen is visible immediately');
  assert.equal(death.inert,true,'all death-cover descendants, including the shop, are inert');
- for(const id of ['retryBtn','homeBtn','deathCodexBtn'])
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn','deathUpgradeBtn'])
   assert.equal(g.el.get(id).disabled,true,id+' is disabled at death');
- assert.match(g.el.get('deathShop').innerHTML,/data-buy=/,'shop buttons are protected by the inert death cover');
- for(const id of ['retryBtn','homeBtn','deathCodexBtn']){
+ assert.equal(g.el.get('deathUpgradeBtn').disabled,true,'the upgrade entry is blocked during death grace');
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn','deathUpgradeBtn']){
   g.press(id); // Simulated delegated clicks must also be rejected.
   assert.equal(g.state().mode,'gameover',id+' must not respond during grace');
  }
@@ -337,7 +340,7 @@ test('death menu ignores stray parry taps for 500ms, then restores all actions',
  assert.equal(g.state().mode,'gameover');
  g.frame(diedAt+500);
  assert.equal(death.inert,false,'all death actions are available after the grace period');
- for(const id of ['retryBtn','homeBtn','deathCodexBtn'])
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn','deathUpgradeBtn'])
   assert.equal(g.el.get(id).disabled,false,id+' is enabled after grace');
  g.press('deathCodexBtn');
  assert.equal(g.state().mode,'codex');
