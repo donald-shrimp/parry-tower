@@ -217,3 +217,37 @@ test('the separate dev.html page presets controls and actually launches the sele
  g.press('devReset');
  assert.equal(g.state().mode,'title');
 });
+
+test('developer balance preview reflects actual spawn stats, tier modifiers and input changes',()=>{
+ const g=makeHarness({},true),dev=g.dev();
+ assert.ok(dev.preview);
+ assert.equal(g.el.get('devBalanceInfo').textContent.includes('残響の詠み手'),true);
+ assert.match(g.el.get('devBalanceInfo').textContent,/×0\.90/);
+ const floor=g.el.get('devFloor'),select=g.el.get('devEnemy');
+ floor.value='11';select.value='sentinel:normal';floor.listeners.input();
+ select.listeners.change();
+ assert.match(g.el.get('devBalanceInfo').textContent,/鉄壁の番兵/);
+ assert.match(g.el.get('devBalanceInfo').textContent,/×1\.10/);
+ assert.match(g.el.get('devBalanceInfo').textContent,/×1\.00/);
+ const sentinel=dev.preview(11,'sentinel:normal');
+ assert.equal(sentinel.maxHp,Math.round(dev.preview(11,'knight:normal').maxHp*1.1));
+ assert.equal(sentinel.atk,dev.preview(11,'knight:normal').atk);
+ g.press('devLaunch');
+ assert.equal(g.state().enemy,'sentinel');
+ assert.equal(dev.state().enemyMaxHp,sentinel.maxHp);
+ assert.equal(dev.state().enemyAttack,sentinel.atk);
+ const guardian=dev.preview(10,'guardian:elite');
+ const bossAtFive=dev.preview(5,'guardian:normal');
+ assert.equal(guardian.hpMultiplier,1.5);
+ assert.equal(guardian.atkMultiplier,1);
+ assert.ok(guardian.maxHp>bossAtFive.maxHp);
+ floor.value='10';select.value='guardian:elite';select.listeners.change();
+ assert.match(g.el.get('devBalanceInfo').textContent,/精鋭・鐘楼の守護者/);
+ g.press('devLaunch');
+ assert.equal(dev.state().enemyMaxHp,guardian.maxHp);
+ assert.equal(dev.state().enemyAttack,guardian.atk);
+ const rogue=dev.preview(1,'rogue:normal');
+ assert.equal(rogue.atk,11);
+ assert.equal(rogue.atkMultiplier,0.8);
+ assert.equal(dev.preview(1,'missing:normal'),null);
+});
