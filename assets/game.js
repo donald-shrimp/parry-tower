@@ -15,7 +15,7 @@ const SKILLS=[
 {id:'blade',icon:'🗡️',name:'剛剣',rarity:'common',max:12,desc:l=>`基礎反撃ダメージ +${25*l}%`,hint:'基礎攻撃'},
 {id:'thunder',icon:'⚡',name:'落雷',rarity:'common',max:8,desc:l=>`パリィで雷撃 ${10+12*l} ダメージ`,hint:'連鎖の起点'},
 {id:'echo',icon:'🌀',name:'残響',rarity:'rare',max:6,desc:l=>`パリィ後、追撃 ${Math.round(25+l*13)}%`,hint:'雷撃と共鳴'},
-{id:'blood',icon:'🩸',name:'吸血',rarity:'common',max:6,desc:l=>`パリィするたびHPを ${l+1} 回復`,hint:'生存能力'},
+{id:'blood',icon:'🩸',name:'吸血',rarity:'common',max:6,desc:l=>`パリィ与ダメの ${6+l*2}% 回復（最低2・上限HP25%）`,hint:'与ダメージ吸収'},
 {id:'fury',icon:'🔥',name:'狂戦士',rarity:'rare',max:6,desc:l=>`コンボごとの攻撃補正 +${l*2}%`,hint:'吸血と共鳴'},
 {id:'aegis',icon:'🛡️',name:'魔法障壁',rarity:'common',max:6,desc:l=>`ジャストで障壁を ${3+3*l} 獲得`,hint:'反射と共鳴'},
 {id:'thorns',icon:'🪞',name:'反射',rarity:'rare',max:6,desc:l=>`ガード時に攻撃力の ${30+l*18}% を反射`,hint:'障壁と共鳴'},
@@ -37,7 +37,7 @@ let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.g
 let upgradeTab='loadout',upgradeReturnMode='title';
 const SYNERGIES=[
  {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
- {a:'blood',b:'fury',name:'🩸 血の律動',desc:'コンボ数に応じて吸血量増加'},
+ {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
  {a:'aegis',b:'thorns',name:'🪞 鏡壁の反撃',desc:'ジャスト時に障壁の一部を攻撃に転換'},
  {a:'ember',b:'execute',name:'☄️ 紅蓮処刑',desc:'瀕死の敵に炎の蓄積を一気に放出'},
  {a:'rune',b:'precision',name:'🔮 時空切断',desc:'奥義の発動時に追加の斬撃'}
@@ -277,7 +277,37 @@ function nextStrike(){const e=game.enemy;if(!e)return;const step=e.rhythm[e.inde
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
 function feedback(label,color){game.feedback=label;game.feedbackAt=performance.now();showText(label,w*.5,h*.27,color,27)}
-function damageEnemy(n,color='#fff',label){const e=game.enemy;if(!e||e.hp<=0)return;const damage=Math.max(1,Math.round(n));e.hp=Math.max(0,e.hp-damage);game.damage+=damage;const x=w*.71+rand(-22,22),y=h*.43+rand(-25,18);showText(label?`${label} ${formatCompact(damage)}`:formatCompact(damage),x,y,color,label?15:19);puff(w*.71,h*.60,color,Math.min(22,4+damage/14),.72);if(e.hp<=0)clearFloor();}
+// Each successful parry heals once from damage actually inflicted (overkill excluded).
+// Blood Rhythm adds 1 percentage point to both lifesteal rate and max-HP recovery cap per combo.
+// The combo contribution deliberately has no upper limit.
+function bloodHealAmount(dealt,level,combo,synergy,maxHp){
+ if(level<=0||dealt<=0||maxHp<=0)return 0;
+ const bonus=synergy?Math.max(0,Math.floor(combo)):0;
+ const rate=(6+level*2+bonus)/100;
+ const cap=Math.ceil(maxHp*(25+bonus)/100);
+ return Math.min(Math.max(2,Math.round(dealt*rate)),cap);
+}
+function finishParryBlood(){
+ if(!game.parryDamageActive)return;
+ const dealt=game.parryDamage;
+ game.parryDamage=0;game.parryDamageActive=false;
+ const amount=bloodHealAmount(dealt,lvl('blood'),game.combo,has('blood','fury'),game.maxHp);
+ if(amount)heal(amount);
+}
+function damageEnemy(n,color='#fff',label){
+ const e=game.enemy;if(!e||e.hp<=0)return;
+ const damage=Math.max(1,Math.round(n)),dealt=Math.min(e.hp,damage);
+ e.hp-=dealt;game.damage+=damage;
+ // Guard reflection is outside the successful-parry scope; burn ticks bypass damageEnemy.
+ if(game.parryDamageActive)game.parryDamage+=dealt;
+ const x=w*.71+rand(-22,22),y=h*.43+rand(-25,18);
+ showText(label?`${label} ${formatCompact(damage)}`:formatCompact(damage),x,y,color,label?15:19);
+ puff(w*.71,h*.60,color,Math.min(22,4+damage/14),.72);
+ if(e.hp<=0){
+  // Killing blows change game mode immediately: settle lifesteal first.
+  finishParryBlood();clearFloor();
+ }
+}
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);if(game.hp>a+.1)showText('+'+Math.round(game.hp-a),w*.27,h*.47,'#8aefbd',18)}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
 function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
@@ -287,15 +317,16 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
 }else{
   game.lastDeflectAt=at;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
+  game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
   let val=game.baseAtk*getAttackMultiplier()*(perfect?(1.6+lvl('precision')*.35):1);if(lvl('double')&&Math.random()<(.14+lvl('double')*.09)){val*=2;showText('DOUBLE!',w*.51,h*.22,'#fdd99d',18)}
   damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
   if(lvl('thunder')){const thunder=10+12*lvl('thunder');damageEnemy(thunder*(1+game.combo*.018),'#86e8ff','⚡');if(game.mode!=='combat')return}
   if(lvl('echo')){let echo=val*(.25+lvl('echo')*.13);damageEnemy(echo,'#d8baff','残響');if(game.mode!=='combat')return;if(has('thunder','echo'))damageEnemy((10+12*lvl('thunder'))*(1+lvl('echo')*.24),'#86e8ff','雷鳴');if(game.mode!=='combat')return}
   if(lvl('ember')){e.burn+=lvl('ember')*7;showText('炎 +'+lvl('ember')*7,w*.75,h*.33,'#ffba83',13);if(has('ember','execute')&&e.hp/e.maxHp<.35){damageEnemy(e.burn*2,'#ff996f','紅蓮');e.burn=0;if(game.mode!=='combat')return}}
-  if(lvl('blood'))heal((lvl('blood')+1)*(has('blood','fury')?1+Math.min(game.combo,50)*.06:1));
   if(perfect&&lvl('aegis')){game.shield=Math.min(100+20*lvl('aegis'),game.shield+3+3*lvl('aegis'));if(has('aegis','thorns')){damageEnemy(game.shield*.28,'#c5adff','鏡壁');if(game.mode!=='combat')return}}
   if(lvl('pulse')&&game.combo%8===0){damageEnemy(42*lvl('pulse')*(1+game.combo*.02),'#ffe298','共鳴波');if(game.mode!=='combat')return}
   if(game.charge>=7){game.charge=0;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
+  finishParryBlood();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
 }
 if(game.mode==='combat')nextStrike();syncHUD();}
