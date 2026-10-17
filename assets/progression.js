@@ -18,14 +18,15 @@
   {id:'soulGain',group:'base',icon:'✧',name:'魂の共鳴',costs:[30,60,100],values:[5,10,15],description:v=>`獲得する魂の欠片 +${v}%`},
   {id:'extraReroll',group:'special',icon:'↻',name:'出撃準備',costs:[25],values:[1],description:v=>`初期引き直し +${v}回`},
   {id:'choice4',group:'special',icon:'🎴',name:'選択眼',costs:[80],values:[4],description:v=>`戦利品が${v}択になる`},
-  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],description:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`}
+  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],description:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`},
+  {id:'sealSlots',group:'special',icon:'🔮',name:'運命の封印',costs:[25,60,120,220],values:[1,2,3,4],description:v=>`戦利品から除外できるスキル ${v}種`}
  ]);
  const KNOWN_UPGRADES=Object.freeze(Object.fromEntries(UPGRADES.map(v=>[v.id,v])));
  function safeLevel(value,max){
   return typeof value==='number'&&Number.isFinite(value)?Math.min(max,Math.max(0,Math.floor(value))):0;
  }
  function defaults(){return {version:VERSION,slots:0,unlockedSkills:[],equipped:[null,null],
-  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0};}
+  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[]};}
  function skillPrice(skill){
   if(!skill||typeof skill.id!=='string')return Infinity;
   if(Number.isSafeInteger(skill.startCost)&&skill.startCost>=0)return skill.startCost;
@@ -47,13 +48,36 @@
     p.equipped[i]=id;assigned.add(id);
    }
   }
+  // Unknown or removed skills cannot occupy the limited seal slots.
+  // Equipped skills are never sealed; old saves without these fields remain valid.
+  const sealed=Array.isArray(raw.sealedSkills)?raw.sealedSkills:[];
+  const limit=value(p,'sealSlots');
+  p.sealedSkills=[...new Set(sealed.filter(id=>typeof id==='string'&&id.length<=80))]
+   .filter(id=>known.has(id)&&!p.equipped.includes(id)).slice(0,limit);
   return p;
+ }
+ function seal(progress,id,enabled,skills){
+  const p=normalize(progress,skills);
+  if(typeof id!=='string'||!skills.some(skill=>skill.id===id))return null;
+  if(typeof enabled!=='boolean')return null;
+  const exists=p.sealedSkills.includes(id);
+  if(enabled){
+   if(exists||p.equipped.includes(id)||p.sealedSkills.length>=value(p,'sealSlots'))return null;
+   p.sealedSkills.push(id);
+  }else{
+   if(!exists)return null;
+   p.sealedSkills=p.sealedSkills.filter(other=>other!==id);
+  }
+  return p;
+ }
+ function activeSeals(progress,skills){
+  return normalize(progress,skills).sealedSkills;
  }
  function equip(progress,slot,id,skills){
   const p=normalize(progress,skills);
   if(!Number.isInteger(slot)||slot<0||slot>=p.slots)return null;
   if(id!==null){
-   if(typeof id!=='string'||!p.unlockedSkills.includes(id)||!skills.some(s=>s.id===id))return null;
+   if(typeof id!=='string'||!p.unlockedSkills.includes(id)||!skills.some(s=>s.id===id)||p.sealedSkills.includes(id))return null;
    if(p.equipped.some((equipped,i)=>i!==slot&&equipped===id))return null;
   }
   p.equipped[slot]=id;
@@ -76,7 +100,7 @@
   return level===def.costs.length?Infinity:def.costs[level];
  }
  const api=Object.freeze({VERSION,SLOT_COSTS,DEFAULT_SKILL_COSTS,UPGRADES,
-  defaults,normalize,skillPrice,equip,initialLevels,value,costNext});
+  defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;
 })(typeof window!=='undefined'?window:undefined);

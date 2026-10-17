@@ -88,3 +88,11 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .upgrade-symbol{width:24px;font-size:20px}
  .upgrade-effect{font-size:10px}
 }
+
+/* v0.5.8: Fate Seal controls and unobtrusive live build counters. */
+.upgrade-row.sealed{border-color:#8b6fc5;background:linear-gradient(145deg,#2a2443,#1a2036)}
+.upgrade-row.sealed .upgrade-name{color:#e4c9ff}
+.upgrade-row.sealed .upgrade-buy{border-color:#9e7ec9;background:#463158;color:#fff1ff}
+.combat-buffs{font-size:11px;line-height:1.7;color:#b9ddf6;background:#14253a;border:1px solid #425e7b;border-radius:8px;margin-top:10px;padding:8px 10px;overflow-wrap:anywhere}
+.combat-buffs[hidden]{display:none!important}
+@media(max-width:520px){.combat-buffs{font-size:10px;padding:7px}}

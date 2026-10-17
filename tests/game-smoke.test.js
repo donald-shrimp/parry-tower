@@ -6,7 +6,7 @@ function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -66,7 +66,26 @@ function makeHarness(seed={},devMode=false){
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
- const debugSource=source.replace(/\}\)\(\);\s*$/, `window.__parryBloodTest={
+ const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
+  const rawDamageEnemy=damageEnemy;
+  damageEnemy=function(n,color,label){
+   const before=game.enemy?.hp||0;
+   const outcome=rawDamageEnemy(n,color,label);
+   hitLog.push({label:label||'反撃',dealt:Math.max(0,before-(game.enemy?.hp||0))});
+   return outcome;
+  };
+  window.__parryBloodTest={
+   hits:()=>hitLog.map(h=>({...h})),
+   resetHits:()=>{hitLog.length=0},
+   rewardPool:()=>choosePool().map(skill=>skill.id),
+   incoming:n=>applyDamage(n,'TEST'),
+   setShield:ward=>{game.shield=ward},
+   setFrostWard:flag=>{game.frostWard=flag},
+   setFrostCount:value=>{game.frostCount=value},
+   setFortitudeReady:flag=>{game.fortitudeReady=flag},
+   setOverchargeCount:value=>{game.overchargeCount=value},
+   setJustStreak:value=>{game.justStreak=value},
+   setBloodlustPending:value=>{game.bloodlustPending=value},
   bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
   setHp:hp=>{game.hp=hp},
@@ -77,8 +96,8 @@ function makeHarness(seed={},devMode=false){
   setBurn:burn=>{game.enemy.burn=burn},
   setEnemyAttack:attack=>{game.enemy.atk=attack},
   setBaseAttack:attack=>{game.baseAtk=attack},
-  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,
-   guards:game.guards,parryDamageActive:!!game.parryDamageActive})
+  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,charge:game.charge,
+   guards:game.guards,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
  };})();`);
  vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
@@ -416,7 +435,7 @@ test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as sep
  assert.equal(g.state().permanent.slots,1);
  assert.equal(g.state().souls,730);
  g.upgradeTab('skills');
- assert.match(g.el.get('upgradeList').innerHTML,/18/);
+ assert.match(g.el.get('upgradeList').innerHTML,/24/);
  assert.match(g.el.get('upgradeList').innerHTML,/奥義紋/);
  g.upgradeBuy('skill','rune');
  assert.equal(g.state().souls,430,'epic is exactly 300 shards');
@@ -655,4 +674,196 @@ test('blood lifesteal is disabled in immortal practice mode',()=>{
  resolveBloodParry(g);
  assert.equal(g.state().practice,true);
  assert.equal(g.state().hp,10,'practice never heals through blood');
+});
+
+
+test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in both entrypoints',()=>{
+ const script=fs.readFileSync('assets/game.js','utf8');
+ for(const name of ['不屈','拍動','過充電','血の渇望','氷結','王の一撃',
+  '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  assert.match(html,/v0\.5\.8/);
+  assert.match(html,/id="combatBuffs"/);
+  assert.match(html,/data-tab="seal"/);
+ }
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:1200})});
+ g.press('upgradeOpenBtn');g.upgradeTab('skills');
+ assert.match(g.el.get('upgradeList').innerHTML,/24/);
+ for(const [name,price] of [['fortitude',20],['heartbeat',25],['overcharge',95],
+  ['bloodlust',110],['frost',90],['king',300]]){
+  const row=g.el.get('upgradeList').innerHTML.match(new RegExp('data-key="'+name+'"[^>]*>([^<]+)<'));
+  assert.ok(row,name+' must appear in the generic skill shop');
+  assert.equal(row[1],price+' ✧',name+' unlock price');
+ }
+});
+test('Fate Seal purchasing, free selection, removing and reopening retain both cost and settings',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:1000}),
+  'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null]})};
+ const g=makeHarness(seed);
+ g.press('upgradeOpenBtn');g.upgradeTab('seal');
+ assert.match(g.el.get('upgradeList').innerHTML,/運命の封印/);
+ g.upgradeBuy('seal','thorns');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'cannot select without a purchased slot');
+ g.upgradeBuy('extra','sealSlots');
+ assert.equal(g.state().souls,975);
+ assert.equal(g.state().permanent.sealSlots,1);
+ g.upgradeBuy('seal','blood');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'equipped skill cannot be sealed');
+ g.upgradeBuy('seal','thorns');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),['thorns']);
+ g.upgradeBuy('seal','overcharge');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),['thorns'],'cannot exceed one seal slot');
+ assert.equal(g.state().souls,975,'seal selection is free');
+ g.upgradeBuy('seal','thorns');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'free unseal');
+ g.upgradeBuy('seal','overcharge');
+ g.upgradeBuy('extra','sealSlots');
+ g.upgradeBuy('seal','thorns');
+ assert.deepEqual(Array.from(g.state().permanent.sealedSkills),['overcharge','thorns']);
+ assert.equal(g.state().souls,915,'two slots cost 25+60');
+ g.press('upgradeCloseBtn');
+ g.press('upgradeOpenBtn');g.upgradeTab('seal');
+ assert.match(g.el.get('upgradeList').innerHTML,/封印中/);
+ assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')).sealedSkills,['overcharge','thorns']);
+ g.press('upgradeCloseBtn');g.press('startBtn');
+ assert.deepEqual(Array.from(g.state().sealedSkillIds),['overcharge','thorns']);
+ for(let i=0;i<80;i++){
+  const pool=g.bloodTest().rewardPool();
+  assert.equal(pool.includes('overcharge'),false,'sealed skills must be absent after reroll');
+  assert.equal(pool.includes('thorns'),false);
+ }
+});
+test('all four seal slots have increasing costs, equipment never conflicts, and legacy progress is preserved',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:600,life:2,ward:3,runs:7,bestFloor:42}),
+  'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['rune'],equipped:['rune',null],regen:2})};
+ const g=makeHarness(seed);g.press('upgradeOpenBtn');g.upgradeTab('seal');
+ for(const cost of [25,60,120,220]){const before=g.state().souls;g.upgradeBuy('extra','sealSlots');assert.equal(g.state().souls,before-cost)}
+ assert.equal(g.state().permanent.sealSlots,4);
+ g.upgradeBuy('extra','sealSlots');assert.equal(g.state().permanent.sealSlots,4,'no fifth slot');
+ for(const id of ['fortitude','heartbeat','overcharge','bloodlust'])g.upgradeBuy('seal',id);
+ assert.equal(g.state().permanent.sealedSkills.length,4);
+ g.upgradeBuy('seal','frost');
+ assert.equal(g.state().permanent.sealedSkills.length,4);
+ g.upgradeBuy('seal','rune');
+ assert.equal(g.state().permanent.sealedSkills.length,4,'equipped rune must remain available');
+ g.upgradeTab('loadout');
+ assert.match(g.el.get('upgradeList').innerHTML,/奥義紋/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/🦇 血の渇望/);
+ g.press('upgradeCloseBtn');g.press('startBtn');
+ assert.equal(g.state().runSkills.rune,1);
+ assert.equal(g.state().maxHp,85);
+ assert.equal(g.state().shield,24);
+ const old=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.equal(old.bestFloor,42);assert.equal(old.runs,7);assert.equal(old.life,2);
+ const newer=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
+ assert.equal(newer.regen,2);
+});
+test('Fortitude boosts the next parry after HP damage, consumed once; Immortal Shield triggers on barrier break',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('fortitude',1);d.setEnemyHp(10000);d.setHp(65);
+ d.incoming(20);assert.equal(g.state().hp,45);
+ assert.equal(g.state().fortitudeReady,true);
+ resolveBloodParry(g);assert.equal(g.state().fortitudeReady,false);
+ const boosted=d.hits()[0].dealt;
+ d.resetHits();resolveBloodParry(g);
+ assert.ok(boosted>d.hits()[0].dealt,'once-only boost should be consumed');
+ const withWard=makeHarness();withWard.press('startBtn');const w=withWard.bloodTest();
+ w.setEnemyHp(10000);w.setSkill('fortitude',1);w.setSkill('aegis',1);w.setShield(5);
+ w.incoming(5);
+ assert.equal(withWard.state().hp,65,'barrier absorbs the hit');
+ assert.equal(withWard.state().fortitudeReady,true,'broken barrier activates Immortal Shield');
+ resolveBloodParry(withWard,20);
+ assert.equal(withWard.state().shield,5,'next successful parry restores five ward');
+});
+test('Heartbeat charges once at three consecutive JUSTs, or twice with Focus synergy',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('heartbeat',1);d.setEnemyHp(10000);
+ resolveBloodParry(g,20);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
+ resolveBloodParry(g,0);resolveBloodParry(g,0);resolveBloodParry(g,0);
+ assert.equal(d.hits().filter(x=>x.label==='拍動').length,1);
+ assert.equal(g.state().justStreak,0);
+ assert.equal(g.el.get('combatBuffs').hidden,false,'live ability counters shown');
+ const synergized=makeHarness();synergized.press('startBtn');const y=synergized.bloodTest();
+ y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setEnemyHp(10000);
+ resolveBloodParry(synergized,0);resolveBloodParry(synergized,0);
+ assert.equal(y.hits().filter(x=>x.label==='拍動').length,1,'Focus synergy shortens JUST chain to two');
+});
+test('Overcharge works without thunder on every third parry; Thunder synergy fires extra lightning',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('overcharge',1);d.setEnemyHp(10000);
+ resolveBloodParry(g);resolveBloodParry(g);
+ assert.equal(d.hits().some(x=>x.label==='過充電'),false);
+ assert.equal(g.state().overchargeCount,2);
+ resolveBloodParry(g);
+ assert.equal(d.hits().filter(x=>x.label==='過充電').length,1);
+ assert.equal(g.state().overchargeCount,0);
+ const combo=makeHarness();combo.press('startBtn');const c=combo.bloodTest();
+ c.setSkill('overcharge',1);c.setSkill('thunder',1);c.setEnemyHp(10000);
+ for(let i=0;i<3;i++)resolveBloodParry(combo);
+ assert.equal(c.hits().filter(x=>x.label==='過充電').length,1);
+ assert.equal(c.hits().filter(x=>x.label==='雷霆').length,1);
+ assert.equal(c.hits().filter(x=>x.label==='⚡').length,3);
+});
+test('Bloodlust converts only real restored HP into a bounded NEXT parry attack, even with Blood synergy',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('bloodlust',1);d.setEnemyHp(10000);d.setHp(10);
+ resolveBloodParry(g);
+ assert.equal(g.state().hp,13,'Bloodlust Lv1 heals three');
+ assert.equal(g.state().bloodlustPending,5,'3 healed * 1.5, rounded');
+ d.resetHits();resolveBloodParry(g);
+ assert.equal(g.state().bloodlustPending,5);
+ assert.ok(d.hits()[0].dealt>25,'queued damage added to next normal counter');
+ const paired=makeHarness();paired.press('startBtn');const x=paired.bloodTest();
+ x.setSkill('bloodlust',4);x.setSkill('blood',6);x.setEnemyHp(10000);x.setHp(10);
+ resolveBloodParry(paired);
+ assert.ok(paired.state().bloodlustPending>0);
+ assert.ok(paired.state().bloodlustPending<=paired.state().maxHp,'must not produce unbounded values');
+ x.setHp(paired.state().maxHp);
+ resolveBloodParry(paired);
+ assert.equal(paired.state().bloodlustPending,0,'overheal must not charge future attacks');
+});
+test('Ice ward mitigates the next incoming hit and Ice Mirror reflects mitigated damage on a MISS',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('frost',1);d.setEnemyHp(10000);
+ for(let i=0;i<4;i++)resolveBloodParry(g);
+ assert.equal(g.state().frostWard,true);
+ d.incoming(20);
+ assert.equal(g.state().hp,50,'25% mitigation reduces 20 to 15');
+ assert.equal(g.state().frostWard,false);
+ const mirror=makeHarness();mirror.press('startBtn');const m=mirror.bloodTest();
+ m.setSkill('frost',1);m.setSkill('thorns',1);m.setEnemyHp(10000);m.setFrostWard(true);
+ const before=m.info().enemyHp;
+ mirror.frame(mirror.state().attackAt+1);
+ assert.equal(mirror.state().hp,65-Math.ceil(mirror.state().enemyAttack*.75),'ice reduces missed attack damage');
+ assert.ok(m.info().enemyHp<before,'ice mirror damages the enemy');
+ assert.equal(m.hits().filter(x=>x.label==='氷鏡').length,1);
+});
+test('King Strike procs at ten combos, or simultaneously with Pulse at eight via synergy',()=>{
+ const basic=makeHarness();basic.press('startBtn');const b=basic.bloodTest();
+ b.setSkill('king',1);b.setEnemyHp(10000);b.setCombo(9);
+ resolveBloodParry(basic);
+ assert.equal(b.hits().filter(x=>x.label==='王の一撃').length,1);
+ const both=makeHarness();both.press('startBtn');const x=both.bloodTest();
+ x.setSkill('king',1);x.setSkill('pulse',1);x.setSkill('blood',1);
+ x.setEnemyHp(10000);x.setCombo(7);x.setHp(10);x.setMaxHp(500);
+ const before=x.info().enemyHp;
+ resolveBloodParry(both);
+ const hits=x.hits().map(hit=>hit.label);
+ assert.ok(hits.includes('王の一撃'),'King synergy triggers at combo eight');
+ assert.ok(hits.includes('共鳴波'),'Pulse still fires at combo eight');
+ const total=before-x.info().enemyHp;
+ assert.equal(both.state().hp,10+Math.min(Math.max(2,Math.round(total*.08)),125),'bonus hits included in one lifesteal transaction');
+});
+test('new skill mechanics and seals never write to storage on developer test page',()=>{
+ const raw=JSON.stringify({slots:1,unlockedSkills:['fortitude'],equipped:['fortitude',null],sealSlots:2,sealedSkills:['king']});
+ const meta=JSON.stringify({coins:300,life:1,runs:2});
+ const dev=makeHarness({'parryTowerPermanent_v1':raw,'parryTowerPrototype_v1':meta},true);
+ dev.press('upgradeOpenBtn');dev.upgradeTab('seal');dev.upgradeBuy('seal','frost');
+ assert.equal(dev.state().permanent.sealedSkills.length,2);
+ assert.equal(dev.storage.get('parryTowerPermanent_v1'),raw);
+ dev.press('upgradeCloseBtn');dev.dev().launch(5,'guardian:normal');
+ assert.equal(dev.state().runSkills.fortitude,1);
+ assert.equal(dev.state().sealedSkillIds.includes('king'),true);
+ assert.equal(dev.storage.get('parryTowerPrototype_v1'),meta);
 });

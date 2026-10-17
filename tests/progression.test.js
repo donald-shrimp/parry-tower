@@ -72,5 +72,46 @@ test('permanent modifiers have explicit level caps and price steps',()=>{
  assert.equal(P.costNext({revive:1},'revive'),Infinity);
  assert.equal(P.costNext({},'nonexistent'),Infinity);
  assert.equal(P.SLOT_COSTS.length,2);
- assert.equal(P.UPGRADES.length,6);
+ assert.equal(P.UPGRADES.length,7);
+});
+
+test('v0.5.8 seal upgrade uses four priced levels and preserves pre-v0.5.8 saves',()=>{
+ const old=P.normalize({version:1,slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:2},skills);
+ assert.equal(old.version,1);
+ assert.deepEqual(old.sealedSkills,[]);
+ assert.equal(old.sealSlots,0);
+ assert.equal(P.value(old,'sealSlots'),0);
+ assert.equal(P.costNext(old,'sealSlots'),25);
+ assert.deepEqual([0,1,2,3].map(sealSlots=>P.costNext({sealSlots},'sealSlots')),[25,60,120,220]);
+ assert.equal(P.costNext({sealSlots:4},'sealSlots'),Infinity);
+ assert.equal(P.value({sealSlots:4},'sealSlots'),4);
+ assert.equal(P.normalize({sealSlots:999},skills).sealSlots,4);
+ assert.equal(P.normalize({sealSlots:NaN},skills).sealSlots,0);
+});
+test('Fate Seal is free to set or clear but cannot exceed purchased capacity or include equipped skills',()=>{
+ const base=P.normalize({sealSlots:2,slots:1,unlockedSkills:['blood'],equipped:['blood',null]},skills);
+ assert.equal(P.seal(base,'blood',true,skills),null,'equipped skills may not be sealed');
+ assert.equal(P.seal(base,'phantom',true,skills),null,'unknown skills cannot occupy a slot');
+ let one=P.seal(base,'blade',true,skills);
+ assert.deepEqual(one.sealedSkills,['blade']);
+ let two=P.seal(one,'rune',true,skills);
+ assert.deepEqual(two.sealedSkills,['blade','rune']);
+ assert.equal(P.seal(two,'future_rare',true,skills),null,'two purchased slots means a two-skill cap');
+ assert.equal(P.seal(two,'blade',true,skills),null,'duplicate seal blocked');
+ assert.equal(P.equip(two,0,'blade',skills),null,'a sealed skill cannot be equipped');
+ assert.equal(P.seal(two,'future_rare',false,skills),null,'cannot unseal an unsealed skill');
+ const removed=P.seal(two,'blade',false,skills);
+ assert.deepEqual(removed.sealedSkills,['rune']);
+ assert.deepEqual(P.seal(removed,'future_rare',true,skills).sealedSkills,['rune','future_rare']);
+ assert.deepEqual(P.activeSeals(removed,skills),['rune']);
+});
+test('Fate Seal load normalizes duplicates, malformed IDs, future removals and equipped conflicts',()=>{
+ const p=P.normalize({version:1,sealSlots:3,slots:1,unlockedSkills:['blood'],equipped:['blood',null],
+  sealedSkills:['blood','blade','blade','removed_skill',23,'rune','future_rare','future_epic']},skills);
+ assert.deepEqual(p.sealedSkills,['blade','rune','future_rare']);
+ assert.deepEqual(P.normalize({...p,sealSlots:1},skills).sealedSkills,['blade']);
+ assert.deepEqual(P.normalize({sealSlots:4,sealedSkills:'wrong'},skills).sealedSkills,[]);
+ assert.deepEqual(P.normalize({sealSlots:0,sealedSkills:['blade']},skills).sealedSkills,[]);
+ const restored=P.normalize({sealSlots:1,sealedSkills:['future_new']},[...skills,{id:'future_new',rarity:'rare'}]);
+ assert.deepEqual(restored.sealedSkills,['future_new'],'newly registered skill IDs need no hard-coded lists');
 });
