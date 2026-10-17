@@ -251,3 +251,58 @@ test('developer balance preview reflects actual spawn stats, tier modifiers and 
  assert.equal(rogue.atkMultiplier,0.8);
  assert.equal(dev.preview(1,'missing:normal'),null);
 });
+
+
+test('v0.5.5 retains essential HUD and settings but does not narrate the controls',()=>{
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  for(const copy of [
+   'BGMの拍と、敵の振りかぶり・踏み込みが連動する',
+   '音楽で拍をつかみ',
+   '静かな反復の先に',
+   'タイミングバーなし',
+   '音はオン推奨',
+   '身構え → 踏み込み → 接触',
+   '次の一撃まで、時間は止まっています',
+   '次の階層に持ち込む能力を1つ選択',
+   '操作方法</span>',
+   '4拍カウントイン後、攻撃が拍に同期します',
+   '端末内に最高記録と恒久強化を保存'
+  ])assert.ok(!html.includes(copy),page+' should omit '+copy);
+  for(const id of ['startBtn','practiceBtn','codexCover','hpText','enemyHpText','comboLabel',
+    'rewardCards','rewardNote','latencySlider','latencyValue','trackLabel','pauseBtn','audioBtn']){
+   assert.match(html,new RegExp('id="'+id+'"'),page+' keeps '+id);
+  }
+  assert.match(html,/SETTINGS/);
+  assert.doesNotMatch(html,/id="timingInfo"|id="musicStatus"/);
+ }
+ const script=fs.readFileSync('assets/game.js','utf8');
+ for(const copy of ['敵が踏み込み、刃が届く前に盾を出せ','♫ 拍を聴いて構えを読む',
+  '身構え → 踏み込み → 接触','次の力を選ぼう','次は構えと踏み込みを観察しよう']){
+  assert.ok(!script.includes(copy),'script should not narrate '+copy);
+ }
+ assert.doesNotMatch(script,/\$\('musicStatus'\)|\$\('timingInfo'\)/);
+ assert.match(script,/function getPerfectWindow\(\)\{return 11\+lvl\('focus'\)\*2\}/);
+ assert.match(script,/function getParryWindow\(\)\{return 31\+lvl\('stability'\)\*3\}/);
+ assert.match(script,/const PARRY_STARTUP=100/);
+});
+test('ordinary skill reward omits generic advice and actual unlock notice remains',()=>{
+ function clearFirstFloor(g){
+  g.press('startBtn');
+  for(let i=0;i<2;i++){
+   const due=g.state().attackAt;
+   g.clock(due-100);g.parry();g.frame(due+1);
+  }
+  g.frame(g.now+1000);
+  assert.equal(g.state().mode,'reward');
+ }
+ const first=makeHarness();
+ clearFirstFloor(first);
+ assert.match(first.el.get('rewardNote').textContent,/図鑑登録/);
+ assert.equal(first.el.get('rewardNote').hidden,false);
+ const seen=JSON.stringify({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1}},defeated:{}});
+ const repeat=makeHarness({'parryTowerBestiary_v1':seen});
+ clearFirstFloor(repeat);
+ assert.equal(repeat.el.get('rewardNote').textContent,'');
+ assert.equal(repeat.el.get('rewardNote').hidden,true);
+});
