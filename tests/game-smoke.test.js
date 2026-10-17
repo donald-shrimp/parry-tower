@@ -1516,3 +1516,44 @@ test('events and merchant purchases never rewrite legacy permanent save; tower c
  assert.equal(dev.state().towerCoins,0);
  assert.equal(dev.state().runSkills.blood,1);
 });
+
+
+test('animation frame remains inert in route, event and result modes without a spawned enemy',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.frame(g.now+250);
+ assert.equal(g.state().mode,'route');
+ assert.equal(g.state().enemy,undefined);
+ g.routeSelect('event');d.setEvent('traveler');
+ g.frame(g.now+250);
+ assert.equal(g.state().mode,'room');
+ assert.equal(g.state().enemy,undefined);
+ g.roomChoose('event:coins');
+ const amount=g.state().towerCoins;
+ g.frame(g.now+500);
+ assert.equal(g.state().towerCoins,amount,'no automatic reward repetition between frames');
+ assert.equal(g.state().mode,'room');
+ g.roomChoose('continue');
+ assert.equal(g.state().floor,9);
+});
+test('8F can choose an elite fight while fixed 9F elite and 10F boss remain unchanged',()=>{
+ const {g,d}=makeCrossroads(8);
+ g.routeSelect('trial');
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().encounterElite,true);
+ g.random(.99);d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().towerCoins,14);
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ assert.equal(g.state().floor,9);
+ assert.equal(g.state().encounterElite,true);
+ d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ g.frame(g.now+950);
+ if(g.state().mode==='relic')g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ assert.equal(g.state().floor,10);
+ assert.equal(g.state().encounterKey,'guardian:elite');
+});
