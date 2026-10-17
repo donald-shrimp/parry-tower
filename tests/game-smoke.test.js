@@ -94,7 +94,7 @@ test('title exposes the encyclopedia and only previously encountered enemies bec
  assert.equal(g.state().mode,'title');
  assert.equal(g.el.get('codexCover').hidden,true);
  assert.equal(g.el.get('zoneLabel').textContent,'忘れられた地下墓地');
- assert.match(g.el.get('codexCount').textContent,/0体遭遇済み/);
+ assert.equal(g.el.has('codexCount'),false,'the title should not display a discovery counter');
  g.press('practiceBtn');
  assert.equal(g.state().mode,'codex');
  assert.equal(g.clickers.size,0,'no default unlocked enemies before first encounter');
@@ -265,7 +265,7 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
    '身構え → 踏み込み → 接触',
    '次の一撃まで、時間は止まっています',
    '次の階層に持ち込む能力を1つ選択',
-   '操作方法</span>',
+   'ドラムの拍を聴きながら',
    '4拍カウントイン後、攻撃が拍に同期します',
    '端末内に最高記録と恒久強化を保存'
   ])assert.ok(!html.includes(copy),page+' should omit '+copy);
@@ -273,7 +273,10 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
     'rewardCards','rewardNote','latencySlider','latencyValue','trackLabel','pauseBtn','audioBtn']){
    assert.match(html,new RegExp('id="'+id+'"'),page+' keeps '+id);
   }
-  assert.match(html,/SETTINGS/);
+  assert.match(html,/HOW TO PLAY/);
+  assert.match(html,/リズムに合わせて敵を斬れ！/);
+  assert.match(html,/画面タップまたは <span class="key">Space<\/span> キーでパリィ/);
+  assert.doesNotMatch(html,/id="codexCount"|体遭遇済み/);
   assert.doesNotMatch(html,/id="timingInfo"|id="musicStatus"/);
  }
  const script=fs.readFileSync('assets/game.js','utf8');
@@ -282,6 +285,7 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
   assert.ok(!script.includes(copy),'script should not narrate '+copy);
  }
  assert.doesNotMatch(script,/\$\('musicStatus'\)|\$\('timingInfo'\)/);
+ assert.doesNotMatch(script,/\$\('codexCount'\)/);
  assert.match(script,/function getPerfectWindow\(\)\{return 11\+lvl\('focus'\)\*2\}/);
  assert.match(script,/function getParryWindow\(\)\{return 31\+lvl\('stability'\)\*3\}/);
  assert.match(script,/const PARRY_STARTUP=100/);
