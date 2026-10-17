@@ -229,7 +229,7 @@ function renderUpgradeScreen(){
   $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。出撃前ならいつでも変更可能。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
  }else{
   const legacy=upgradeTab==='base'?LEGACY_OFFERS.map(o=>upgradeRow({...o,level:meta[o.id],cost:shopCost(o.id),action:'legacy'})):[];
-  const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab).map(o=>{
+  const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab&&o.id!=='sealSlots').map(o=>{
    const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
    return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc:o.description(nextValue)});
   });
@@ -369,6 +369,10 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
 }else{
   game.lastDeflectAt=at;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
   game.justStreak=perfect?(game.justStreak||0)+1:0;
+  // Record success and JUST thresholds before damage can end the floor.
+  if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
+  const heartbeatProc=!!(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3));
+  if(heartbeatProc){game.justStreak=0;game.charge=Math.min(7,game.charge+1)}
   game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
   game.parryRecoveryActive=true;
   if(lvl('frost')&&!game.frostWard){
@@ -387,12 +391,10 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
    val+=game.bloodlustPending;showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);game.bloodlustPending=0;
   }
   damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
-  if(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3)){
-   game.justStreak=0;game.charge=Math.min(7,game.charge+1);
+  if(heartbeatProc){
    damageEnemy(game.baseAtk*(.20+.15*lvl('heartbeat')),'#9ee8f7','拍動');if(game.mode!=='combat')return;
   }
   if(lvl('overcharge')){
-   game.overchargeCount=(game.overchargeCount||0)+1;
    if(game.overchargeCount>=3){
     game.overchargeCount=0;
     damageEnemy(game.baseAtk*(.7+.4*lvl('overcharge')),'#8cecff','過充電');if(game.mode!=='combat')return;
