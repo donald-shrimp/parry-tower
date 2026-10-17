@@ -159,9 +159,81 @@ function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.prac
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
 function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');}
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
+
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
-function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{if(deathInputBlocked())return;const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
-function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild();}
+const LEGACY_OFFERS=[
+ {id:'life',icon:'♡',name:'生命の祝福',desc:'最大HP +10 / Lv.',max:5},
+ {id:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3 / Lv.',max:5},
+ {id:'ward',icon:'🛡',name:'守護の祈り',desc:'初期障壁 +8 / Lv.',max:5}
+];
+function upgradeRow(o){
+ const full=o.level>=o.max,price=full?Infinity:o.cost;
+ return `<div class="upgrade-row ${o.rarity||''}"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${o.desc}</div></div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
+}
+function renderUpgradeScreen(){
+ $('upgradeCoins').textContent=meta.coins+' ✧';
+ const tabs=[['loadout','装備'],['skills','スキル解放'],['base','基礎強化'],['special','特殊強化']];
+ $('upgradeTabs').innerHTML=tabs.map(([id,name])=>`<button type="button" class="upgrade-tab ${upgradeTab===id?'active':''}" aria-pressed="${upgradeTab===id}" data-tab="${id}">${name}</button>`).join('');
+ if(upgradeTab==='loadout'){
+  const owned=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id));
+  const rows=PR.SLOT_COSTS.map((cost,i)=>{
+   if(i>=permanent.slots){
+    return `<div class="upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">スロット ${i+1}</div><div class="upgrade-effect">未解放</div></div></div><button type="button" class="upgrade-buy" data-action="slot" data-key="${i}" ${i!==permanent.slots||meta.coins<cost?'disabled':''}>${cost} ✧</button></div>`;
+   }
+   const selected=permanent.equipped[i];
+   const options=owned.filter(skill=>!permanent.equipped.some((id,j)=>j!==i&&id===skill.id))
+    .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
+   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
+  }).join('');
+  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div>${owned.length?'':'<div class="upgrade-empty">「スキル解放」から装備するスキルを購入</div>'}`;
+ }else if(upgradeTab==='skills'){
+  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
+  $('upgradeList').innerHTML=`<p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>`+
+   SKILLS.map(skill=>{
+    const owned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill);
+    return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${skill.rarity.toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${owned||meta.coins<cost?'disabled':''}>${owned?'解放済み':cost+' ✧'}</button></div>`;
+   }).join('');
+ }else{
+  const legacy=upgradeTab==='base'?LEGACY_OFFERS.map(o=>upgradeRow({...o,level:meta[o.id],cost:shopCost(o.id),action:'legacy'})):[];
+  const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab).map(o=>{
+   const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
+   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc:o.description(nextValue)});
+  });
+  $('upgradeList').innerHTML=legacy.concat(extra).join('');
+ }
+}
+function openUpgrade(){
+ if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
+ upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
+}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode)}
+function buyUpgrade(action,key){
+ if(game.mode!=='upgrade')return;
+ let cost=Infinity,apply=null;
+ if(action==='slot'){
+  const index=Number(key);
+  if(Number.isInteger(index)&&index===permanent.slots&&index<PR.SLOT_COSTS.length){
+   cost=PR.SLOT_COSTS[index];apply=()=>{permanent.slots++};
+  }
+ }else if(action==='skill'){
+  const skill=SK[key];
+  if(skill&&!permanent.unlockedSkills.includes(skill.id)){
+   cost=PR.skillPrice(skill);apply=()=>{permanent.unlockedSkills.push(skill.id)};
+  }
+ }else if(action==='legacy'){
+  if(LEGACY_OFFERS.some(o=>o.id===key)&&meta[key]<5){
+   cost=shopCost(key);apply=()=>{meta[key]++};
+  }
+ }else if(action==='extra'){
+  const def=PR.UPGRADES.find(o=>o.id===key);
+  if(def&&permanent[key]<def.costs.length){
+   cost=PR.costNext(permanent,key);apply=()=>{permanent[key]++};
+  }
+ }
+ if(!apply||!Number.isFinite(cost)||meta.coins<cost)return;
+ meta.coins-=cost;apply();save();savePermanent();renderUpgradeScreen();sound(740,.19,'triangle',.06,190);
+}
+function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
