@@ -115,6 +115,7 @@ test('meeting a slime unlocks safe training even when the tower run ends without
  }
  assert.equal(g.state().mode,'gameover');
  const beforeSouls=g.state().souls;
+ g.frame(g.now+1000); // Wait for the death-menu mis-tap grace before choosing a button.
  g.press('deathCodexBtn');
  assert.equal(g.state().mode,'codex');
  assert.match(g.el.get('codexList').innerHTML,/data-practice="slime:normal"/);
@@ -309,4 +310,74 @@ test('ordinary skill reward omits generic advice and actual unlock notice remain
  clearFirstFloor(repeat);
  assert.equal(repeat.el.get('rewardNote').textContent,'');
  assert.equal(repeat.el.get('rewardNote').hidden,true);
+});
+
+test('death menu ignores stray parry taps for 1000ms, then restores all actions',()=>{
+ const g=makeHarness();
+ g.press('startBtn');
+ for(let i=0;i<5;i++){
+  g.frame(g.state().attackAt+1);
+ }
+ assert.equal(g.state().mode,'gameover');
+ const diedAt=g.now;
+ const death=g.el.get('deathCover');
+ assert.equal(death.hidden,false,'the death screen is visible immediately');
+ assert.equal(death.inert,true,'all death-cover descendants, including the shop, are inert');
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn'])
+  assert.equal(g.el.get(id).disabled,true,id+' is disabled at death');
+ assert.match(g.el.get('deathShop').innerHTML,/data-buy=/,'shop buttons are protected by the inert death cover');
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn']){
+  g.press(id); // Simulated delegated clicks must also be rejected.
+  assert.equal(g.state().mode,'gameover',id+' must not respond during grace');
+ }
+ g.frame(diedAt+999);
+ assert.equal(death.inert,true);
+ assert.equal(g.el.get('deathCodexBtn').disabled,true);
+ g.press('deathCodexBtn');
+ assert.equal(g.state().mode,'gameover');
+ g.frame(diedAt+1000);
+ assert.equal(death.inert,false,'all death actions are available after the grace period');
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn'])
+  assert.equal(g.el.get(id).disabled,false,id+' is enabled after grace');
+ g.press('deathCodexBtn');
+ assert.equal(g.state().mode,'codex');
+});
+test('retry and home work after the grace period; every new death starts a fresh lock',()=>{
+ const g=makeHarness();
+ function dieWithoutParries(){
+  for(let i=0;i<5;i++)g.frame(g.state().attackAt+1);
+  assert.equal(g.state().mode,'gameover');
+  assert.equal(g.el.get('deathCover').inert,true);
+ }
+ g.press('startBtn');
+ dieWithoutParries();
+ const firstDeath=g.now;
+ g.frame(firstDeath+1000);
+ g.press('retryBtn');
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.el.get('deathCover').inert,false);
+ dieWithoutParries();
+ const secondDeath=g.now;
+ assert.ok(secondDeath>firstDeath,'death lock follows the second defeat');
+ g.press('homeBtn');
+ assert.equal(g.state().mode,'gameover','home is blocked on the second death as well');
+ g.frame(secondDeath+1000);
+ g.press('homeBtn');
+ assert.equal(g.state().mode,'title');
+ assert.equal(g.el.get('deathCover').inert,false);
+});
+test('death-menu lock is restricted to the overlay, not normal menus or developer entry',()=>{
+ for(const devMode of [false,true]){
+  const g=makeHarness({},devMode);
+  assert.equal(g.el.get('deathCover').inert,false);
+  assert.equal(g.el.get('retryBtn').disabled,false);
+  g.press('practiceBtn');
+  assert.equal(g.state().mode,'codex');
+  assert.equal(g.el.get('deathCover').inert,false);
+  if(devMode){
+   assert.ok(g.dev()?.isolated);
+   assert.equal(g.dev().launch(5,'guardian:normal'),true);
+   assert.equal(g.state().mode,'combat');
+  }
+ }
 });
