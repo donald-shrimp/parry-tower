@@ -11,7 +11,8 @@ function makeHarness(seed={},devMode=false){
  const el=new Map();
  function node(id){
   const n={
-   id,hidden:false,dataset:{},style:{},innerHTML:'',textContent:'',value:id==='practiceEnemy'?'knight':id==='codexFilter'?'all':'',disabled:false,listeners:{},
+   id,hidden:false,dataset:{},style:{},innerHTML:'',textContent:'',value:id==='practiceEnemy'?'knight':id==='codexFilter'?'all':id==='devFloor'?'11':'',disabled:false,listeners:{},children:[],
+   append(...children){this.children.push(...children)},appendChild(child){this.children.push(child)},
    addEventListener(k,cb){this.listeners[k]=cb;},
    getBoundingClientRect(){return {width:800,height:500}},
    querySelectorAll(selector){
@@ -52,6 +53,7 @@ function makeHarness(seed={},devMode=false){
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
+  createElement(tag){return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
   getElementById(id){if(!el.has(id))throw new Error('Unknown DOM id: '+id);return el.get(id)},
   addEventListener:noop,querySelectorAll:()=>[],hidden:false
  };
@@ -62,6 +64,9 @@ function makeHarness(seed={},devMode=false){
   ResizeObserver:undefined,console
  };
  vm.runInNewContext(fs.readFileSync('assets/game.js','utf8'),context,{filename:'game.js'});
+ if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
+  window,document,location:{search:'?floor=21&enemy=cantor%3Anormal'},URLSearchParams,console
+ },{filename:'dev-tools.js'});
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
@@ -191,4 +196,24 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  const slider=g.el.get('latencySlider');
  slider.listeners.input({target:{value:'35'}});
  assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'5');
+});
+
+test('the separate dev.html page presets controls and actually launches the selected floor on click',()=>{
+ const g=makeHarness({},true);
+ assert.equal(g.el.get('devFloor').value,'21');
+ assert.equal(g.el.get('devEnemy').value,'cantor:normal');
+ assert.ok(g.el.get('devEnemy').children.length>=4);
+ assert.equal(g.state().mode,'title');
+ g.press('devLaunch');
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().floor,21);
+ assert.equal(g.state().enemy,'cantor');
+ assert.match(g.el.get('devStatus').textContent,/21F/);
+ g.el.get('devFloor').value='32';
+ g.el.get('devEnemy').value='clockwork:normal';
+ g.press('devLaunch');
+ assert.equal(g.state().floor,32);
+ assert.equal(g.state().enemy,'clockwork');
+ g.press('devReset');
+ assert.equal(g.state().mode,'title');
 });
