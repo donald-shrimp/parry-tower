@@ -4,6 +4,7 @@ const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
 const PR=window.ParryProgression;if(!PR)throw Error('Missing assets/progression.js');
+const RR=window.ParryRelics;if(!RR)throw Error('Missing assets/relics.js');
 const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0};
 let meta={...baseMeta};try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');for(const k of Object.keys(baseMeta))if(Number.isFinite(s[k]))meta[k]=Math.max(0,Math.floor(s[k]));}catch(e){}
@@ -157,12 +158,12 @@ function setMode(mode){
  $('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').hidden=!game.practice||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').textContent='稽古を終了';
- const covers={title:'title',reward:'reward',gameover:'death',pause:'pause',codex:'codex',upgrade:'upgrade'};
- for(const name of ['title','reward','death','pause','codex','upgrade'])$(name+'Cover').hidden=name!==covers[mode];
+ const covers={title:'title',reward:'reward',relic:'relic',gameover:'death',pause:'pause',codex:'codex',upgrade:'upgrade'};
+ for(const name of ['title','reward','relic','death','pause','codex','upgrade'])$(name+'Cover').hidden=name!==covers[mode];
  $('pauseBtn').disabled=!['combat','pause'].includes(mode);
  $('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';
  syncDeathInputLock();
- $('runStateLabel').textContent={title:'READY',combat:game.practice?'PRACTICE':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',upgrade:'UPGRADES'}[mode]||'';
+ $('runStateLabel').textContent={title:'READY',combat:game.practice?'PRACTICE':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',relic:'RELIC OFFER',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',upgrade:'UPGRADES'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
  $('floorBadge').textContent=game.practice?'⚔ PRACTICE':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
@@ -179,7 +180,29 @@ function renderCombatBuffs(){
  const el=$('combatBuffs');el.hidden=!parts.length;el.textContent=parts.join('　·　');
 }
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
-function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');}
+function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');renderRelicInventory();}
+
+function hasRelic(id){return !game.practice&&!!game.relics?.includes(id)}
+function relicCounter(id){return game.relicCounters?.[id]||0}
+function relicBump(id,threshold){
+ const next=relicCounter(id)+1;
+ game.relicCounters[id]=next>=threshold?0:next;
+ return next>=threshold;
+}
+function relicShield(amount){
+ const cap=100+20*lvl('aegis');
+ game.shield=Math.min(cap,game.shield+amount);
+}
+function adjustRelicMaxHp(){
+ const base=game.rawMaxHp||game.maxHp;
+ game.maxHp=hasRelic('reaper_pact')?Math.max(1,Math.floor(base*.8)):base;
+ game.hp=Math.min(game.maxHp,game.hp);
+}
+function renderRelicInventory(){
+ const items=RR.validIds(game.relics||[]).map(id=>RR.BY_ID[id]);
+ $('relicCount').textContent=items.length+' / '+RR.MAX_HELD;
+ $('relicList').innerHTML=items.length?items.map(r=>`<div class="relic-owned ${r.rarity}"><span class="relic-owned-icon">${r.icon}</span><div><div class="relic-owned-title">${r.name}</div><div class="relic-owned-desc">${r.desc}</div></div></div>`).join(''):'<div class="empty">遺物なし</div>';
+}
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
 
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
@@ -272,13 +295,14 @@ function buyUpgrade(action,key){
  if(!apply||!Number.isFinite(cost)||meta.coins<cost)return;
  meta.coins-=cost;apply();save();savePermanent();renderUpgradeScreen();sound(740,.19,'triangle',.06,190);
 }
-function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();syncHUD();renderBuild();}
+function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 function spawnEnemy(t){
  clashFX=null;
+ game.relicRustyUsed=false;game.relicStardustUsed=false;game.relicStopUsed=false;game.relicPactConsumed=false;
  const floor=game.floor||1;
  let archetype;
  if(game.practice){
@@ -339,14 +363,19 @@ function finishParryRecovery(){
  game.parryRecoveryActive=false;
  const blood=finishParryBlood();
  const lust=lvl('bloodlust')&&!game.practice?heal(2+lvl('bloodlust')):0;
+ const bell=hasRelic('pilgrim_bell')&&game.relicBellDue?heal(4):0;
+ game.relicBellDue=false;
+ const pact=hasRelic('blood_pact_chalice')&&game.relicPactReady?heal(8):0;
+ game.relicPactReady=false;
  if(lvl('bloodlust')&&!game.practice){
   const multiple=(1+lvl('bloodlust')*.5)*(has('bloodlust','blood')?1.5:1);
   const cap=game.baseAtk*(2.5+lvl('bloodlust')*.5);
-  game.bloodlustPending=Math.min(cap,Math.round((blood+lust)*multiple));
+  game.bloodlustPending=Math.min(cap,Math.round((blood+lust+bell+pact)*multiple));
  }
 }
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
+ if(hasRelic('emperor_conduit')&&['⚡','雷鳴','雷霆','過充電','雷導','雷帝'].includes(label))n*=1.25;
  const damage=Math.max(1,Math.round(n)),dealt=Math.min(e.hp,damage);
  e.hp-=dealt;game.damage+=damage;
  // Guard reflection is outside the successful-parry scope; burn ticks bypass damageEnemy.
@@ -362,10 +391,13 @@ function damageEnemy(n,color='#fff',label){
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);const restored=Math.max(0,game.hp-a);if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);return restored}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
 function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
-  game.justStreak=0;game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
+  game.relicJustStreak=0;game.justStreak=0;
+  if(hasRelic('stopped_hand')&&!game.relicStopUsed){
+   game.relicStopUsed=true;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
+  }else game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');sound(250,.08,'triangle',.055,-80);
 }else if(kind==='miss'){
-  game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
+  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
 }else{
   game.lastDeflectAt=at;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
   game.justStreak=perfect?(game.justStreak||0)+1:0;
@@ -375,6 +407,19 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(heartbeatProc){game.justStreak=0;game.charge=Math.min(7,game.charge+1)}
   game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
   game.parryRecoveryActive=true;
+  if(hasRelic('conduit_stone')&&!game.relicBoltDue)game.relicBoltDue=relicBump('conduit_stone',4);
+  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&!game.relicEmperorDue)
+   game.relicEmperorDue=relicBump('emperor_conduit',5);
+  if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
+  if(hasRelic('ember_vial'))game.enemy.burn+=3;
+  if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(10);
+  if(hasRelic('broken_gear')&&game.relicGearReady){game.relicGearReady=false;relicShield(5)}
+  if(hasRelic('serene_crystal')){
+   game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
+   if(game.relicJustStreak>=3){game.relicJustStreak=0;relicShield(8);showText('静謐!',w*.34,h*.36,'#c7e5f9',17)}
+  }
+  const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
+  game.relicMaskReady=hasRelic('duet_mask')&&perfect;
   if(lvl('frost')&&!game.frostWard){
    game.frostCount=(game.frostCount||0)+1;
    if(game.frostCount>=4){game.frostCount=0;game.frostWard=true;showText('氷の加護!',w*.32,h*.34,'#c5ecff',18)}
@@ -390,7 +435,21 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(lvl('bloodlust')&&game.bloodlustPending>0){
    val+=game.bloodlustPending;showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);game.bloodlustPending=0;
   }
+  if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
+   game.relicStardustUsed=true;val*=1.3;
+  }
+  if(hasRelic('reaper_pact'))val*=1.35;
+  if(hasRelic('golden_festival_bell')&&e.boss)val*=1.2;
   damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
+  if(relicMaskSlash){
+   damageEnemy(val*.4,'#dfb8f5','仮面');if(game.mode!=='combat')return;
+  }
+  if(hasRelic('conduit_stone')&&game.relicBoltDue){
+   game.relicBoltDue=false;damageEnemy(12,'#a1e8ff','雷導');if(game.mode!=='combat')return;
+  }
+  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&game.relicEmperorDue){
+   game.relicEmperorDue=false;damageEnemy(20,'#bceeff','雷帝');if(game.mode!=='combat')return;
+  }
   if(heartbeatProc){
    damageEnemy(game.baseAtk*(.20+.15*lvl('heartbeat')),'#9ee8f7','拍動');if(game.mode!=='combat')return;
   }
@@ -412,7 +471,7 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
    damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
    if(game.mode!=='combat')return;
   }
-  if(game.charge>=7){game.charge=0;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
+  if(game.charge>=7){game.charge=0;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
   finishParryRecovery();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
 }
@@ -425,6 +484,7 @@ function clearFloor(){
   const baseBonus=defeated.rare?(defeated.soulBonus||0):defeated.elite?2:0;
   const bonus=baseBonus?soulReward(baseBonus):0;
   if(bonus){game.bonusSouls+=bonus;meta.coins+=bonus;save();showText('魂の欠片 +'+bonus,w*.52,h*.34,'#ffe19a',21)}
+  game.relicRewardKind=RR.rewardType(game.floor,defeated,Math.random);
   const recovery=PR.value(permanent,'regen');
   if(recovery)heal(Math.ceil(game.maxHp*recovery/100));
  }
@@ -445,7 +505,14 @@ function applyDamage(n,tag){
  }
  const used=Math.min(game.shield,damage);
  game.shield=Math.max(0,game.shield-used);damage-=used;
+ if(tag==='GUARD'&&hasRelic('silver_mirror')&&damage>0)damage-=Math.min(8,Math.floor(damage*.2));
+ if(damage>0&&hasRelic('rusty_crest')&&!game.relicRustyUsed){
+  game.relicRustyUsed=true;damage=Math.max(0,damage-6);
+ }
  if(damage>0)game.hp=Math.max(0,game.hp-damage);
+ if(game.hp<previousHp&&hasRelic('blood_pact_chalice')&&!game.relicPactConsumed){
+  game.relicPactConsumed=true;game.relicPactReady=true;
+ }
  // Normal Fortitude responds to lost HP; Immortal Shield additionally triggers on barrier break.
  if(lvl('fortitude')&&!game.practice){
   if(game.hp<previousHp||(has('fortitude','aegis')&&previousShield>0&&game.shield===0))
@@ -469,9 +536,78 @@ function applyDamage(n,tag){
 }
 function die(){if(game.mode==='gameover')return;stopScore();const coins=soulReward(Math.max(3,Math.floor(game.floor*2+game.bossKills*3)));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
 function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max&&!game.sealedSkillIds?.includes(s.id)),taken=[];for(let k=0;k<Math.min(PR.value(permanent,'choice4')||3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>(rarityWeight[s.rarity]??rarityWeight.common)*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
-function showRewards(){if(game.mode!=='victory')return;game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');}
+function showRelicRewards(kind){
+ const choices=RR.offer(kind,game.relics,game.relicDiscarded);
+ if(!choices.length){showRewards();return;}
+ game.relicOffer=choices.map(r=>r.id);
+ game.relicSwapTarget=null;
+ setMode('relic');
+ renderRelicReward();
+}
+function renderRelicReward(){
+ if(game.mode!=='relic')return;
+ const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
+ const selected=game.relicSwapTarget&&RR.BY_ID[game.relicSwapTarget];
+ $('relicOfferTitle').textContent=selected?'交換する遺物を選べ':'遺物をひとつ選べ';
+ $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD+'　·　各候補の効果を確認しよう';
+ $('relicOfferCards').innerHTML=selected?'':
+  offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc}</span><small>相性：${r.affinity}</small></button>`).join('');
+ $('relicReplaceList').hidden=!selected;
+ $('relicReplaceList').innerHTML=selected?
+  `<p class="relic-replace-note">${selected.icon} ${selected.name} と交換する遺物</p>`+
+  game.relics.map(id=>{const r=RR.BY_ID[id];return `<button type="button" class="relic-replace-card" data-replace="${id}"><span>${r.icon}</span><span><b>${r.name}</b><small>${r.desc}</small></span><span>交換する →</span></button>`}).join(''):'';
+ $('relicBackBtn').hidden=!selected;
+ $('relicSkipBtn').textContent='今回は見送る →';
+}
+function grantRelic(id,replaceId=null){
+ if(!RR.BY_ID[id]||!game.relicOffer.includes(id)||game.mode!=='relic')return false;
+ if(game.relics.includes(id)||game.relicDiscarded.includes(id))return false;
+ if(replaceId!==null){
+  const index=game.relics.indexOf(replaceId);
+  if(game.relics.length!==RR.MAX_HELD||index<0)return false;
+  game.relics[index]=id;
+  game.relicDiscarded.push(replaceId);
+  delete game.relicCounters[replaceId];
+  if(replaceId==='duet_mask')game.relicMaskReady=false;
+  if(replaceId==='broken_gear')game.relicGearReady=false;
+  if(replaceId==='blood_pact_chalice')game.relicPactReady=false;
+  if(replaceId==='pilgrim_bell')game.relicBellDue=false;
+  if(replaceId==='conduit_stone')game.relicBoltDue=false;
+  if(replaceId==='emperor_conduit')game.relicEmperorDue=false;
+  if(replaceId==='serene_crystal')game.relicJustStreak=0;
+ }else{
+  if(game.relics.length>=RR.MAX_HELD)return false;
+  game.relics.push(id);
+ }
+ adjustRelicMaxHp();
+ renderRelicInventory();
+ return true;
+}
+function selectRelic(id){
+ if(game.mode!=='relic'||!game.relicOffer.includes(id))return;
+ if(game.relics.length>=RR.MAX_HELD){
+  game.relicSwapTarget=id;renderRelicReward();
+ }else if(grantRelic(id))finishRelicReward();
+}
+function replaceRelic(id){
+ if(game.mode!=='relic'||!game.relicSwapTarget)return;
+ if(grantRelic(game.relicSwapTarget,id))finishRelicReward();
+}
+function finishRelicReward(){
+ if(game.mode!=='relic')return;
+ game.relicOffer=[];game.relicSwapTarget=null;
+ showRewards();
+}
+function showRewards(){
+ if(!['victory','relic'].includes(game.mode))return;
+ if(game.relicRewardKind){
+  const kind=game.relicRewardKind;game.relicRewardKind=null;
+  showRelicRewards(kind);return;
+ }
+ game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');
+}
 function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>`<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span><span class="rtag">${s.hint}</span></button>`).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length}
-function takeSkill(id){const s=SK[id];if(game.mode!=='reward'||!choiceSet.find(v=>v.id===id)||lvl(id)>=s.max)return;const prevMax=game.maxHp;game.lv[id]=(game.lv[id]||0)+1;if(id==='heal'){game.maxHp=65+10*meta.life+lvl('heal')*15;game.hp+=game.maxHp-prevMax+12}if(game.floor%5===0)game.rerolls++;sound(790,.17,'triangle',.06,140);advance()}
+function takeSkill(id){const s=SK[id];if(game.mode!=='reward'||!choiceSet.find(v=>v.id===id)||lvl(id)>=s.max)return;const prevMax=game.maxHp;game.lv[id]=(game.lv[id]||0)+1;if(id==='thunder'||id==='overcharge')game.relicEmperorDue=false;if(id==='heal'){game.rawMaxHp=65+10*meta.life+lvl('heal')*15;adjustRelicMaxHp();game.hp+=game.maxHp-prevMax+12}if(game.floor%5===0)game.rerolls++;sound(790,.17,'triangle',.06,140);advance()}
 function advance(){game.floor++;game.hp=Math.min(game.hp,game.maxHp);spawnEnemy(performance.now());setMode('combat');renderBuild();syncHUD()}
 function showHeal(){if(game.mode!=='reward')return;heal(Math.round(game.maxHp*.2));if(game.floor%5===0)game.rerolls++;advance()}
 function tap(){
@@ -797,7 +933,19 @@ $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode===
  const key=$('practiceEnemy').value;
  if(!book.seen[key]||!P.findByKey(key))return;
  game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
- }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
+ }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
+ const btn=e.target.closest?.('[data-relic]');
+ if(btn)selectRelic(btn.dataset.relic);
+});
+$('relicReplaceList').addEventListener('click',e=>{
+ const btn=e.target.closest?.('[data-replace]');
+ if(btn)replaceRelic(btn.dataset.replace);
+});
+$('relicBackBtn').addEventListener('click',()=>{
+ if(game.mode!=='relic')return;game.relicSwapTarget=null;renderRelicReward();
+});
+$('relicSkipBtn').addEventListener('click',finishRelicReward);
+$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
 
 $('upgradeOpenBtn').addEventListener('click',openUpgrade);
 $('deathUpgradeBtn').addEventListener('click',openUpgrade);
@@ -845,5 +993,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();requestAnimationFrame(frame);
 })();
