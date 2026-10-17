@@ -1135,3 +1135,49 @@ test('relic collection remains ephemeral and developer session does not write an
  g.dev().reset();
  assert.equal(g.state().relics.length,0,'relics do not survive end of run');
 });
+
+
+test('lethal fourth parry preserves unspent conduit lightning for the next floor',()=>{
+ const {g,d}=makeRelicFight(['conduit_stone']);
+ d.setRelicCounter('conduit_stone',3);
+ d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(d.relicInfo().boltDue,true,'fourth parry counted even on immediate kill');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ assert.equal(g.state().floor,2);
+ d.setEnemyHp(20000);d.resetHits();
+ resolveBloodParry(g,20);
+ assert.equal(d.hits().filter(h=>h.label==='雷導').length,1);
+ assert.equal(d.relicInfo().boltDue,false);
+});
+test('pact from a killing GUARD is retained until the next successful parry on the next floor',()=>{
+ const {g,d}=makeRelicFight(['blood_pact_chalice']);
+ d.setSkill('thorns',1);d.setEnemyAttack(20);d.setShield(0);d.setEnemyHp(1);
+ resolveBloodParry(g,-40);
+ assert.equal(g.state().mode,'victory','guard reflection defeated low HP enemy');
+ assert.equal(d.relicInfo().pactReady,true);
+ g.frame(g.now+950);g.press('healBtn');
+ d.setEnemyHp(20000);d.setHp(10);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().hp,18,'the next parry restores 8 real HP');
+ assert.equal(d.relicInfo().pactReady,false);
+});
+test('relic panel resets on title and repeated starts; relic IDs are never saved to localStorage',()=>{
+ const {g,d}=makeRelicFight(['duet_mask']);
+ assert.equal(g.state().relics.length,1);
+ assert.match(g.el.get('relicList').innerHTML,/二重奏の仮面/);
+ const saved=[...g.storage.keys()];
+ assert.equal(saved.some(k=>/relic/i.test(k)),false);
+ // Run reset is the same path as the normal home button, not a save mutation.
+ const dev=makeHarness({},true);dev.dev().launch(1,'slime:normal');
+ dev.bloodTest().grantRelic('conduit_stone');
+ assert.equal(dev.state().relics.length,1);
+ dev.dev().reset();
+ assert.equal(dev.el.get('relicCount').textContent,'0 / 3');
+ assert.doesNotMatch(dev.el.get('relicList').innerHTML,/雷導石/);
+ dev.dev().launch(1,'slime:normal');
+ assert.deepEqual(Array.from(dev.state().relics),[]);
+});
