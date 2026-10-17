@@ -1181,3 +1181,27 @@ test('relic panel resets on title and repeated starts; relic IDs are never saved
  dev.dev().launch(1,'slime:normal');
  assert.deepEqual(Array.from(dev.state().relics),[]);
 });
+
+
+test('Reaper Pact changes regular counter damage by 35% while keeping ordinary enemies unaffected by boss-only bell',()=>{
+ const base=makeRelicFight(),enhanced=makeRelicFight(['reaper_pact']);
+ base.d.setEnemyHp(20000);enhanced.d.setEnemyHp(20000);
+ resolveBloodParry(base.g,20);resolveBloodParry(enhanced.g,20);
+ const plain=base.d.hits()[0].dealt,buffed=enhanced.d.hits()[0].dealt;
+ assert.equal(buffed,Math.round(plain*1.35),'Reaper effect is on regular counter; same combo and attack');
+ assert.equal(enhanced.g.state().maxHp,52);
+});
+test('relic discovery does not consume purchased four-choice ordinary loot or rerolls',()=>{
+ const seed={'parryTowerPermanent_v1':JSON.stringify({choice4:1,extraReroll:1})};
+ const g=makeHarness(seed,true);
+ g.dev().launch(3,'slime:normal');
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g);
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic');
+ const beforeRerolls=g.state().rerolls;
+ g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'reward');
+ assert.equal(g.state().rerolls,beforeRerolls,'relic choice cannot spend ordinary rerolls');
+ assert.equal((g.el.get('rewardCards').innerHTML.match(/class="reward-card/g)||[]).length,4);
+});
