@@ -96,3 +96,34 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .combat-buffs{font-size:11px;line-height:1.7;color:#b9ddf6;background:#14253a;border:1px solid #425e7b;border-radius:8px;margin-top:10px;padding:8px 10px;overflow-wrap:anywhere}
 .combat-buffs[hidden]{display:none!important}
 @media(max-width:520px){.combat-buffs{font-size:10px;padding:7px}}
+
+/* v0.6.0: three-choice relic discovery and swap overlay. */
+.relic-modal{width:min(100%,720px);max-height:100%;overflow-y:auto;padding:10px 11px 17px}
+.relic-modal h2{font-size:clamp(21px,4vw,30px);margin:7px 0}
+.relic-offer-hint{color:#aabbd6;font-size:12px;margin:4px 0 12px}
+.relic-offer-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.relic-reward-card{display:flex;flex-direction:column;align-items:center;gap:7px;border:1px solid #5c6e8a;border-radius:12px;min-height:210px;padding:15px 10px;background:linear-gradient(150deg,#23334b,#141f34);color:#f5f7ff;cursor:pointer}
+.relic-reward-card:hover,.relic-replace-card:hover{border-color:#f5d28f;background-color:#273e59}
+.relic-reward-card.rare{border-color:#6585c8;background:linear-gradient(150deg,#273d67,#18233e)}
+.relic-reward-card.legendary{border-color:#bd8ed5;background:linear-gradient(150deg,#483058,#24182c)}
+.relic-reward-rarity{font-size:10px;letter-spacing:.12em;color:#e9c999;font-weight:800}
+.relic-reward-symbol{font-size:37px;margin:8px 0}
+.relic-reward-card strong{font-size:14px}
+.relic-reward-desc{font-size:11px;line-height:1.6;color:#e0e5f6;flex:1}
+.relic-reward-card small{font-size:10px;line-height:1.5;color:#b7d4e4}
+.relic-offer-actions{display:flex;gap:9px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.relic-replace-list{display:flex;flex-direction:column;gap:8px}
+.relic-replace-list[hidden]{display:none!important}
+.relic-replace-note{color:#e6cee9;font-size:12px;margin:3px 0}
+.relic-replace-card{display:flex;align-items:center;gap:10px;width:100%;min-height:67px;border:1px solid #526785;background:#1e3049;color:#f2f5ff;border-radius:10px;padding:10px;text-align:left;cursor:pointer}
+.relic-replace-card>span:first-child{font-size:26px}
+.relic-replace-card>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:3px}
+.relic-replace-card small{font-size:10px;color:#aabbd4}
+.relic-replace-card>span:last-child{font-size:11px;color:#ffe2a0;white-space:nowrap}
+.relic-inventory{display:flex;flex-direction:column;gap:7px}
+.relic-owned{display:flex;align-items:flex-start;gap:9px;border:1px solid #435b77;background:#14243c;border-radius:9px;padding:9px}
+.relic-owned.rare{border-color:#597cb8}.relic-owned.legendary{border-color:#a780bf}
+.relic-owned-icon{font-size:24px}
+.relic-owned-title{font-size:12px;font-weight:800;color:#f6e3c2}
+.relic-owned-desc{font-size:10px;line-height:1.5;color:#a9c2da;margin-top:3px}
+@media(max-width:520px){.relic-modal{padding:6px 4px 14px}.relic-offer-cards{gap:5px}.relic-reward-card{min-height:205px;padding:10px 5px}.relic-reward-symbol{font-size:27px}.relic-reward-card strong{font-size:12px}.relic-reward-desc,.relic-reward-card small{font-size:10px}}
