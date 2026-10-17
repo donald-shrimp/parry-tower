@@ -12,7 +12,7 @@ jobs:
       - name: Check encounter data and gameplay invariants
         run: |
           node --check assets/encounters.js
-          node --test tests/encounters.test.js
+          node --test tests/encounters.test.js tests/game-smoke.test.js
       - name: Check Pages entry and asset links
         shell: python
         run: |
