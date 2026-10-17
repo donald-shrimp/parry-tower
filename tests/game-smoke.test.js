@@ -6,7 +6,7 @@ function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs','relicCover','relicOfferCards','relicReplaceList','relicList','relicCount'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs','relicCover','relicOfferCards','relicReplaceList','relicList','relicCount','routeCover','routeCards','roomCover','roomActions','routeSkillCover','routeSkillCards','towerCoinsLabel'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -49,7 +49,7 @@ function makeHarness(seed={},devMode=false){
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
  const window={
-  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
+  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
@@ -86,6 +86,13 @@ function makeHarness(seed={},devMode=false){
    setOverchargeCount:value=>{game.overchargeCount=value},
    setJustStreak:value=>{game.justStreak=value},
    setBloodlustPending:value=>{game.bloodlustPending=value},
+   jumpFloor:floor=>{stopScore();game.floor=floor;game.routeTrial=false;enterFloor(performance.now());return game.mode},
+   setEvent:id=>{if(game.currentRoom!=='event'||!EV.BY_ID[id])return false;game.eventId=id;game.roomStage=null;game.roomLocked=false;renderRoom();return true},
+   setTowerCoins:coins=>{game.towerCoins=coins;syncHUD()},
+   getRouteOptions:()=>RT.options(game.floor).map(r=>r.id),
+   getEventActions:()=>EV.BY_ID[game.eventId]?.actions.map(x=>x.id)||[],
+   setEventStage:stage=>{game.roomStage=stage;renderRoom()},
+
    grantRelic:id=>{
     if(!RR.BY_ID[id]||game.relics.includes(id)||game.relics.length>=RR.MAX_HELD)return false;
     const mode=game.mode,offer=game.relicOffer;game.mode='relic';game.relicOffer=[id];
@@ -128,6 +135,10 @@ function makeHarness(seed={},devMode=false){
    upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:()=>({dataset:{equip:String(slot)},value:id||''})}})},
    relicSelect(id){el.get('relicOfferCards').listeners.click({target:{closest:()=>({dataset:{relic:id}})}})},
    relicReplace(id){el.get('relicReplaceList').listeners.click({target:{closest:()=>({dataset:{replace:id}})}})},
+   routeSelect(id){el.get('routeCards').listeners.click({target:{closest:()=>({dataset:{route:id}})}})},
+   roomChoose(id){el.get('roomActions').listeners.click({target:{closest:()=>({dataset:{roomAction:id}})}})},
+   routeSkillSelect(id){el.get('routeSkillCards').listeners.click({target:{closest:()=>({dataset:{routeSkill:id}})}})},
+
 
   parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
@@ -703,7 +714,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.6\.0/);
+  assert.match(html,/v0\.7\.0 PREVIEW/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -901,7 +912,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
   assert.match(html,/src="\.\/assets\/relics\.js"/);
-  assert.match(html,/v0\.6\.0/);
+  assert.match(html,/v0\.7\.0 PREVIEW/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
