@@ -14,7 +14,7 @@ const SKILLS=[
 {id:'thorns',icon:'🪞',name:'反射',rarity:'rare',max:6,desc:l=>`ガード時に攻撃力の ${30+l*18}% を反射`,hint:'障壁と共鳴'},
 {id:'precision',icon:'🎯',name:'一点集中',rarity:'common',max:6,desc:l=>`ジャスト反撃倍率 +${l*35}%`,hint:'奥義と共鳴'},
 {id:'focus',icon:'👁️',name:'心眼',rarity:'common',max:4,desc:l=>`ジャスト判定を ±${11+l*2}ms に拡張`,hint:'操作補助'},
-{id:'stability',icon:'🍀',name:'静かな呼吸',rarity:'common',max:4,desc:l=>`通常パリィを ±${28+l*3}ms に拡張`,hint:'操作補助'},
+{id:'stability',icon:'🍀',name:'静かな呼吸',rarity:'common',max:4,desc:l=>`通常パリィを ±${31+l*3}ms に拡張`,hint:'操作補助'},
 {id:'ember',icon:'☄️',name:'灼熱',rarity:'common',max:6,desc:l=>`パリィで炎の継続ダメージ +${l*7}`,hint:'処刑と共鳴'},
 {id:'execute',icon:'💀',name:'処刑人',rarity:'rare',max:6,desc:l=>`残HP35%以下の敵への攻撃 +${l*23}%`,hint:'炎と共鳴'},
 {id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`敵の攻撃間隔が ${l*7}% 長くなる`,hint:'テンポ操作'},
@@ -100,7 +100,7 @@ function upgradeCount(){return Object.values(game.lv||{}).reduce((a,b)=>a+b,0)}
 function lvl(id){return game.lv?.[id]||0}
 function has(a,b){return lvl(a)>0&&lvl(b)>0}
 function getPerfectWindow(){return 11+lvl('focus')*2}
-function getParryWindow(){return 28+lvl('stability')*3}
+function getParryWindow(){return 31+lvl('stability')*3}
 function setMode(mode){game.mode=mode;$('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);$('exitPracticeBtn').hidden=!game.practice;for(const name of ['title','reward','death','pause'])$(name+'Cover').hidden=name!==({title:'title',reward:'reward',gameover:'death',pause:'pause'}[mode]);$('pauseBtn').disabled=!['combat','pause'].includes(mode);$('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';$('runStateLabel').textContent={title:'READY',combat:'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED'}[mode]||'';}
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=String(game.floor||1).padStart(2,'0');$('floorBadge').textContent=enemy?.boss?'✦ BOSS':'';$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('timingInfo').textContent=game.practice?'稽古中 · 敵を切り替えて比較可能':'身構え → 踏み込み → 接触'}
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
