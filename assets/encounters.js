@@ -86,22 +86,41 @@
   return {maxHp:Math.max(1,Math.round(49*hpGrowth*hpScale)),
    atk:Math.max(13,Math.round(14*atkGrowth*atkScale))};
  }
- function emptyBook(){return {version:1,defeated:{}}}
+ function emptyBook(){return {version:2,seen:{},defeated:{}}}
  function normalizeBook(input){
   const b=emptyBook();
-  if(!input||typeof input!=='object'||!input.defeated||typeof input.defeated!=='object')return b;
-  for(const [key,rec] of Object.entries(input.defeated)){
+  if(!input||typeof input!=='object')return b;
+  const sourceSeen=input.seen&&typeof input.seen==='object'?input.seen:{};
+  for(const [key,rec] of Object.entries(sourceSeen)){
+   if(!findByKey(key)||!rec||typeof rec!=='object')continue;
+   const encounters=Math.max(0,Math.min(999999,Math.floor(Number(rec.encounters)||0)));
+   if(encounters>0)b.seen[key]={encounters,firstFloor:Math.max(1,Math.floor(Number(rec.firstFloor)||1))};
+  }
+  // Prior v0.5.3 previews tracked only defeated enemies. Preserve their unlocks.
+  const defeated=input.defeated&&typeof input.defeated==='object'?input.defeated:{};
+  for(const [key,rec] of Object.entries(defeated)){
    if(!findByKey(key)||!rec||typeof rec!=='object')continue;
    const wins=Math.max(0,Math.min(999999,Math.floor(Number(rec.wins)||0)));
-   if(wins>0)b.defeated[key]={wins,firstFloor:Math.max(1,Math.floor(Number(rec.firstFloor)||1))};
+   if(wins>0){
+    const firstFloor=Math.max(1,Math.floor(Number(rec.firstFloor)||1));
+    b.defeated[key]={wins,firstFloor};
+    if(!b.seen[key])b.seen[key]={encounters:wins,firstFloor};
+   }
   }
   return b;
  }
+ function recordEncounter(book,enc,floor){
+  const key=enemyKey(enc),previous=book.seen[key];
+  book.seen[key]={encounters:Math.min(999999,(previous?.encounters||0)+1),
+   firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
+  return !previous;
+ }
  function recordDefeat(book,enc,floor){
   const key=enemyKey(enc),previous=book.defeated[key];
-  book.defeated[key]={wins:(previous?.wins||0)+1,firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
+  if(!book.seen[key])recordEncounter(book,enc,floor);
+  book.defeated[key]={wins:Math.min(999999,(previous?.wins||0)+1),firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
   return !previous;
  }
  return Object.freeze({monsters,bosses,rares,all,ZONES,byId,zoneForFloor,positionInZone,
-  encounterForFloor,enemyKey,buildEnemy,findByKey,codexEntries,baseStats,emptyBook,normalizeBook,recordDefeat});
+  encounterForFloor,enemyKey,buildEnemy,findByKey,codexEntries,baseStats,emptyBook,normalizeBook,recordEncounter,recordDefeat});
 });
