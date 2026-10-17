@@ -6,7 +6,7 @@ function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -66,7 +66,26 @@ function makeHarness(seed={},devMode=false){
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
- const debugSource=source.replace(/\}\)\(\);\s*$/, `window.__parryBloodTest={
+ const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
+  const rawDamageEnemy=damageEnemy;
+  damageEnemy=function(n,color,label){
+   const before=game.enemy?.hp||0;
+   const outcome=rawDamageEnemy(n,color,label);
+   hitLog.push({label:label||'反撃',dealt:Math.max(0,before-(game.enemy?.hp||0))});
+   return outcome;
+  };
+  window.__parryBloodTest={
+   hits:()=>hitLog.map(h=>({...h})),
+   resetHits:()=>{hitLog.length=0},
+   rewardPool:()=>choosePool().map(skill=>skill.id),
+   incoming:n=>applyDamage(n,'TEST'),
+   setShield:ward=>{game.shield=ward},
+   setFrostWard:flag=>{game.frostWard=flag},
+   setFrostCount:value=>{game.frostCount=value},
+   setFortitudeReady:flag=>{game.fortitudeReady=flag},
+   setOverchargeCount:value=>{game.overchargeCount=value},
+   setJustStreak:value=>{game.justStreak=value},
+   setBloodlustPending:value=>{game.bloodlustPending=value},
   bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
   setHp:hp=>{game.hp=hp},
@@ -77,8 +96,8 @@ function makeHarness(seed={},devMode=false){
   setBurn:burn=>{game.enemy.burn=burn},
   setEnemyAttack:attack=>{game.enemy.atk=attack},
   setBaseAttack:attack=>{game.baseAtk=attack},
-  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,
-   guards:game.guards,parryDamageActive:!!game.parryDamageActive})
+  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,charge:game.charge,
+   guards:game.guards,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
  };})();`);
  vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
@@ -416,7 +435,7 @@ test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as sep
  assert.equal(g.state().permanent.slots,1);
  assert.equal(g.state().souls,730);
  g.upgradeTab('skills');
- assert.match(g.el.get('upgradeList').innerHTML,/18/);
+ assert.match(g.el.get('upgradeList').innerHTML,/24/);
  assert.match(g.el.get('upgradeList').innerHTML,/奥義紋/);
  g.upgradeBuy('skill','rune');
  assert.equal(g.state().souls,430,'epic is exactly 300 shards');
