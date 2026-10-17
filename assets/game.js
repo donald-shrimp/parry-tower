@@ -3,10 +3,12 @@ const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getCon
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
-const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
+const PR=window.ParryProgression;if(!PR)throw Error('Missing assets/progression.js');
+const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0};
 let meta={...baseMeta};try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');for(const k of Object.keys(baseMeta))if(Number.isFinite(s[k]))meta[k]=Math.max(0,Math.floor(s[k]));}catch(e){}
 const save=()=>{if(DEV_MODE)return;try{localStorage.setItem(KEY,JSON.stringify(meta))}catch(e){}};
+const savePermanent=()=>{if(DEV_MODE)return;try{localStorage.setItem(PERMANENT_KEY,JSON.stringify(permanent))}catch(e){}};
 let book=P.emptyBook();try{book=P.normalizeBook(JSON.parse(localStorage.getItem(BOOK_KEY)||'{}'))}catch(e){}
 const saveBook=()=>{if(DEV_MODE)return;try{localStorage.setItem(BOOK_KEY,JSON.stringify(book))}catch(e){}};
 const SKILLS=[
@@ -30,6 +32,9 @@ const SKILLS=[
 {id:'double',icon:'🎲',name:'双撃',rarity:'epic',max:5,desc:l=>`${14+l*9}% の確率で反撃が2倍`,hint:'一撃の爆発力'}
 ];
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
+// Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
+let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.getItem(PERMANENT_KEY)||'{}'),SKILLS)}catch(e){}
+let upgradeTab='loadout',upgradeReturnMode='title';
 const SYNERGIES=[
  {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
  {a:'blood',b:'fury',name:'🩸 血の律動',desc:'コンボ数に応じて吸血量増加'},
@@ -133,19 +138,19 @@ function deathInputBlocked(now=performance.now()){
 function syncDeathInputLock(now=performance.now()){
  const blocked=deathInputBlocked(now);
  $('deathCover').inert=blocked;
- for(const id of ['retryBtn','homeBtn','deathCodexBtn'])$(id).disabled=blocked;
+ for(const id of ['retryBtn','homeBtn','deathCodexBtn','deathUpgradeBtn'])$(id).disabled=blocked;
 }
 function setMode(mode){
  game.mode=mode;
  $('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').hidden=!game.practice||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').textContent='稽古を終了';
- const covers={title:'title',reward:'reward',gameover:'death',pause:'pause',codex:'codex'};
- for(const name of ['title','reward','death','pause','codex'])$(name+'Cover').hidden=name!==covers[mode];
+ const covers={title:'title',reward:'reward',gameover:'death',pause:'pause',codex:'codex',upgrade:'upgrade'};
+ for(const name of ['title','reward','death','pause','codex','upgrade'])$(name+'Cover').hidden=name!==covers[mode];
  $('pauseBtn').disabled=!['combat','pause'].includes(mode);
  $('pauseBtn').textContent=mode==='pause'?'▶ 再開':'Ⅱ 一時停止';
  syncDeathInputLock();
- $('runStateLabel').textContent={title:'READY',combat:game.practice?'PRACTICE':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY'}[mode]||'';
+ $('runStateLabel').textContent={title:'READY',combat:game.practice?'PRACTICE':'IN BATTLE',victory:'CLEARED',reward:'LEVEL UP',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',upgrade:'UPGRADES'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
  $('floorBadge').textContent=game.practice?'⚔ PRACTICE':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
@@ -154,13 +159,86 @@ function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.prac
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
 function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');}
 function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
+
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
-function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{if(deathInputBlocked())return;const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
-function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild();}
+function soulReward(n){return Math.ceil(n*(1+PR.value(permanent,'soulGain')/100))}
+const LEGACY_OFFERS=[
+ {id:'life',icon:'♡',name:'生命の祝福',desc:'最大HP +10 / Lv.',max:5},
+ {id:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3 / Lv.',max:5},
+ {id:'ward',icon:'🛡',name:'守護の祈り',desc:'初期障壁 +8 / Lv.',max:5}
+];
+function upgradeRow(o){
+ const full=o.level>=o.max,price=full?Infinity:o.cost;
+ return `<div class="upgrade-row ${o.rarity||''}"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${o.desc}</div></div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
+}
+function renderUpgradeScreen(){
+ $('upgradeCoins').textContent=meta.coins+' ✧';
+ const tabs=[['loadout','装備'],['skills','スキル解放'],['base','基礎強化'],['special','特殊強化']];
+ $('upgradeTabs').innerHTML=tabs.map(([id,name])=>`<button type="button" class="upgrade-tab ${upgradeTab===id?'active':''}" aria-pressed="${upgradeTab===id}" data-tab="${id}">${name}</button>`).join('');
+ if(upgradeTab==='loadout'){
+  const owned=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id));
+  const rows=PR.SLOT_COSTS.map((cost,i)=>{
+   if(i>=permanent.slots){
+    return `<div class="upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">スロット ${i+1}</div><div class="upgrade-effect">未解放</div></div></div><button type="button" class="upgrade-buy" data-action="slot" data-key="${i}" ${i!==permanent.slots||meta.coins<cost?'disabled':''}>${cost} ✧</button></div>`;
+   }
+   const selected=permanent.equipped[i];
+   const options=owned.filter(skill=>!permanent.equipped.some((id,j)=>j!==i&&id===skill.id))
+    .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
+   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
+  }).join('');
+  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div>${owned.length?'':'<div class="upgrade-empty">「スキル解放」から装備するスキルを購入</div>'}`;
+ }else if(upgradeTab==='skills'){
+  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
+  $('upgradeList').innerHTML=`<p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>`+
+   SKILLS.map(skill=>{
+    const owned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill);
+    return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${owned||meta.coins<cost?'disabled':''}>${owned?'解放済み':cost+' ✧'}</button></div>`;
+   }).join('');
+ }else{
+  const legacy=upgradeTab==='base'?LEGACY_OFFERS.map(o=>upgradeRow({...o,level:meta[o.id],cost:shopCost(o.id),action:'legacy'})):[];
+  const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab).map(o=>{
+   const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
+   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc:o.description(nextValue)});
+  });
+  $('upgradeList').innerHTML=legacy.concat(extra).join('');
+ }
+}
+function openUpgrade(){
+ if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
+ upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
+}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode)}
+function buyUpgrade(action,key){
+ if(game.mode!=='upgrade')return;
+ let cost=Infinity,apply=null;
+ if(action==='slot'){
+  const index=Number(key);
+  if(Number.isInteger(index)&&index===permanent.slots&&index<PR.SLOT_COSTS.length){
+   cost=PR.SLOT_COSTS[index];apply=()=>{permanent.slots++};
+  }
+ }else if(action==='skill'){
+  const skill=SK[key];
+  if(skill&&!permanent.unlockedSkills.includes(skill.id)){
+   cost=PR.skillPrice(skill);apply=()=>{permanent.unlockedSkills.push(skill.id)};
+  }
+ }else if(action==='legacy'){
+  if(LEGACY_OFFERS.some(o=>o.id===key)&&meta[key]<5){
+   cost=shopCost(key);apply=()=>{meta[key]++};
+  }
+ }else if(action==='extra'){
+  const def=PR.UPGRADES.find(o=>o.id===key);
+  if(def&&permanent[key]<def.costs.length){
+   cost=PR.costNext(permanent,key);apply=()=>{permanent[key]++};
+  }
+ }
+ if(!apply||!Number.isFinite(cost)||meta.coins<cost)return;
+ meta.coins-=cost;apply();save();savePermanent();renderUpgradeScreen();sound(740,.19,'triangle',.06,190);
+}
+function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
- const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 function spawnEnemy(t){
  clashFX=null;
  const floor=game.floor||1;
@@ -186,6 +264,7 @@ function spawnEnemy(t){
  const stats=P.baseStats(archetype,floor,game.practice);
  const maxHp=game.practice?999999:stats.maxHp;
  game.enemy={...archetype,name:archetype.displayName,maxHp,hp:maxHp,atk:stats.atk,burn:0,index:0};
+ if(archetype.boss&&!game.practice)game.shield+=PR.value(permanent,'bossWard');
  startScore(game.enemy);
  if(archetype.rare&&!game.practice){sound(890,.20,'sine',.08,-180);showText('✦ RARE ENCOUNTER ✦',w*.50,h*.20,'#f6d58b',20)}
  game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170;game.telegraphStart=t;
@@ -225,19 +304,22 @@ function clearFloor(){
  const defeated=game.enemy;
  if(!game.practice){
   P.recordDefeat(book,defeated,game.floor);saveBook();
-  const bonus=defeated.rare?(defeated.soulBonus||0):defeated.elite?2:0;
+  const baseBonus=defeated.rare?(defeated.soulBonus||0):defeated.elite?2:0;
+  const bonus=baseBonus?soulReward(baseBonus):0;
   if(bonus){game.bonusSouls+=bonus;meta.coins+=bonus;save();showText('魂の欠片 +'+bonus,w*.52,h*.34,'#ffe19a',21)}
+  const recovery=PR.value(permanent,'regen');
+  if(recovery)heal(Math.ceil(game.maxHp*recovery/100));
  }
  stopScore();game.mode='victory';game.clearAt=performance.now();defeated.hp=0;
  game.bossKills+=Number(defeated.boss);
  puff(w*.72,h*.58,defeated.color,40,1.8);flash=1;flashColor='#f6cb84';
  sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();
 }
-function applyDamage(n,tag){let damage=game.practice?0:Math.max(1,Math.ceil(n));const used=Math.min(game.shield,damage);game.shield=Math.max(0,game.shield-used);damage-=used;if(damage>0)game.hp=Math.max(0,game.hp-damage);showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);shake=Math.max(shake,damage?11:4);if(game.hp<=0)die();syncHUD();}
-function die(){if(game.mode==='gameover')returnstopScore();const coins=Math.max(3,Math.floor(game.floor*2+game.bossKills*3));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();renderShop();game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
-function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max),taken=[];for(let k=0;k<Math.min(3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>rarityWeight[s.rarity]*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
+function applyDamage(n,tag){let damage=game.practice?0:Math.max(1,Math.ceil(n));const used=Math.min(game.shield,damage);game.shield=Math.max(0,game.shield-used);damage-=used;if(damage>0)game.hp=Math.max(0,game.hp-damage);showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);shake=Math.max(shake,damage?11:4);if(game.hp<=0){const revive=PR.value(permanent,'revive');if(!game.practice&&!game.reviveUsed&&revive){game.reviveUsed=true;game.hp=Math.max(1,Math.ceil(game.maxHp*revive/100));showText('復活!',w*.28,h*.34,'#ffdc97',26);flash=.65;flashColor='#ffc878';sound(660,.30,'triangle',.07,120)}else die()}syncHUD();}
+function die(){if(game.mode==='gameover')return;stopScore();const coins=soulReward(Math.max(3,Math.floor(game.floor*2+game.bossKills*3)));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
+function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max),taken=[];for(let k=0;k<Math.min(PR.value(permanent,'choice4')||3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>(rarityWeight[s.rarity]??rarityWeight.common)*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
 function showRewards(){if(game.mode!=='victory')return;game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');}
-function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardTitle').textContent=`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>`<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span><span class="rtag">${s.hint}</span></button>`).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length}
+function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>`<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span><span class="rtag">${s.hint}</span></button>`).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length}
 function takeSkill(id){const s=SK[id];if(game.mode!=='reward'||!choiceSet.find(v=>v.id===id)||lvl(id)>=s.max)return;const prevMax=game.maxHp;game.lv[id]=(game.lv[id]||0)+1;if(id==='heal'){game.maxHp=65+10*meta.life+lvl('heal')*15;game.hp+=game.maxHp-prevMax+12}if(game.floor%5===0)game.rerolls++;sound(790,.17,'triangle',.06,140);advance()}
 function advance(){game.floor++;game.hp=Math.min(game.hp,game.maxHp);spawnEnemy(performance.now());setMode('combat');renderBuild();syncHUD()}
 function showHeal(){if(game.mode!=='reward')return;heal(Math.round(game.maxHp*.2));if(game.floor%5===0)game.rerolls++;advance()}
@@ -558,13 +640,37 @@ function update(now,dt){const m=game.mode;if(m==='combat'){scheduleScore();syncA
  }else if(m==='victory'&&now-game.clearAt>900)showRewards();
  shake=Math.max(0,shake-dt*.08);flash=Math.max(0,flash-dt*.003);particles=particles.filter(p=>{p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vx*=.985;p.vy+=.025;p.life-=dt;return p.life>0});texts=texts.filter(a=>now-a.t<a.life);
 }
-function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}});
+function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover'&&game.mode!=='upgrade')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}else if(e.code==='Escape'&&game.mode==='upgrade'){e.preventDefault();closeUpgrade()}});
 $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){
  const key=$('practiceEnemy').value;
  if(!book.seen[key]||!P.findByKey(key))return;
  game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
  }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
+
+$('upgradeOpenBtn').addEventListener('click',openUpgrade);
+$('deathUpgradeBtn').addEventListener('click',openUpgrade);
+$('upgradeCloseBtn').addEventListener('click',closeUpgrade);
+$('upgradeTabs').addEventListener('click',e=>{
+ if(game.mode!=='upgrade')return;
+ const btn=e.target.closest?.('[data-tab]');
+ const tab=btn?.dataset.tab;
+ if(!['loadout','skills','base','special'].includes(tab))return;
+ upgradeTab=tab;renderUpgradeScreen();
+});
+$('upgradeList').addEventListener('click',e=>{
+ if(game.mode!=='upgrade')return;
+ const btn=e.target.closest?.('[data-action]');
+ if(btn)buyUpgrade(btn.dataset.action,btn.dataset.key);
+});
+$('upgradeList').addEventListener('change',e=>{
+ if(game.mode!=='upgrade')return;
+ const select=e.target.closest?.('[data-equip]');
+ if(!select)return;
+ const result=PR.equip(permanent,Number(select.dataset.equip),select.value||null,SKILLS);
+ if(result){permanent=result;savePermanent()}
+ renderUpgradeScreen();
+});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause()});
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
@@ -588,5 +694,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,attackSpan:game.attackSpan,offset:latencyOffset});resize();title();requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,runSkills:{...(game.lv||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped]}});resize();title();requestAnimationFrame(frame);
 })();

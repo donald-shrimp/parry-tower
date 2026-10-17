@@ -27,7 +27,8 @@ index.html                 ゲーム画面のDOM
 assets/style.css           UI・レスポンシブCSS
 assets/game.js             ゲーム、描画、音楽とパリィ判定
 assets/encounters.js       階層ごとの出現ルール、レア・精鋭、遭遇図鑑のデータ定義
-tests/                    出現ルールとゲーム画面の状態遷移を検証するテスト
+assets/progression.js      恒久強化の費用・保存形式・初期スキル装備の検証
+tests/                    出現ルール・恒久強化・ゲーム画面の状態遷移を検証するテスト
 .nojekyll                  GitHub Pages静的配信設定
 .github/workflows/check.yml  構文と静的ファイルのCI
 docs/ARCHITECTURE.md       同期方式と改修時の注意
@@ -64,3 +65,12 @@ v0.5.3の階層・敵出現・図鑑・稽古場の仕様は [docs/PROGRESSION_V
 ## ライセンス
 
 現時点ではライセンス未設定です。GitHub上で公開されても、再利用・再配布の許諾を意味するものではありません。外部コントリビューションを募集する前に方針を決めます。
+
+
+## v0.5.6 試作：恒久強化・初期スキル装備（未公開）
+
+PR #11 で準備中。スロット2枠の購入、全18種類の個別解放、装備変更、階層突破後の回復・ボス開始時の障壁・魂の獲得増・引き直し・4択・1回復活、専用の「恒久強化・装備」画面を追加します。
+
+スキル追加時には `assets/game.js` の `SKILLS` に定義するだけでショップへ反映されます。標準費用は COMMON=25、RARE=90、EPIC=300。個別に異なる費用を付けたいときはスキル定義に `startCost` を指定します。
+
+旧 `parryTowerPrototype_v1` はそのまま維持し、新しい装備・特殊強化を `parryTowerPermanent_v1` に独立保存します。詳細は [恒久強化仕様](docs/PERMANENT_PROGRESSION_V056.md) を参照してください。

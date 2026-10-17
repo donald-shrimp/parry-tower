@@ -8,7 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check JS syntax
-        run: node --check assets/game.js
+        run: |
+          node --check assets/progression.js
+          node --check assets/game.js
       - name: Check dedicated enemies and developer launcher syntax
         run: |
           node --check assets/enemy-motions.js
@@ -17,7 +19,7 @@ jobs:
       - name: Check encounter data and gameplay invariants
         run: |
           node --check assets/encounters.js
-          node --test tests/encounters.test.js tests/game-smoke.test.js
+          node --test tests/encounters.test.js tests/progression.test.js tests/game-smoke.test.js
       - name: Check Pages entry and asset links
         shell: python
         run: |
@@ -27,6 +29,8 @@ jobs:
           assert 'src="./assets/game.js"' in html
           assert 'src="./assets/encounters.js"' in html
           assert Path('assets/encounters.js').is_file()
+          assert Path('assets/progression.js').is_file()
+          assert 'src="./assets/progression.js"' in html
           assert Path('assets/style.css').is_file()
           assert Path('assets/game.js').is_file()
           assert Path('assets/enemy-motions.js').is_file()
@@ -35,6 +39,7 @@ jobs:
           dev = Path('dev.html').read_text(encoding='utf-8')
           assert 'data-parry-dev="true"' in dev
           assert 'src="./assets/dev-tools.js"' in dev
+          assert 'src="./assets/progression.js"' in dev
           assert Path('assets/dev-tools.js').is_file()
           assert Path('assets/dev-tools.css').is_file()
           print('Static Pages layout OK')
