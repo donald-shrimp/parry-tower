@@ -564,6 +564,14 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   },
   reset(){title()},
   list(){return P.codexEntries().map(e=>({key:e.bookKey,name:e.displayName,rare:e.rare,boss:e.boss,elite:e.elite}))},
+  preview(floor=1,enemyKey=''){
+   const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
+   const encounter=enemyKey?P.findByKey(enemyKey):P.encounterForFloor(f,()=>.5);
+   if(!encounter)return null;
+   return {floor:f,key:encounter.bookKey,name:encounter.displayName,
+    hpMultiplier:encounter.hpMultiplier??1,atkMultiplier:encounter.atkMultiplier??1,
+    ...P.baseStats(encounter,f),boss:encounter.boss,elite:encounter.elite,rare:encounter.rare};
+  },
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode}},
   isolated:true
  });
