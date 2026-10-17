@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<title>パリィの塔 | 図鑑と闘技場 v0.5.3 preview</title>
+<title>パリィの塔 | 図鑑と稽古場 v0.5.3 preview</title>
 <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
@@ -17,21 +17,20 @@
   <main class="main">
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span>COMBO <strong id="comboLabel">0</strong></span></div></div>
-    <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="稽古相手を選択"><option value="slime">残響スライム</option><option value="knight">錆びた騎士</option><option value="rogue">影の暗殺者</option><option value="wraith">塔の亡霊</option><option value="guardian">鐘楼の守護者</option></select><span class="practice-desc">4拍カウントイン後、攻撃が拍に同期します</span></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><div class="modal-kicker">ONE TAP. ENDLESS TOWER.</div><h2>パリィの塔</h2><p>BGMの拍と、敵の振りかぶり・踏み込みが連動する。<br>音楽で拍をつかみ、モーションで「どの拍か」を読め。<br>静かな反復の先に、一瞬のパリィが待っている。</p><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">⚔ 稽古場で練習</button><button class="secondary" id="codexBtn">📖 図鑑・闘技場</button></div><div id="codexCount" class="smallnote">0体登録済み</div><div class="tip">画面タップ / クリック / <span class="key">SPACE</span> でパリィ<br>タイミングバーなし。音と構えを覚えて盾を構えよう。<br>音はオン推奨。雑魚とボスで曲調・BPMが変化。</div><div id="titleShop"></div></div></div>
+    <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select><span class="practice-desc">4拍カウントイン後、攻撃が拍に同期します</span></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
+     <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><div class="modal-kicker">ONE TAP. ENDLESS TOWER.</div><h2>パリィの塔</h2><p>BGMの拍と、敵の振りかぶり・踏み込みが連動する。<br>音楽で拍をつかみ、モーションで「どの拍か」を読め。<br>静かな反復の先に、一瞬のパリィが待っている。</p><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button></div><div id="codexCount" class="smallnote">0体遭遇済み</div><div class="tip">画面タップ / クリック / <span class="key">SPACE</span> でパリィ<br>タイミングバーなし。音と構えを覚えて盾を構えよう。<br>音はオン推奨。雑魚とボスで曲調・BPMが変化。</div><div id="titleShop"></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><p>次の階層に持ち込む能力を1つ選択</p><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button></div><div id="deathShop"></div></div></div>
      <div class="cover" id="codexCover" hidden><div class="modal codex-modal">
        <div class="modal-kicker">THE BESTIARY</div><h2>📖 魔物図鑑</h2>
-       <p id="codexSummary">倒した魔物が登録され、闘技場で再戦できるようになります。</p>
+       <p id="codexSummary">一度出会った魔物は稽古場に登録され、無敵で何度でも練習できます。</p>
        <div class="codex-toolbar"><label for="codexFilter">表示</label><select id="codexFilter">
         <option value="all">すべて</option><option value="discovered">登録済みのみ</option>
         <option value="normal">通常・ボス</option><option value="elite">精鋭</option><option value="rare">レア</option>
        </select><button class="secondary" id="codexCloseBtn">戻る</button></div>
        <div class="codex-list" id="codexList"></div>
-       <div class="smallnote">闘技場では魂の欠片・図鑑登録数は増えません。稽古場は引き続き自由に使えます。</div>
+       <div class="smallnote">稽古場ではHPが減らず、タイミングの早い・遅いが分かります。魂の欠片は獲得しません。</div>
       </div></div>
-     <div class="cover" id="arenaResultCover" hidden><div class="modal"><div class="modal-symbol">⚔️</div><div class="modal-kicker">ARENA</div><h2 id="arenaResultTitle">闘技場</h2><p id="arenaResultSummary"></p><div class="actionrow"><button class="primary" id="arenaAgainBtn">もう一度戦う</button><button class="secondary" id="arenaReturnBtn">図鑑に戻る</button></div></div></div>
      <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><p>次の一撃まで、時間は止まっています。</p><button class="primary" id="resumeBtn">戦闘に戻る</button><p class="tip">スマホでは画面の好きな位置をタップ</p></div></div>
     </div>
     <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b>　<span id="musicStatus">BGM待機中</span></span><span id="timingInfo">音楽＋モーションでパリィ</span></div></div>
@@ -41,7 +40,7 @@
   <aside class="aside">
    <div class="panel"><div class="panel-title">RUN STATUS <span class="side-sub" id="runStateLabel">READY</span></div><div class="statsgrid"><div class="stat"><div class="num" id="perfectStat">0</div><div class="label">JUST PARRY</div></div><div class="stat"><div class="num" id="damageStat">0</div><div class="label">TOTAL DAMAGE</div></div><div class="stat"><div class="num" id="bestComboStat">0</div><div class="label">MAX COMBO</div></div><div class="stat"><div class="num" id="chargeStat">0 / 7</div><div class="label">奥義 CHARGE</div></div></div></div>
    <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">塔を登るとここにスキルが増えていく</div></div><div id="synergyList"></div></div>
-   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作方法</span></div><div class="help">ドラムの拍を聴きながら、敵の身構え・踏み込みから<b style="color:#f5d6a3">攻撃が届く拍</b>を読んでください。敵は休符や裏拍でも攻撃します。<b>接触約100ms前</b>にタップすると盾が間に合います。<br>ジャスト <b>±11ms</b>、通常 <b>±31ms</b> は維持。<b>稽古場</b>では死なずに「何ms早い・遅い」を確認できます。<div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音より映像が早い/遅い場合に調整。プラスで着弾と判定が遅れます。</span><div class="mini-divider"></div>倒した敵は図鑑に登録され、闘技場で再戦可能。精鋭やレア敵は特別な報酬を持ちます。毎階クリア後に3択で強化。<b style="color:#f5d6a3">5階ごとにボス</b>が出現。2つの特定スキルを揃えると進化能力が発動します。</div></div>
+   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作方法</span></div><div class="help">ドラムの拍を聴きながら、敵の身構え・踏み込みから<b style="color:#f5d6a3">攻撃が届く拍</b>を読んでください。敵は休符や裏拍でも攻撃します。<b>接触約100ms前</b>にタップすると盾が間に合います。<br>ジャスト <b>±11ms</b>、通常 <b>±31ms</b> は維持。<b>稽古場</b>では死なずに「何ms早い・遅い」を確認できます。<div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音より映像が早い/遅い場合に調整。プラスで着弾と判定が遅れます。</span><div class="mini-divider"></div>遭遇した敵は図鑑に登録され、稽古場でパリィを練習可能。精鋭やレア敵は特別な報酬を持ちます。毎階クリア後に3択で強化。<b style="color:#f5d6a3">5階ごとにボス</b>が出現。2つの特定スキルを揃えると進化能力が発動します。</div></div>
   </aside>
  </div>
 </div>
