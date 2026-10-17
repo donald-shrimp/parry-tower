@@ -363,14 +363,19 @@ function finishParryRecovery(){
  game.parryRecoveryActive=false;
  const blood=finishParryBlood();
  const lust=lvl('bloodlust')&&!game.practice?heal(2+lvl('bloodlust')):0;
+ const bell=hasRelic('pilgrim_bell')&&game.relicBellDue?heal(4):0;
+ game.relicBellDue=false;
+ const pact=hasRelic('blood_pact_chalice')&&game.relicPactReady?heal(8):0;
+ game.relicPactReady=false;
  if(lvl('bloodlust')&&!game.practice){
   const multiple=(1+lvl('bloodlust')*.5)*(has('bloodlust','blood')?1.5:1);
   const cap=game.baseAtk*(2.5+lvl('bloodlust')*.5);
-  game.bloodlustPending=Math.min(cap,Math.round((blood+lust)*multiple));
+  game.bloodlustPending=Math.min(cap,Math.round((blood+lust+bell+pact)*multiple));
  }
 }
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
+ if(hasRelic('emperor_conduit')&&['⚡','雷鳴','雷霆','過充電','雷導','雷帝'].includes(label))n*=1.25;
  const damage=Math.max(1,Math.round(n)),dealt=Math.min(e.hp,damage);
  e.hp-=dealt;game.damage+=damage;
  // Guard reflection is outside the successful-parry scope; burn ticks bypass damageEnemy.
@@ -386,10 +391,13 @@ function damageEnemy(n,color='#fff',label){
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);const restored=Math.max(0,game.hp-a);if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);return restored}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
 function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
-  game.justStreak=0;game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
+  game.relicJustStreak=0;game.justStreak=0;
+  if(hasRelic('stopped_hand')&&!game.relicStopUsed){
+   game.relicStopUsed=true;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
+  }else game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');sound(250,.08,'triangle',.055,-80);
 }else if(kind==='miss'){
-  game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
+  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
 }else{
   game.lastDeflectAt=at;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
   game.justStreak=perfect?(game.justStreak||0)+1:0;
@@ -399,6 +407,19 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(heartbeatProc){game.justStreak=0;game.charge=Math.min(7,game.charge+1)}
   game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
   game.parryRecoveryActive=true;
+  if(hasRelic('conduit_stone'))game.relicBoltDue=relicBump('conduit_stone',4);
+  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge'))
+   game.relicEmperorDue=relicBump('emperor_conduit',5);
+  if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
+  if(hasRelic('ember_vial'))game.enemy.burn+=3;
+  if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(10);
+  if(hasRelic('broken_gear')&&game.relicGearReady){game.relicGearReady=false;relicShield(5)}
+  if(hasRelic('serene_crystal')){
+   game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
+   if(game.relicJustStreak>=3){game.relicJustStreak=0;relicShield(8);showText('静謐!',w*.34,h*.36,'#c7e5f9',17)}
+  }
+  const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
+  game.relicMaskReady=hasRelic('duet_mask')&&perfect;
   if(lvl('frost')&&!game.frostWard){
    game.frostCount=(game.frostCount||0)+1;
    if(game.frostCount>=4){game.frostCount=0;game.frostWard=true;showText('氷の加護!',w*.32,h*.34,'#c5ecff',18)}
@@ -414,7 +435,21 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   if(lvl('bloodlust')&&game.bloodlustPending>0){
    val+=game.bloodlustPending;showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);game.bloodlustPending=0;
   }
+  if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
+   game.relicStardustUsed=true;val*=1.3;
+  }
+  if(hasRelic('reaper_pact'))val*=1.35;
+  if(hasRelic('golden_festival_bell')&&e.boss)val*=1.2;
   damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
+  if(relicMaskSlash){
+   damageEnemy(val*.4,'#dfb8f5','仮面');if(game.mode!=='combat')return;
+  }
+  if(hasRelic('conduit_stone')&&game.relicBoltDue){
+   game.relicBoltDue=false;damageEnemy(12,'#a1e8ff','雷導');if(game.mode!=='combat')return;
+  }
+  if(hasRelic('emperor_conduit')&&game.relicEmperorDue){
+   game.relicEmperorDue=false;damageEnemy(20,'#bceeff','雷帝');if(game.mode!=='combat')return;
+  }
   if(heartbeatProc){
    damageEnemy(game.baseAtk*(.20+.15*lvl('heartbeat')),'#9ee8f7','拍動');if(game.mode!=='combat')return;
   }
@@ -436,7 +471,7 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
    damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
    if(game.mode!=='combat')return;
   }
-  if(game.charge>=7){game.charge=0;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
+  if(game.charge>=7){game.charge=0;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45)*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.75;flashColor='#d6c0ff';puff(w*.7,h*.55,'#dbb5fb',28,1.5);sound(660,.33,'sawtooth',.05,-340)}
   finishParryRecovery();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
 }
