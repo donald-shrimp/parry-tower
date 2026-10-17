@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<title>パリィの塔 | 開発者テスト v0.5.8</title>
+<title>パリィの塔 | 開発者テスト v0.6.0 PREVIEW</title>
 <link rel="stylesheet" href="./assets/style.css">
 <link rel="stylesheet" href="./assets/dev-tools.css">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
- <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.5.8 / 本編と別URL</span></div>
+ <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.6.0 PREVIEW / 本編と別URL</span></div>
  <div class="dev-controls">
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
@@ -23,7 +23,7 @@
 </section>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><h1>パリィの塔 <span>v0.5.8 DEV</span></h1></div></div>
+  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><h1>パリィの塔 <span>v0.6.0 PREVIEW DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♫ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <div class="layout">
@@ -33,6 +33,14 @@
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
      <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><h2>パリィの塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ 恒久強化・装備</button></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
+     <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
+      <div class="modal-kicker">RELIC DISCOVERED ✦</div>
+      <h2 id="relicOfferTitle">遺物をひとつ選べ</h2>
+      <p class="relic-offer-hint" id="relicOfferHint"></p>
+      <div class="relic-offer-cards" id="relicOfferCards"></div>
+      <div class="relic-replace-list" id="relicReplaceList" hidden></div>
+      <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>← 候補に戻る</button><button type="button" class="secondary" id="relicSkipBtn">今回は見送る →</button></div>
+      </div></div>
      <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ 恒久強化</button></div></div></div>
      <div class="cover" id="codexCover" hidden><div class="modal codex-modal">
        <div class="modal-kicker">THE BESTIARY · PRACTICE</div><h2>📖 魔物図鑑・稽古場</h2>
@@ -65,6 +73,7 @@
   <aside class="aside">
    <div class="panel"><div class="panel-title">RUN STATUS <span class="side-sub" id="runStateLabel">READY</span></div><div class="statsgrid"><div class="stat"><div class="num" id="perfectStat">0</div><div class="label">JUST PARRY</div></div><div class="stat"><div class="num" id="damageStat">0</div><div class="label">TOTAL DAMAGE</div></div><div class="stat"><div class="num" id="bestComboStat">0</div><div class="label">MAX COMBO</div></div><div class="stat"><div class="num" id="chargeStat">0 / 7</div><div class="label">奥義 CHARGE</div></div></div></div>
    <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">スキルなし</div></div><div id="synergyList"></div><div id="combatBuffs" class="combat-buffs" role="status" aria-live="off" hidden></div></div>
+   <div class="panel"><div class="panel-title">RELICS <span class="side-sub" id="relicCount">0 / 3</span></div><div class="relic-inventory" id="relicList"><div class="empty">遺物なし</div></div></div>
    <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作</span></div><div class="help"><div class="howto-brief">リズムに合わせて敵を斬れ！<br>画面タップまたは <span class="key">Space</span> キーでパリィ</div><div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音と判定がずれる場合に調整</span></div></div>
   </aside>
  </div>
