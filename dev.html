@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<title>パリィの塔 | 開発者テスト v0.5.6</title>
+<title>パリィの塔 | 開発者テスト v0.5.8 PREVIEW</title>
 <link rel="stylesheet" href="./assets/style.css">
 <link rel="stylesheet" href="./assets/dev-tools.css">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
- <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.5.6 / 本編と別URL</span></div>
+ <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.5.8 PREVIEW / 本編と別URL</span></div>
  <div class="dev-controls">
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
@@ -23,7 +23,7 @@
 </section>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><h1>パリィの塔 <span>v0.5.6 DEV</span></h1></div></div>
+  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><h1>パリィの塔 <span>v0.5.8 PREVIEW DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♫ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <div class="layout">
@@ -52,6 +52,7 @@
         <button class="upgrade-tab" type="button" data-tab="skills" aria-pressed="false">スキル解放</button>
         <button class="upgrade-tab" type="button" data-tab="base" aria-pressed="false">基礎強化</button>
         <button class="upgrade-tab" type="button" data-tab="special" aria-pressed="false">特殊強化</button>
+        <button class="upgrade-tab" type="button" data-tab="seal" aria-pressed="false">🔮 封印</button>
        </div>
        <div id="upgradeList" class="upgrade-list"></div>
       </div></div>
@@ -63,7 +64,7 @@
   </main>
   <aside class="aside">
    <div class="panel"><div class="panel-title">RUN STATUS <span class="side-sub" id="runStateLabel">READY</span></div><div class="statsgrid"><div class="stat"><div class="num" id="perfectStat">0</div><div class="label">JUST PARRY</div></div><div class="stat"><div class="num" id="damageStat">0</div><div class="label">TOTAL DAMAGE</div></div><div class="stat"><div class="num" id="bestComboStat">0</div><div class="label">MAX COMBO</div></div><div class="stat"><div class="num" id="chargeStat">0 / 7</div><div class="label">奥義 CHARGE</div></div></div></div>
-   <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">スキルなし</div></div><div id="synergyList"></div></div>
+   <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">スキルなし</div></div><div id="synergyList"></div><div id="combatBuffs" class="combat-buffs" role="status" aria-live="off" hidden></div></div>
    <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作</span></div><div class="help"><div class="howto-brief">リズムに合わせて敵を斬れ！<br>画面タップまたは <span class="key">Space</span> キーでパリィ</div><div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音と判定がずれる場合に調整</span></div></div>
   </aside>
  </div>
