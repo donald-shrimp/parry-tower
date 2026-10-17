@@ -887,3 +887,251 @@ test('new skill mechanics and seals never write to storage on developer test pag
  assert.equal(dev.state().sealedSkillIds.includes('king'),true);
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),meta);
 });
+
+
+function makeRelicFight(relics=[]){
+ const g=makeHarness();
+ g.press('startBtn');const d=g.bloodTest();d.setEnemyHp(20000);
+ for(const id of relics)assert.equal(d.grantRelic(id),true,'grant '+id);
+ return {g,d};
+}
+test('v0.6.0 relic overlay, module links, status panel and skill rewards are separate',()=>{
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
+   'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
+  assert.match(html,/src="\.\/assets\/relics\.js"/);
+  assert.match(html,/v0\.6\.0 PREVIEW/);
+ }
+ const g=makeHarness({},true);
+ assert.equal(g.dev().launch(3,'slime:normal'),true);
+ const d=g.bloodTest();d.setEnemyHp(1);
+ resolveBloodParry(g);
+ assert.equal(g.state().mode,'victory');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic','3F gives a relic before normal loot');
+ assert.equal(g.el.get('relicCover').hidden,false);
+ assert.equal(g.state().relicOffer.length,3);
+ const chosen=g.state().relicOffer[0];
+ g.relicSelect(chosen);
+ assert.equal(g.state().mode,'reward','must still receive normal skill choices');
+ assert.deepEqual(Array.from(g.state().relics),[chosen]);
+ assert.equal(g.el.get('relicCover').hidden,true);
+ assert.equal(g.el.get('relicCount').textContent,'1 / 3');
+ assert.equal((g.el.get('rewardCards').innerHTML.match(/class="reward-card/g)||[]).length,3);
+ g.press('healBtn');
+ assert.equal(g.state().floor,4);
+ assert.deepEqual(Array.from(g.state().relics),[chosen]);
+});
+test('boss fifth floor guarantees relic, player can skip, and next regular reward always appears',()=>{
+ const g=makeHarness({},true);
+ assert.equal(g.dev().launch(5,'guardian:normal'),true);
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g);
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic');
+ assert.ok(g.state().relicOffer.length>0);
+ g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'reward');
+ assert.deepEqual(Array.from(g.state().relics),[]);
+});
+test('at three slots, choice requires explicit swap or skip and discarded relic cannot be offered again',()=>{
+ const {g,d}=makeRelicFight(['reaper_pact','duet_mask','rusty_crest']);
+ assert.equal(g.state().maxHp,52,'reaper reduces base 65 HP by 20%');
+ d.awardPreview('boss10');
+ assert.equal(g.state().mode,'relic');
+ const selected=g.state().relicOffer[0];
+ assert.equal(g.state().relics.includes(selected),false);
+ g.relicSelect(selected);
+ assert.equal(g.state().mode,'relic');
+ assert.equal(g.state().relicSwapTarget,selected);
+ assert.match(g.el.get('relicReplaceList').innerHTML,/死神の盟約/);
+ g.press('relicBackBtn');
+ assert.equal(g.state().relicSwapTarget,null);
+ assert.equal(g.state().relics.length,3,'back leaves all items untouched');
+ g.relicSelect(selected);
+ g.relicReplace('reaper_pact');
+ assert.equal(g.state().mode,'reward');
+ assert.equal(g.state().maxHp,65,'taking off Reaper restores normal maxHP');
+ assert.equal(g.state().relics.length,3);
+ assert.equal(g.state().relics.includes('reaper_pact'),false);
+ assert.equal(g.state().relics.includes(selected),true);
+ assert.ok(g.state().relicDiscarded.includes('reaper_pact'));
+ const R=require('../assets/relics.js');
+ assert.equal(R.available(g.state().relics,g.state().relicDiscarded).some(r=>r.id==='reaper_pact'),false);
+});
+test('reaper pact reduction remains correct on Vital Vessel level-up and never grants free healing on removal',()=>{
+ const {g,d}=makeRelicFight(['reaper_pact']);
+ d.setHp(10);
+ assert.equal(g.state().maxHp,52);
+ d.setSkill('heal',1);
+ d.setRawMaxHp(80);
+ assert.equal(g.state().maxHp,64);
+ assert.equal(g.state().hp,10);
+ const boosted=d.hits().length;
+ resolveBloodParry(g,20);
+ assert.ok(d.hits().length>boosted);
+});
+test('common relic: rusty crest reduces first HP hit only, shielded hits do not consume it',()=>{
+ const {g,d}=makeRelicFight(['rusty_crest']);
+ d.setShield(20);
+ d.incoming(10);assert.equal(g.state().hp,65);
+ assert.equal(d.relicInfo().rustyUsed,false);
+ d.setShield(0);d.incoming(10);
+ assert.equal(g.state().hp,61,'first health hit takes 4 damage');
+ assert.equal(d.relicInfo().rustyUsed,true);
+ d.incoming(10);assert.equal(g.state().hp,51,'further hits take full damage');
+});
+test('common relic: stardust whetstone grants +30% to first counter in each floor',()=>{
+ const base=makeRelicFight(),boost=makeRelicFight(['stardust_whetstone']);
+ resolveBloodParry(base.g,20);resolveBloodParry(boost.g,20);
+ assert.ok(boost.d.hits()[0].dealt>=Math.round(base.d.hits()[0].dealt*1.29));
+ boost.d.resetHits();resolveBloodParry(boost.g,20);
+ assert.equal(boost.d.relicInfo().stardustUsed,true);
+ assert.ok(boost.d.hits()[0].dealt<base.d.hits()[0].dealt*1.4,'second parry not boosted');
+});
+test('common relic: conduit stone procs after four parries, emperor conduit boosts lightning by 25%',()=>{
+ const {g,d}=makeRelicFight(['conduit_stone','emperor_conduit']);
+ for(let i=0;i<3;i++)resolveBloodParry(g,20);
+ assert.equal(d.hits().filter(h=>h.label==='雷導').length,0);
+ resolveBloodParry(g,20);
+ assert.equal(d.hits().filter(h=>h.label==='雷導').length,1);
+ assert.equal(d.hits().find(h=>h.label==='雷導').dealt,15);
+ assert.equal(d.relicInfo().counters.conduit_stone,0);
+});
+test('common relic: ember vial accumulates burn even without Ember skill',()=>{
+ const {g,d}=makeRelicFight(['ember_vial']);
+ assert.equal(g.state().runSkills.ember,undefined);
+ resolveBloodParry(g,20);
+ assert.equal(d.relicInfo().burn,3);
+});
+test('common relic: pilgrim bell heals every four parries and real recovery fuels bounded Bloodlust',()=>{
+ const {g,d}=makeRelicFight(['pilgrim_bell']);
+ d.setSkill('bloodlust',1);d.setHp(10);
+ for(let i=0;i<3;i++)resolveBloodParry(g,20);
+ d.setHp(10);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().hp,17,'Bloodlust +3 and Bell +4');
+ assert.equal(g.state().bloodlustPending,11,'actual 7 HP ×1.5');
+});
+test('common relic: broken gear gives 5 shield on next parry after ultimate only',()=>{
+ const {g,d}=makeRelicFight(['broken_gear']);
+ d.setCharge(6);
+ resolveBloodParry(g,0);
+ assert.equal(d.relicInfo().gearReady,true);
+ assert.equal(g.state().shield,0,'does not grant shield on the ultimate parry');
+ resolveBloodParry(g,20);
+ assert.equal(g.state().shield,5);
+ assert.equal(d.relicInfo().gearReady,false);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().shield,5,'no repeated gear shield');
+});
+test('rare relic: serene crystal reacts to three consecutive JUSTs and ignores normal parries',()=>{
+ const {g,d}=makeRelicFight(['serene_crystal']);
+ for(let i=0;i<2;i++)resolveBloodParry(g,0);
+ assert.equal(g.state().shield,0);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().shield,0,'normal parry breaks JUST streak');
+ for(let i=0;i<3;i++)resolveBloodParry(g,0);
+ assert.equal(g.state().shield,8);
+ assert.equal(d.relicInfo().justStreak,0);
+});
+test('rare relic: emperor conduit creates autonomous lightning only when lightning skills are absent',()=>{
+ const {g,d}=makeRelicFight(['emperor_conduit']);
+ for(let i=0;i<5;i++)resolveBloodParry(g,20);
+ assert.deepEqual(d.hits().filter(h=>h.label==='雷帝').map(h=>h.dealt),[25]);
+ const withThunder=makeRelicFight(['emperor_conduit']);
+ withThunder.d.setSkill('thunder',1);
+ for(let i=0;i<5;i++)resolveBloodParry(withThunder.g,20);
+ assert.equal(withThunder.d.hits().some(h=>h.label==='雷帝'),false);
+ assert.ok(withThunder.d.hits().filter(h=>h.label==='⚡').every(h=>h.dealt>=28));
+});
+test('rare relic: silver mirror only mitigates GUARD HP damage, by 20% up to 8',()=>{
+ const {g,d}=makeRelicFight(['silver_mirror']);
+ d.setShield(0);d.setEnemyAttack(50);
+ resolveBloodParry(g,-40);
+ assert.equal(g.state().hp,41,'50*60%=30 guard -6=24 damage');
+ resolveBloodParry(g,-40);
+ assert.equal(g.state().hp,17);
+});
+test('rare relic: royal banner awards ten barrier points at 10, 20 etc combo',()=>{
+ const {g,d}=makeRelicFight(['royal_banner']);
+ d.setCombo(9);resolveBloodParry(g,20);
+ assert.equal(g.state().shield,10);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().shield,10);
+ d.setCombo(19);resolveBloodParry(g,20);
+ assert.equal(g.state().shield,20);
+});
+test('rare relic: blood pact chalice heals after first real HP loss per floor, compatible with Bloodlust',()=>{
+ const {g,d}=makeRelicFight(['blood_pact_chalice']);
+ d.setSkill('bloodlust',1);d.setEnemyAttack(15);
+ d.incoming(10);
+ assert.equal(d.relicInfo().pactReady,true);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().hp,65,'three Bloodlust and eight Pact heal to maximum');
+ assert.equal(g.state().bloodlustPending,15,'actual ten lost HP restored, not requested eleven');
+ assert.equal(d.relicInfo().pactReady,false);
+ d.incoming(10);
+ assert.equal(d.relicInfo().pactReady,false,'first injury each floor only');
+});
+test('rare relic: golden festival bell increases regular counters against bosses only',()=>{
+ const base=makeHarness({},true),boost=makeHarness({},true);
+ assert.equal(base.dev().launch(5,'guardian:normal'),true);
+ assert.equal(boost.dev().launch(5,'guardian:normal'),true);
+ base.bloodTest().setEnemyHp(20000);boost.bloodTest().setEnemyHp(20000);
+ assert.equal(boost.bloodTest().grantRelic('golden_festival_bell'),true);
+ resolveBloodParry(base,20);resolveBloodParry(boost,20);
+ assert.ok(boost.bloodTest().hits()[0].dealt>=Math.round(base.bloodTest().hits()[0].dealt*1.18));
+ const normal=makeRelicFight(['golden_festival_bell']),other=makeRelicFight();
+ resolveBloodParry(normal.g,20);resolveBloodParry(other.g,20);
+ assert.equal(normal.d.hits()[0].dealt,other.d.hits()[0].dealt,'does not boost normal enemies');
+});
+test('legendary relic: stopped hand preserves combo on first GUARD each floor, but not the next',()=>{
+ const {g,d}=makeRelicFight(['stopped_hand']);
+ d.setCombo(10);d.setEnemyAttack(10);
+ resolveBloodParry(g,-40);
+ assert.equal(g.state().combo,10);
+ assert.equal(d.relicInfo().stopUsed,true);
+ resolveBloodParry(g,-40);
+ assert.equal(g.state().combo,0);
+});
+test('legendary relic: duet mask stores exactly one slash on JUST, consumes on next success',()=>{
+ const {g,d}=makeRelicFight(['duet_mask']);
+ resolveBloodParry(g,0);
+ assert.equal(d.relicInfo().maskReady,true);
+ d.resetHits();resolveBloodParry(g,20);
+ assert.equal(d.hits().filter(h=>h.label==='仮面').length,1);
+ assert.equal(d.relicInfo().maskReady,false);
+ d.resetHits();resolveBloodParry(g,20);
+ assert.equal(d.hits().filter(h=>h.label==='仮面').length,0);
+});
+test('successful parry relic extra hits share Blood lifesteal cap, guard-only reflection never does',()=>{
+ const {g,d}=makeRelicFight(['conduit_stone','duet_mask']);
+ d.setSkill('blood',6);d.setEnemyHp(20000);d.setHp(10);d.setMaxHp(200);
+ d.setRelicCounter('conduit_stone',3);
+ d.setRelicFlag('relicMaskReady',true);
+ const before=d.info().enemyHp;
+ resolveBloodParry(g,20);
+ const damage=before-d.info().enemyHp;
+ assert.ok(d.hits().some(h=>h.label==='仮面'));
+ assert.ok(d.hits().some(h=>h.label==='雷導'));
+ const heal=Math.min(Math.max(2,Math.round(damage*.18)),50);
+ assert.equal(g.state().hp,10+heal,'single lifesteal settlement');
+});
+test('relic collection remains ephemeral and developer session does not write any save',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:23,runs:3}),
+  'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],sealSlots:1,sealedSkills:['thorns']})};
+ const g=makeHarness(seed,true);
+ g.dev().launch(3,'slime:normal');
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g);g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic');
+ g.relicSelect(g.state().relicOffer[0]);
+ assert.equal(g.storage.get('parryTowerPrototype_v1'),seed.parryTowerPrototype_v1);
+ assert.equal(g.storage.get('parryTowerPermanent_v1'),seed.parryTowerPermanent_v1);
+ g.press('healBtn');
+ assert.equal(g.state().relics.length,1);
+ g.dev().reset();
+ assert.equal(g.state().relics.length,0,'relics do not survive end of run');
+});
