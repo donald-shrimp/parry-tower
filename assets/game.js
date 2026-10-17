@@ -335,7 +335,7 @@ function enemy(now){
  if(action>.15&&action<1){
   ctx.save();ctx.globalAlpha=.12+.18*action;
   const dustX=x+scale*(e.kind==='slime'?-15:8);
-  for(let j=0;j<3;j++){round(dustX+(j*19+6)*scale,ground-(j%2)*7*scale,3.8*scale,m.accent)}
+  for(let j=0;j<3;j++){round(dustX+(j*19+6)*scale,ground-(j%2)*7*scale,3.8*scale,e.color||m.accent)}
   ctx.restore();
  }
  ctx.save();ctx.translate(x,y);ctx.scale(-scale,scale);
@@ -350,7 +350,7 @@ function enemy(now){
  if(e.kind==='slime')ctx.scale(1+recoil*.20,1-recoil*.22);
  else if(e.kind==='wraith')ctx.globalAlpha=1-recoil*.33;
  else ctx.rotate(-recoil*(e.kind==='guardian'?.075:.13));
- const color=m.accent;
+ const color=e.color||m.accent;
  if(e.kind==='slime'){
   // スライムは「圧縮→前傾→頭から飛びかかる」。盾に当たるのは左前方のこぶ。
   // 先端のローカル座標(+49,-58)を全員共通のhitX/hitYに揃える。
@@ -360,7 +360,7 @@ function enemy(now){
   const crestX=m.reach-11*(1-leap);
   const crestY=-58+28*charge+8*(1-leap);
   const topY=-82+31*charge-5*leap;
-  ctx.fillStyle='#42ada5';ctx.beginPath();
+  ctx.fillStyle=e.color||'#42ada5';ctx.beginPath();
   ctx.moveTo(backX,0);
   ctx.bezierCurveTo(backX-14,-18,-40,-59+19*charge,-21,topY+3);
   ctx.bezierCurveTo(-2,topY-10,crestX-22,topY-13,crestX,crestY);
@@ -378,7 +378,7 @@ function enemy(now){
  }else if(e.kind==='wraith'){
   // 亡霊は溜めで体が上がり、腕と爪が鞭のように伸びる。
   const lift=charge*14,lean=action*10;
-  fillPoly([[-33,-63+lift],[-16,-97-lift],[13,-103-lift],[32,-74+lift],[33,-24],[44,0],[18,-10],[0,-2],[-17,-15],[-39,2]],'#6269a5');
+  fillPoly([[-33,-63+lift],[-16,-97-lift],[13,-103-lift],[32,-74+lift],[33,-24],[44,0],[18,-10],[0,-2],[-17,-15],[-39,2]],e.color||'#6269a5');
   fillPoly([[-22,-87-lift],[0,-111-lift],[20,-82-lift],[13,-52],[-16,-52]],'#2a2e60');
   round(-8,-77-lift,3.7,'#8be9ff');round(8,-77-lift,3.7,'#8be9ff');
   const handX=22+69*action-recoil*11,handY=-38-19*charge-19*action+recoil*13;
@@ -390,7 +390,7 @@ function enemy(now){
  }else if(e.kind==='rogue'){
   // 暗殺者は低い溜めから短剣を一直線に突く。軌道は盾の中央で止まる。
   const crouch=charge*19,cushion=impact?squishHit*15:0;
-  fillPoly([[-26,-78+crouch],[-42,-52+crouch],[-35,-4],[-8,-12],[26,0],[18,-68+crouch]],'#562c49');
+  fillPoly([[-26,-78+crouch],[-42,-52+crouch],[-35,-4],[-8,-12],[26,0],[18,-68+crouch]],e.color||'#562c49');
   fillPoly([[-10,-41+crouch],[-4,-37+crouch],[-8,0],[-22,0]],'#565a74');
   fillPoly([[6,-39+crouch],[18,-33+crouch],[29,0],[10,0]],'#80819a');
   fillPoly([[-23,-83+crouch],[15,-84+crouch],[25,-47+crouch],[-14,-39+crouch]],'#62667f');
@@ -410,7 +410,7 @@ function enemy(now){
   fillPoly([[-18,-76],[-30-charge*9,-60],[-36,-4],[-8,-11],[27,0],[19,-68]],isBoss?'#7d5048':'#645676');
   fillPoly([[-14,-37],[-4,-34],[-7,0],[-23,0]],'#76738b');
   fillPoly([[3,-36],[16,-32],[24,0],[9,0]],'#777d96');
-  fillPoly([[-22,-84-lean],[17,-83-lean],[27,-42-lean],[-16,-36-lean]],isBoss?'#b99571':'#7e8fa4');
+  fillPoly([[-22,-84-lean],[17,-83-lean],[27,-42-lean],[-16,-36-lean]],e.color||'#7e8fa4');
   fillPoly([[-17,-108-lean],[0,-119-lean],[19,-107-lean],[17,-85-lean],[-15,-83-lean]],isBoss?'#b9ac9d':'#b5baca');
   line([[-8,-96-lean],[8,-96-lean]],isBoss?'#ffd392':'#ed98d0',4);
   if(isBoss){fillPoly([[-17,-108-lean],[-36,-134-lean],[-23,-129-lean],[-7,-112-lean]],'#e9b98d');fillPoly([[16,-107-lean],[37,-132-lean],[26,-109-lean]],'#e9b98d');round(0,-69-lean,8,'#ffe8ae40')}
