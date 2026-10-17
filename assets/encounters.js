@@ -15,13 +15,32 @@
   {id:'sentinel',name:'鉄壁の番兵',kind:'knight',hpMultiplier:1.10,atkMultiplier:1.00,rhythm:[3,2,3,2],color:'#8cb3dc',desc:'間を取る重い剣戟。'},
   {id:'duelist',name:'紅刃の剣士',kind:'rogue',hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[2,1.5,1.5,3],color:'#f2a3aa',desc:'鋭い突きを短く連ねる。'},
   {id:'cantor',name:'残響の詠み手',kind:'wraith',hpMultiplier:1.00,atkMultiplier:0.90,rhythm:[3,1.5,2.5,3],color:'#c4a1e9',desc:'休符と裏拍を織り交ぜる幻影。'},
-  {id:'clockwork',name:'時計仕掛けの兵士',kind:'knight',hpMultiplier:1.10,atkMultiplier:0.95,rhythm:[2,1,3,2],color:'#e4ae80',desc:'一定の拍と急な連撃を切り替える。'}
+  {id:'clockwork',name:'時計仕掛けの兵士',kind:'knight',hpMultiplier:1.10,atkMultiplier:0.95,rhythm:[2,1,3,2],color:'#e4ae80',desc:'一定の拍と急な連撃を切り替える。'},
+  // v0.8.0: palette-shifted existing silhouettes with fresh, readable half-beat patterns.
+  {id:'ember_slime',name:'灼熱スライム',kind:'slime',sprite:'slime',palette:{hueRotate:-125,saturation:145},
+   hpMultiplier:1.00,atkMultiplier:1.00,rhythm:[4,2,2],color:'#fb9a59',
+   desc:'身体に火を宿すスライム。大きな跳躍に続いて拍を詰める。'},
+  {id:'molten_sentinel',name:'熔鉄の番兵',kind:'knight',sprite:'sentinel',palette:{hueRotate:170,saturation:130},
+   hpMultiplier:1.10,atkMultiplier:1.00,rhythm:[3,2,1.5,1.5],color:'#e58e60',
+   desc:'炉で焼けた大盾を掲げ、終盤に素早い連撃を仕掛ける。'},
+  {id:'frost_wraith',name:'氷霞の亡霊',kind:'wraith',sprite:'wraith',palette:{hueRotate:-40,saturation:90},
+   hpMultiplier:1.00,atkMultiplier:0.90,rhythm:[4,2,1.5,1.5],color:'#9de7f3',
+   desc:'冷気に潜む亡霊。長い間から半拍の差で爪を伸ばす。'},
+  {id:'silver_duelist',name:'白銀の双剣士',kind:'rogue',sprite:'duelist',palette:{hueRotate:190,saturation:80},
+   hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[2,1,2,1],color:'#a6d8ef',
+   desc:'白銀の二刀を交互に振る。短い連撃と間合いの変化を読む。'}
  ];
  const bosses=[
   {id:'guardian',name:'鐘楼の守護者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,2,1,3,1,3],color:'#ffcc86',boss:true,desc:'鐘の拍に合わせて大剣を振り下ろす。'},
   {id:'ironwarden',name:'鉄血の監督官',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,1,2,1,3,3],color:'#f6a58c',boss:true,desc:'兵舎を統率する連撃型の守護者。'},
   {id:'dirgekeeper',name:'弔鐘の司祭',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[3,1.5,1.5,2,4],color:'#abb6ff',boss:true,desc:'休符を読めなければ崩される。'},
-  {id:'timewarden',name:'時の監視者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[1,2,1,3,1,4],color:'#f9d2a0',boss:true,desc:'短い斬撃と長い溜めを交互に使う。'}
+  {id:'timewarden',name:'時の監視者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[1,2,1,3,1,4],color:'#f9d2a0',boss:true,desc:'短い斬撃と長い溜めを交互に使う。'},
+  {id:'forge_master',name:'炉心の管理者',kind:'guardian',sprite:'guardian',palette:{hueRotate:-30,saturation:145},
+   hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,2,1,1.5,1.5,2],color:'#ffab66',boss:true,
+   desc:'灼熱の炉を統べる巨兵。重い二撃から拍を刻み直す。'},
+  {id:'frost_priest',name:'氷冠の司祭',kind:'guardian',sprite:'guardian',palette:{hueRotate:180,saturation:75},
+   hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[3,1.5,1,2,1.5,3],color:'#b2d5ff',boss:true,
+   desc:'凍てついた冠を戴き、休符と裏拍で相手を揺さぶる。'}
  ];
  const rares=[
   {id:'golden_tone',name:'黄金の音叉',kind:'wraith',rhythm:[3,3,2],color:'#ffe0a1',rare:true,soulBonus:8,desc:'黄金の鐘の音を響かせる希少な亡霊。'},
@@ -41,9 +60,20 @@
    pools:{3:['wraith','cantor'],4:['rogue','cantor'],6:['cantor','rogue','wraith'],7:['duelist','cantor'],8:['rogue','wraith']}},
   {name:'歪んだ時計塔',accent:'#ebc17e',boss:'timewarden',
    fixed:{1:'clockwork',2:'duelist',9:'clockwork'},
-   pools:{3:['clockwork','sentinel'],4:['rogue','clockwork'],6:['clockwork','cantor','sentinel'],7:['duelist','clockwork'],8:['sentinel','clockwork','wraith']}}
+   pools:{3:['clockwork','sentinel'],4:['rogue','clockwork'],6:['clockwork','cantor','sentinel'],7:['duelist','clockwork'],8:['sentinel','clockwork','wraith']}},
+  {name:'熔鉄の工房',accent:'#f9a36b',scene:'forge',boss:'forge_master',
+   fixed:{1:'ember_slime',2:'molten_sentinel',9:'molten_sentinel'},
+   pools:{3:['ember_slime','molten_sentinel'],4:['molten_sentinel','ember_slime'],
+    6:['ember_slime','molten_sentinel'],7:['molten_sentinel','ember_slime'],
+    8:['ember_slime','molten_sentinel']}},
+  {name:'白霜の回廊',accent:'#a9e5ff',scene:'frost',boss:'frost_priest',
+   fixed:{1:'frost_wraith',2:'silver_duelist',9:'silver_duelist'},
+   pools:{3:['frost_wraith','silver_duelist'],4:['silver_duelist','frost_wraith'],
+    6:['frost_wraith','silver_duelist'],7:['silver_duelist','frost_wraith'],
+    8:['silver_duelist','frost_wraith']}}
  ];
- const zoneForFloor=f=>ZONES[Math.floor((((Math.max(1,Math.floor(f))-1)%40)+40)%40/10)];
+ // Scale zone cycling with the catalog; after 60F the original tomb returns.
+ const zoneForFloor=f=>ZONES[Math.floor((((Math.max(1,Math.floor(f))-1)%(ZONES.length*10))+(ZONES.length*10))%(ZONES.length*10)/10)];
  const positionInZone=f=>((Math.max(1,Math.floor(f))-1)%10)+1;
  const enemyKey=e=>e.id+':'+(e.rare?'rare':e.elite?'elite':'normal');
  function buildEnemy(def,elite=false){

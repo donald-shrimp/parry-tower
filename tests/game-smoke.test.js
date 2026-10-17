@@ -245,7 +245,7 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  const seed={'parryTowerPrototype_v1':oldMeta,'parryTowerBestiary_v1':oldBook,'parryTowerAudioOffset_v05':'5'};
  const g=makeHarness(seed,true),dev=g.dev();
  assert.ok(dev?.isolated);
- assert.equal(dev.list().length,26);
+ assert.equal(dev.list().length,38);
  assert.equal(dev.launch(21,'cantor:normal'),true);
  assert.equal(g.state().floor,21);
  assert.equal(g.state().enemy,'cantor');
@@ -258,6 +258,12 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  assert.equal(g.state().floor,40);
  assert.equal(g.state().enemy,'timewarden');
  assert.equal(g.state().bpm,136);
+ assert.equal(dev.launch(41,'ember_slime:normal'),true);
+ assert.equal(g.state().floor,41);
+ assert.equal(g.state().enemy,'ember_slime');
+ assert.equal(dev.launch(51,'frost_wraith:normal'),true);
+ assert.equal(g.state().floor,51);
+ assert.equal(g.state().enemy,'frost_wraith');
  assert.equal(dev.launch(30,'golden_tone:rare'),true);
  assert.equal(g.state().enemy,'golden_tone');
  assert.equal(g.state().encounterRare,true);
@@ -1232,7 +1238,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.7.1-1"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.8.0-1"'),asset);
   assert.match(html,/v0\.7\.1/);
  }
  const {g,d}=makeCrossroads(4);
