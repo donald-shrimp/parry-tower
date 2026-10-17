@@ -1,7 +1,7 @@
 :root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--panel2:#192337;--line:#303d52;--ink:#f2f3ff;--muted:#9baac3;--gold:#f4c772;--cyan:#76e4f1;--mint:#78e4b8;--red:#ff7987}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif}
 body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),radial-gradient(ellipse at -15% 70%,#102a3c 0,transparent 52%),var(--bg)}button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}button:disabled{opacity:.45;cursor:not-allowed}
-/* The death overlay appears immediately, but its actions stay untouchable for 1 second. */
+/* The death overlay appears immediately, but its actions stay untouchable for 500ms. */
 #deathCover[inert] button{opacity:.42;cursor:default}
 .app{max-width:1320px;margin:0 auto;padding:20px clamp(12px,2.2vw,30px) 36px}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}.brand{display:flex;gap:13px;align-items:center}.brandmark{height:44px;width:44px;background:linear-gradient(140deg,#453755,#1b3152);border:1px solid #806e9d;border-radius:13px;display:grid;place-items:center;font-size:24px;box-shadow:0 0 20px #bda0ff22}.eyebrow{font-size:10px;letter-spacing:.22em;color:#e4c68f;font-weight:800}.brand h1{font-size:clamp(18px,2.6vw,26px);line-height:1.05;letter-spacing:.08em;margin:4px 0 0}.brand h1 span{font-size:11px;font-weight:500;color:#9eacc7;letter-spacing:.1em;margin-left:9px}.toolrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}.pill{font-size:11px;border:1px solid #3b4662;border-radius:30px;padding:7px 10px;color:#bec8de;background:#101a2b}.toolbtn{border:1px solid #394761;border-radius:9px;background:#192338;color:#d4dcf1;padding:9px 11px;font-size:12px;font-weight:700}.toolbtn:hover{background:#28344e}.toolbtn:disabled{opacity:.35}
@@ -45,3 +45,46 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .codex-practice:hover{background:#654765}
 @media(max-width:760px){.zone-label{display:block;margin:3px 0 0;font-size:9px}.codex-list{max-height:clamp(195px,46svh,370px)}}
 @media(max-width:420px){.codex-list{grid-template-columns:1fr;scrollbar-gutter:auto}.codex-modal p{font-size:11px}.codex-toolbar{flex-wrap:wrap}.codex-practice{font-size:12px}}
+
+
+/* v0.5.6: a separate, compact, touch-friendly permanent progression overlay. */
+.upgrade-modal{width:min(100%,735px);text-align:left;padding:7px 9px 16px;max-height:100%;overflow-y:auto}
+.upgrade-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.upgrade-top h2{margin:4px 0 7px;font-size:clamp(21px,4vw,30px)}
+.upgrade-wallet{margin:7px 0 12px;color:#b8c5db;font-size:12px}
+.upgrade-wallet strong{color:#ffe09b;font-size:16px;margin-left:5px;font-variant-numeric:tabular-nums}
+.upgrade-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.upgrade-tab{border:1px solid #455875;background:#19263d;color:#d4dff3;padding:9px 11px;border-radius:9px;font-size:11px;font-weight:800}
+.upgrade-tab.active{border-color:#e0bf81;background:#3a3442;color:#ffe4ac}
+.upgrade-list{display:flex;flex-direction:column;gap:9px;min-height:80px}
+.upgrade-note{font-size:11px;line-height:1.6;color:#9eacc5;margin:0 0 3px}
+.upgrade-row{border:1px solid #344662;background:#111e31;border-radius:10px;padding:10px 11px;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.upgrade-main{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+.upgrade-symbol{font-size:23px;flex-shrink:0;width:30px;text-align:center}
+.upgrade-name{font-size:12px;font-weight:850;color:#f1f3ff}
+.upgrade-effect{font-size:10px;color:#9bafc9;line-height:1.5;margin-top:4px}
+.upgrade-cost{font-size:11px;color:#ffdd98;white-space:nowrap}
+.upgrade-buy{background:#304159;color:#ffe6b0;border:1px solid #746846;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800;min-width:66px;flex-shrink:0}
+.upgrade-buy:hover:not(:disabled){background:#475a74}
+.upgrade-buy:disabled{opacity:.6}
+.upgrade-row.epic{border-color:#8b6eae;background:linear-gradient(135deg,#2c2544,#151c30)}
+.upgrade-row.rare{border-color:#506a9b}
+.upgrade-row.locked{opacity:.75}
+.upgrade-slots{display:flex;flex-direction:column;gap:10px}
+.upgrade-slot{background:#101d30;border:1px solid #3b4e67;border-radius:11px;padding:11px}
+.upgrade-slot-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.upgrade-slot-label{font-size:12px;font-weight:800}
+.upgrade-equip{display:block;width:100%;border:1px solid #586d8e;border-radius:8px;padding:10px;background:#21314d;color:#f2f6ff;font-size:13px;min-height:42px}
+.upgrade-empty{padding:13px;text-align:center;font-size:12px;color:#9fb0c9}
+.reward-cards.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:760px){
+ .upgrade-modal{padding:4px 2px 13px}
+ .upgrade-tab{flex:1;white-space:nowrap;padding:9px 5px;font-size:10px}
+ .reward-cards.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){
+ .upgrade-row{padding:9px 7px;gap:7px}
+ .upgrade-buy{padding:8px 6px;min-width:60px}
+ .upgrade-symbol{width:24px;font-size:20px}
+ .upgrade-effect{font-size:10px}
+}
