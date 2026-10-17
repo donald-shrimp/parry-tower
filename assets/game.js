@@ -421,7 +421,40 @@ function clearFloor(){
  puff(w*.72,h*.58,defeated.color,40,1.8);flash=1;flashColor='#f6cb84';
  sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();
 }
-function applyDamage(n,tag){let damage=game.practice?0:Math.max(1,Math.ceil(n));const used=Math.min(game.shield,damage);game.shield=Math.max(0,game.shield-used);damage-=used;if(damage>0)game.hp=Math.max(0,game.hp-damage);showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);shake=Math.max(shake,damage?11:4);if(game.hp<=0){const revive=PR.value(permanent,'revive');if(!game.practice&&!game.reviveUsed&&revive){game.reviveUsed=true;game.hp=Math.max(1,Math.ceil(game.maxHp*revive/100));showText('復活!',w*.28,h*.34,'#ffdc97',26);flash=.65;flashColor='#ffc878';sound(660,.30,'triangle',.07,120)}else die()}syncHUD();}
+function applyDamage(n,tag){
+ let damage=game.practice?0:Math.max(1,Math.ceil(n));
+ const previousShield=game.shield,previousHp=game.hp;
+ let prevented=0;
+ // Consume the ice ward before regular shield absorption.
+ if(damage>0&&lvl('frost')&&game.frostWard&&!game.practice){
+  prevented=Math.floor(damage*(15+10*lvl('frost'))/100);
+  damage=Math.max(0,damage-prevented);game.frostWard=false;
+  showText('氷結 -'+prevented,w*.31,h*.36,'#baeaff',17);
+ }
+ const used=Math.min(game.shield,damage);
+ game.shield=Math.max(0,game.shield-used);damage-=used;
+ if(damage>0)game.hp=Math.max(0,game.hp-damage);
+ // Normal Fortitude responds to lost HP; Immortal Shield additionally triggers on barrier break.
+ if(lvl('fortitude')&&!game.practice){
+  if(game.hp<previousHp||(has('fortitude','aegis')&&previousShield>0&&game.shield===0))
+   game.fortitudeReady=true;
+ }
+ showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);
+ puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);
+ shake=Math.max(shake,damage?11:4);
+ if(game.hp<=0){
+  const revive=PR.value(permanent,'revive');
+  if(!game.practice&&!game.reviveUsed&&revive){
+   game.reviveUsed=true;game.hp=Math.max(1,Math.ceil(game.maxHp*revive/100));
+   showText('復活!',w*.28,h*.34,'#ffdc97',26);flash=.65;flashColor='#ffc878';
+   sound(660,.30,'triangle',.07,120);
+  }else die();
+ }
+ // Frost Mirror works for guards and misses; never counts as parry lifesteal damage.
+ if(prevented>0&&has('frost','thorns')&&game.mode==='combat')
+  damageEnemy(prevented*.5,'#bbebff','氷鏡');
+ syncHUD();
+}
 function die(){if(game.mode==='gameover')return;stopScore();const coins=soulReward(Math.max(3,Math.floor(game.floor*2+game.bossKills*3)));meta.coins+=coins;meta.bestFloor=Math.max(meta.bestFloor,game.floor);meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);meta.runs++;save();$('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}`;$('deathRecords').innerHTML=records();game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;setMode('gameover');sound(200,.42,'sawtooth',.05,-130)}
 function choosePool(){const available=SKILLS.filter(s=>lvl(s.id)<s.max&&!game.sealedSkillIds?.includes(s.id)),taken=[];for(let k=0;k<Math.min(PR.value(permanent,'choice4')||3,available.length);k++){const rarityWeight={common:5.4,rare:2.9,epic:1.05};const weights=available.map(s=>(rarityWeight[s.rarity]??rarityWeight.common)*(lvl(s.id)?1.17:1));let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break}taken.push(available.splice(idx,1)[0])}return taken}
 function showRewards(){if(game.mode!=='victory')return;game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');}
