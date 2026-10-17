@@ -32,7 +32,7 @@ test('rare encounters never overwrite bosses, scripted floors, or cooldown',()=>
  assert.equal(P.encounterForFloor(8,()=>0,4).rare,true);
 });
 test('random elite spawn is separate from rare and is stronger than normal',()=>{
- const sequence=[.5,.02];let i=0;
+ const sequence=[.5,.5,.02];let i=0;
  const elite=P.encounterForFloor(18,()=>sequence[i++]);
  assert.equal(elite.elite,true);assert.equal(elite.rare,false);
  const basic=P.buildEnemy(P.byId[elite.id]);
