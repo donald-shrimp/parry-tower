@@ -47,7 +47,7 @@ const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v))
 // 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
 const PARRY_STARTUP=100;
 // Ignore the next parry tap(s) for a moment after defeat so they cannot activate death-menu buttons.
-const DEATH_INPUT_GRACE_MS=1000;
+const DEATH_INPUT_GRACE_MS=500;
 // 攻撃の発生タイミングはすべて「武器／身体が盾に触れる瞬間」。
 // 攻撃モーションの長さだけを種類ごとに変え、判定時刻は同じ基準に揃える。
 const MOTIONS={
