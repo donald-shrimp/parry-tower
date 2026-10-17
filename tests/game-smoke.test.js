@@ -1238,7 +1238,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
  assert.equal(g.el.get('routeCover').hidden,false);
- assert.equal(g.el.get('towerCoinsLabel').textContent,'0');
+ assert.equal(String(g.el.get('towerCoinsLabel').textContent),'0');
  assert.match(g.el.get('routeCards').innerHTML,/安息の間/);
  assert.match(g.el.get('routeCards').innerHTML,/行商人の隠れ処/);
  assert.match(g.el.get('routeCards').innerHTML,/血闘の間/);
@@ -1315,7 +1315,7 @@ test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus 
  assert.equal(g.state().mode,'victory');
  assert.equal(g.state().towerCoins,14);
  assert.equal(g.state().towerCoinsEarned,14);
- assert.equal(g.el.get('towerCoinsLabel').textContent,'14');
+ assert.equal(String(g.el.get('towerCoinsLabel').textContent),'14');
  g.frame(g.now+950);
  assert.equal(g.state().mode,'reward','trial retains normal skill reward');
  g.press('healBtn');
