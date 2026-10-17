@@ -70,6 +70,19 @@ function makeHarness(seed={}){
   get now(){return clock}
  };
 }
+test('bestiary UI has no obsolete arena actions and practice buttons stay within card layouts',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const js=fs.readFileSync('assets/game.js','utf8');
+ const css=fs.readFileSync('assets/style.css','utf8');
+ assert.match(html,/魔物図鑑・稽古場/);
+ assert.doesNotMatch(html,/闘技場|arenaResultCover|id="codexBtn"/);
+ assert.doesNotMatch(js,/闘技場|data-arena|arenaResult|finishArena|startArena/);
+ assert.match(js,/data-practice/);
+ assert.match(css,/\.codex-list\{[^}]*grid-auto-rows:max-content/);
+ assert.match(css,/\.codex-card\{[^}]*height:auto/);
+ assert.match(css,/\.codex-practice\{[^}]*width:100%/);
+ assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
+});
 test('title exposes the encyclopedia and only previously encountered enemies become trainable',()=>{
  const g=makeHarness();
  assert.equal(g.state().mode,'title');
