@@ -6,7 +6,7 @@ function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs'];
+ const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs','relicCover','relicOfferCards','relicReplaceList','relicList','relicCount'];
  for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
  const el=new Map();
  function node(id){
@@ -49,7 +49,7 @@ function makeHarness(seed={},devMode=false){
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
  const window={
-  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
+  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
@@ -86,6 +86,23 @@ function makeHarness(seed={},devMode=false){
    setOverchargeCount:value=>{game.overchargeCount=value},
    setJustStreak:value=>{game.justStreak=value},
    setBloodlustPending:value=>{game.bloodlustPending=value},
+   grantRelic:id=>{
+    if(!RR.BY_ID[id]||game.relics.includes(id)||game.relics.length>=RR.MAX_HELD)return false;
+    const mode=game.mode,offer=game.relicOffer;game.mode='relic';game.relicOffer=[id];
+    const result=grantRelic(id);game.mode=mode;game.relicOffer=offer;return result;
+   },
+   setRelicCounter:(id,count)=>{game.relicCounters[id]=count},
+   setRelicFlag:(id,value)=>{game[id]=value},
+   setRawMaxHp:value=>{game.rawMaxHp=value;adjustRelicMaxHp()},
+   forceRelicAward:kind=>{game.relicRewardKind=kind},
+   awardPreview:kind=>showRelicRewards(kind),
+   finishRelic:()=>finishRelicReward(),
+   relicInfo:()=>({held:[...game.relics],discarded:[...game.relicDiscarded],
+    rustyUsed:game.relicRustyUsed,stardustUsed:game.relicStardustUsed,stopUsed:game.relicStopUsed,
+    pactReady:game.relicPactReady,bellDue:game.relicBellDue,maskReady:game.relicMaskReady,
+    gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
+    counters:{...game.relicCounters},boltDue:game.relicBoltDue,emperorDue:game.relicEmperorDue}),
+
   bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
   setHp:hp=>{game.hp=hp},
@@ -109,6 +126,9 @@ function makeHarness(seed={},devMode=false){
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
    upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:()=>({dataset:{equip:String(slot)},value:id||''})}})},
+   relicSelect(id){el.get('relicOfferCards').listeners.click({target:{closest:()=>({dataset:{relic:id}})}})},
+   relicReplace(id){el.get('relicReplaceList').listeners.click({target:{closest:()=>({dataset:{replace:id}})}})},
+
   parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
   clock(at){clock=at},
