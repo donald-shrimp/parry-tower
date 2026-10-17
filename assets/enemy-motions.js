@@ -83,6 +83,9 @@
    fillPoly([[-19,-102-lift],[1,-129-lift],[26,-100-lift],[13,-66],[-15,-66]],'#353355');
    fillPoly([[-10,-94-lift],[5,-95-lift],[16,-82-lift],[-15,-82-lift]],'#4f457a');
    round(-5,-90-lift,3.3,'#8ee1ff');round(10,-90-lift,3.3,'#8ee1ff');
+   // The cantor traces a visible rune with its sleeve before releasing the wave.
+   line([[-28,-80-lift],[-21,-70-lift],[-14,-80-lift]],'#d5c0fa',2.4);
+   line([[-27,-73-lift],[-15,-73-lift]],'#9ce5fa',1.7);
    const hand=[25+12*impact,-62-29*c+8*impact];
    const tip=attackPoint(id,m.reach,t,c);
    line([[7,-60],hand],'#b5a6e9',9);
