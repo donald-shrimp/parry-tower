@@ -299,10 +299,10 @@ function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 function spawnEnemy(t){
  clashFX=null;
- game.relicRustyUsed=false;game.relicStardustUsed=false;game.relicStopUsed=false;game.relicPactConsumed=false;game.relicPactReady=false;
+ game.relicRustyUsed=false;game.relicStardustUsed=false;game.relicStopUsed=false;game.relicPactConsumed=false;game.relicPactReady=false;game.relicBoltDue=false;game.relicEmperorDue=false;
  const floor=game.floor||1;
  let archetype;
  if(game.practice){
@@ -505,7 +505,14 @@ function applyDamage(n,tag){
  }
  const used=Math.min(game.shield,damage);
  game.shield=Math.max(0,game.shield-used);damage-=used;
+ if(tag==='GUARD'&&hasRelic('silver_mirror')&&damage>0)damage-=Math.min(8,Math.floor(damage*.2));
+ if(damage>0&&hasRelic('rusty_crest')&&!game.relicRustyUsed){
+  game.relicRustyUsed=true;damage=Math.max(0,damage-6);
+ }
  if(damage>0)game.hp=Math.max(0,game.hp-damage);
+ if(game.hp<previousHp&&hasRelic('blood_pact_chalice')&&!game.relicPactConsumed){
+  game.relicPactConsumed=true;game.relicPactReady=true;
+ }
  // Normal Fortitude responds to lost HP; Immortal Shield additionally triggers on barrier break.
  if(lvl('fortitude')&&!game.practice){
   if(game.hp<previousHp||(has('fortitude','aegis')&&previousShield>0&&game.shield===0))
@@ -565,6 +572,9 @@ function grantRelic(id,replaceId=null){
   if(replaceId==='broken_gear')game.relicGearReady=false;
   if(replaceId==='blood_pact_chalice')game.relicPactReady=false;
   if(replaceId==='pilgrim_bell')game.relicBellDue=false;
+  if(replaceId==='conduit_stone')game.relicBoltDue=false;
+  if(replaceId==='emperor_conduit')game.relicEmperorDue=false;
+  if(replaceId==='serene_crystal')game.relicJustStreak=0;
  }else{
   if(game.relics.length>=RR.MAX_HELD)return false;
   game.relics.push(id);
