@@ -115,7 +115,7 @@ test('meeting a slime unlocks safe training even when the tower run ends without
  }
  assert.equal(g.state().mode,'gameover');
  const beforeSouls=g.state().souls;
- g.frame(g.now+1000); // Wait for the death-menu mis-tap grace before choosing a button.
+ g.frame(g.now+500); // Wait for the death-menu mis-tap grace before choosing a button.
  g.press('deathCodexBtn');
  assert.equal(g.state().mode,'codex');
  assert.match(g.el.get('codexList').innerHTML,/data-practice="slime:normal"/);
@@ -312,7 +312,7 @@ test('ordinary skill reward omits generic advice and actual unlock notice remain
  assert.equal(repeat.el.get('rewardNote').hidden,true);
 });
 
-test('death menu ignores stray parry taps for 1000ms, then restores all actions',()=>{
+test('death menu ignores stray parry taps for 500ms, then restores all actions',()=>{
  const g=makeHarness();
  g.press('startBtn');
  for(let i=0;i<5;i++){
@@ -330,12 +330,12 @@ test('death menu ignores stray parry taps for 1000ms, then restores all actions'
   g.press(id); // Simulated delegated clicks must also be rejected.
   assert.equal(g.state().mode,'gameover',id+' must not respond during grace');
  }
- g.frame(diedAt+999);
+ g.frame(diedAt+499);
  assert.equal(death.inert,true);
  assert.equal(g.el.get('deathCodexBtn').disabled,true);
  g.press('deathCodexBtn');
  assert.equal(g.state().mode,'gameover');
- g.frame(diedAt+1000);
+ g.frame(diedAt+500);
  assert.equal(death.inert,false,'all death actions are available after the grace period');
  for(const id of ['retryBtn','homeBtn','deathCodexBtn'])
   assert.equal(g.el.get(id).disabled,false,id+' is enabled after grace');
@@ -352,7 +352,7 @@ test('retry and home work after the grace period; every new death starts a fresh
  g.press('startBtn');
  dieWithoutParries();
  const firstDeath=g.now;
- g.frame(firstDeath+1000);
+ g.frame(firstDeath+500);
  g.press('retryBtn');
  assert.equal(g.state().mode,'combat');
  assert.equal(g.el.get('deathCover').inert,false);
@@ -361,7 +361,7 @@ test('retry and home work after the grace period; every new death starts a fresh
  assert.ok(secondDeath>firstDeath,'death lock follows the second defeat');
  g.press('homeBtn');
  assert.equal(g.state().mode,'gameover','home is blocked on the second death as well');
- g.frame(secondDeath+1000);
+ g.frame(secondDeath+500);
  g.press('homeBtn');
  assert.equal(g.state().mode,'title');
  assert.equal(g.el.get('deathCover').inert,false);
