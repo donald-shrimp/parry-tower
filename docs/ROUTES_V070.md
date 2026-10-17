@@ -1,4 +1,4 @@
-# v0.7.0 — 塔の岐路（Draft PR #16）
+# v0.7.0 — 塔の岐路
 
 ## 目的
 
@@ -73,4 +73,4 @@
 - `tests/routes.test.js`, `tests/events.test.js`, `tests/game-smoke.test.js`：階層保護、通貨、1訪問1商品、イベントの確率と非致死性、既存レリック/セーブとの互換、モード遷移、二重クリック防止。
 - 開発者ページは従来どおり **localStorageへ書き込まない**。旧セーブの内容は引き継がれ、保存キー追加は行わない。
 
-**この変更はDraft PR #16で、レビュー・マージまでは公開サイトには反映されません。**
+**v0.7.0正式版の仕様。** 実装は [PR #16](https://github.com/donald-shrimp/parry-tower/pull/16) を参照してください。
