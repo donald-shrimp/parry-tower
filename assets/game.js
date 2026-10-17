@@ -236,6 +236,39 @@ function tap(){
   sound(190,.09,'triangle',.015,-80);
  }
 }
+
+function renderCodex(){
+ const entries=P.codexEntries(),known=Object.keys(book.defeated).length;
+ $('codexSummary').textContent=known+' / '+entries.length+'種類登録済み · 討伐すると闘技場に招待できます';
+ const filter=$('codexFilter').value;
+ const cards=entries.filter(e=>filter==='all'||filter==='discovered'&&book.defeated[e.bookKey]||filter==='rare'&&e.rare||filter==='elite'&&e.elite||filter==='normal'&&!e.rare&&!e.elite);
+ $('codexList').innerHTML=cards.map(e=>{
+  const record=book.defeated[e.bookKey];
+  if(!record)return '<div class="codex-card locked"><div class="codex-symbol">？</div><strong>未発見</strong><small>塔で討伐すると登録される</small></div>';
+  const type=e.rare?'RARE':e.elite?'ELITE':e.boss?'BOSS':'NORMAL';
+  const rank=e.rare?'rare':e.elite?'elite':e.boss?'boss':'normal';
+  return '<div class="codex-card '+rank+'"><div class="codex-symbol">'+(e.rare?'✦':e.boss?'♛':e.elite?'◆':'⚔')+'</div><strong>'+e.displayName+'</strong><small>'+type+' · '+record.wins+'回討伐 · 初発見 '+record.firstFloor+'F</small><p>'+e.desc+'</p><button class="codex-fight" data-arena="'+e.bookKey+'">⚔ 闘技場で戦う</button></div>';
+ }).join('')||'<div class="empty">該当する敵はまだいません。</div>';
+ for(const btn of $('codexList').querySelectorAll('[data-arena]'))btn.addEventListener('click',()=>startArena(btn.dataset.arena));
+}
+function openCodex(){
+ if(!['title','gameover','codex','arenaresult'].includes(game.mode))return;
+ stopScore();setMode('codex');renderCodex();
+}
+function startArena(key){
+ if(!book.defeated[key]||!P.findByKey(key))return;
+ start(false,key);
+}
+function finishArena(won){
+ const enemy=game.enemy;
+ stopScore();
+ game.mode='arenaresult';
+ $('arenaResultTitle').textContent=won?'闘技場 勝利！':'闘技場 敗北';
+ $('arenaResultSummary').textContent=enemy.name+'との再戦 '+(won?'成功！':'失敗。')+'　魂の欠片は獲得しません。';
+ $('arenaAgainBtn').dataset.arena=game.arenaKey;
+ setMode('arenaresult');syncHUD();
+}
+
 function togglePause(){if(game.mode==='combat'){pauseAt=performance.now();stopScore();setMode('pause');$('musicStatus').textContent='一時停止'}else if(game.mode==='pause'){const now=performance.now();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat')}}
 function resize(){const r=canvas.getBoundingClientRect();w=Math.max(260,r.width);h=Math.max(300,r.height);dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 window.addEventListener('resize',resize);if('ResizeObserver'in window)new ResizeObserver(resize).observe(canvas);
@@ -396,6 +429,16 @@ function enemy(now){
   line([[14,hand[1]-11],[30,hand[1]+11]],'#c1a6a1',7);
   if(isBoss&&charge>.55){ctx.save();ctx.globalAlpha=(charge-.55)*.7;round(-17,-105,5,'#ffcc8a');ctx.restore()}
  }
+ if(e.rare||e.elite){
+  ctx.save();ctx.globalAlpha=e.rare?.90:.67;ctx.strokeStyle=e.rare?'#ffe0a0':'#ed858b';
+  ctx.lineWidth=e.rare?2.3:1.5;ctx.shadowColor=e.rare?'#ffc765':'#ec6175';ctx.shadowBlur=e.rare?17:9;
+  ctx.beginPath();ctx.ellipse(0,-70,55,76,0,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<(e.rare?4:2);i++){
+   const a=now/880+i*Math.PI*2/(e.rare?4:2);
+   round(Math.cos(a)*59,-72+Math.sin(a)*65,3.5,e.rare?'#ffdf91':'#f9a0ad');
+  }
+  ctx.restore();
+ }
  ctx.restore();
 
 }
@@ -464,7 +507,9 @@ function combatPoseTime(now){
  return age>=0&&age<40&&game.attackAt-now>220?clashFX.at:now;
 }
 
-function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawBackground(now);const poseTime=combatPoseTime(now);enemy(poseTime);hero(poseTime);ctx.restore();drawClashFX(now);
+function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawBackground(now);
+ if(game.mode==='combat'&&!game.arena){ctx.save();ctx.globalAlpha=.035;ctx.fillStyle=P.zoneForFloor(game.floor).accent;ctx.fillRect(0,0,w,h*.72);ctx.restore()}
+ const poseTime=combatPoseTime(now);enemy(poseTime);hero(poseTime);ctx.restore();drawClashFX(now);
  const boss=game.enemy?.boss;if(game.mode==='combat'){if(now-game.nextFloorHintAt<1300){const alpha=clamp(1-(now-game.nextFloorHintAt-500)/800,0,1);ctx.globalAlpha=alpha;textDraw(game.nextFloorHint,w*.5,h*.14,Math.min(30,w*.075),boss?'#ffe0a2':'#cfdff5');ctx.globalAlpha=1}
  if(game.practice)textDraw('稽古場 · 被弾しても倒れない',w*.5,h*.2,Math.min(14,w*.036),'#b9f3ec');if(game.combo>1){textDraw('×'+game.combo+' COMBO',w*.5,h*.12,Math.min(19,w*.045),'#d4f5ed')}
  if(!game.enemy?.boss&&game.floor===1&&game.parries===0&&!game.practice){textDraw('敵が踏み込み、刃が届く前に盾を出せ',w*.5,h*.74,Math.min(13,w*.035),'#f8d59b')}
@@ -488,7 +533,7 @@ function update(now,dt){const m=game.mode;if(m==='combat'){scheduleScore();syncA
 }
 function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}});
-$('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){game.practiceEnemy=$('practiceEnemy').value;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()}});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',()=>start(true));$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
+$('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){game.practiceEnemy=$('practiceEnemy').value;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()}});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',()=>start(true));$('codexBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('arenaAgainBtn').addEventListener('click',()=>startArena($('arenaAgainBtn').dataset.arena));$('arenaReturnBtn').addEventListener('click',openCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause()});
-window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,attackSpan:game.attackSpan,offset:latencyOffset});resize();title();requestAnimationFrame(frame);
+window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,arena:!!game.arena,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.defeated),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,attackSpan:game.attackSpan,offset:latencyOffset});resize();title();requestAnimationFrame(frame);
 })();
