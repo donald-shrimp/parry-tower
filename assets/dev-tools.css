@@ -1,0 +1,15 @@
+/* Only dev.html loads this sheet. No control or link is injected into index.html. */
+.dev-panel{width:min(1100px,calc(100% - 26px));margin:14px auto 12px;padding:15px 20px;background:linear-gradient(135deg,#223149,#111d30);color:#e9f3fc;border:1px solid #596b83;border-radius:14px;box-sizing:border-box;font:500 13px/1.45 system-ui,sans-serif;box-shadow:0 10px 35px #0005}
+.dev-panel *{box-sizing:border-box}
+.dev-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.dev-title strong{font-size:16px}.dev-title span{font-size:11px;color:#a8c5dd}
+.dev-controls{display:grid;grid-template-columns:minmax(105px,150px) minmax(180px,1fr) auto auto;gap:10px;align-items:end}
+.dev-controls label{font-size:11px;color:#a9c2d9;display:flex;flex-direction:column;gap:5px}
+.dev-controls input,.dev-controls select{height:38px;min-width:0;width:100%;border-radius:8px;border:1px solid #687f9c;background:#0d1728;color:#f6f8ff;padding:7px 10px;font-size:13px}
+.dev-controls button{height:38px;border:1px solid #83a7c7;border-radius:8px;background:#2c5575;color:#effcff;font-size:12px;font-weight:800;padding:6px 13px;cursor:pointer}
+#devLaunch{border-color:#f1d296;background:#85613a;color:#fff2d9}
+.dev-controls button:hover{filter:brightness(1.15)}
+.dev-balance{font-size:12px;line-height:1.6;padding:10px 12px;background:#0e1c2e;border:1px solid #607388;border-radius:8px;color:#f5e8bf;overflow-wrap:anywhere;margin:10px 0 6px;font-variant-numeric:tabular-nums}
+#devStatus{font-size:12px;color:#d8e4f2;margin:10px 0 3px}
+.dev-note{font-size:11px;color:#9caec4;margin:4px 0 0;line-height:1.5}
+@media(max-width:700px){.dev-panel{width:calc(100% - 14px);padding:12px}.dev-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.dev-controls label:nth-child(2){grid-column:1/-1}.dev-title{align-items:flex-start;flex-direction:column;gap:2px}.dev-controls button{font-size:11px;padding:7px 6px}}

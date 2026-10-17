@@ -1,12 +1,14 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
+const DEV_MODE=document.documentElement.dataset.parryDev==='true';
+const VARIANT_MOTIONS=window.ParryEnemyMotions;
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
 const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0};
 let meta={...baseMeta};try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');for(const k of Object.keys(baseMeta))if(Number.isFinite(s[k]))meta[k]=Math.max(0,Math.floor(s[k]));}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(meta))}catch(e){}};
+const save=()=>{if(DEV_MODE)return;try{localStorage.setItem(KEY,JSON.stringify(meta))}catch(e){}};
 let book=P.emptyBook();try{book=P.normalizeBook(JSON.parse(localStorage.getItem(BOOK_KEY)||'{}'))}catch(e){}
-const saveBook=()=>{try{localStorage.setItem(BOOK_KEY,JSON.stringify(book))}catch(e){}};
+const saveBook=()=>{if(DEV_MODE)return;try{localStorage.setItem(BOOK_KEY,JSON.stringify(book))}catch(e){}};
 const SKILLS=[
 {id:'blade',icon:'🗡️',name:'剛剣',rarity:'common',max:12,desc:l=>`基礎反撃ダメージ +${25*l}%`,hint:'基礎攻撃'},
 {id:'thunder',icon:'⚡',name:'落雷',rarity:'common',max:8,desc:l=>`パリィで雷撃 ${10+12*l} ダメージ`,hint:'連鎖の起点'},
@@ -61,7 +63,7 @@ const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,bos
  get bpm(){return Math.round(60/this.beat)}};
 let latencyOffset=0;try{latencyOffset=clamp(Number(localStorage.getItem(OFFSET_KEY))||0,-180,180)}catch(e){}
 $('latencySlider').value=latencyOffset;$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
-$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
+$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
 function ensureAudio(){try{audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});if(!score.bus){score.bus=audioContext.createGain();score.bus.gain.value=.35;score.bus.connect(audioContext.destination)}if(!score.noise){const ac=audioContext,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;score.noise=b;}return true}catch(e){return false}}
 function scoreTone(f,d,vol,t,type='triangle',bend=0){if(!audioEnabled||!audioContext||!score.bus)return;const ac=audioContext,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(25,f),t);if(bend)o.frequency.exponentialRampToValueAtTime(Math.max(25,f+bend),t+d*.8);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(score.bus);o.start(t);o.stop(t+d+.015)}
 function scoreNoise(t,d,vol,hpf=1800){if(!audioEnabled||!audioContext||!score.noise)return;const ac=audioContext,src=ac.createBufferSource(),flt=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;flt.type='highpass';flt.frequency.value=hpf;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+d);src.connect(flt);flt.connect(g);g.connect(score.bus);src.start(t);src.stop(t+d+.01)}
@@ -142,10 +144,10 @@ function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><s
 function shopCost(key){return 8+meta[key]*10+meta[key]*meta[key]*3}
 function renderShop(){const offers=[{k:'life',icon:'♡',name:'生命の祝福',desc:'ラン開始時の最大HP +10',max:5},{k:'attack',icon:'⚔',name:'剣の研鑽',desc:'初期反撃ダメージ +3',max:5},{k:'ward',icon:'🛡',name:'守護の祈り',desc:'ラン開始時の障壁 +8',max:5}];const html=`<div class="shop"><div class="shop-head"><span>✦ 恒久強化（死亡後も引き継ぎ）</span><span>魂の欠片：<b>${meta.coins}</b> ✧</span></div>${offers.map(o=>{const full=meta[o.k]>=o.max,cost=shopCost(o.k);return `<div class="shop-row"><div><div class="shop-name">${o.icon} ${o.name} <span class="muted">Lv.${meta[o.k]}/${o.max}</span></div><div class="shop-desc">${o.desc}</div></div><button class="buy" data-buy="${o.k}" ${full||meta.coins<cost?'disabled':''}>${full?'MAX':cost+' ✧'}</button></div>`}).join('')}</div>`;for(const id of ['titleShop','deathShop'])$(id).innerHTML=(id==='titleShop'&&meta.coins===0&&meta.life+meta.attack+meta.ward===0)?'':html;for(const b of document.querySelectorAll('[data-buy]'))b.addEventListener('click',()=>{const k=b.dataset.buy;if(!['life','attack','ward'].includes(k)||meta[k]>=5||meta.coins<shopCost(k))return;meta.coins-=shopCost(k);meta[k]++;save();renderShop();$('titleRecords').innerHTML=records();sound(740,.19,'triangle',.06,190)})}
 function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();renderShop();syncHUD();renderBuild();$('codexCount').textContent=Object.keys(book.seen).length+'体遭遇済み';}
-function start(practice=false,practiceKey=null){
+function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
- const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:1,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:65+10*meta.life,hp:65+10*meta.life,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:{},enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};spawnEnemy(t);setMode('combat');syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 function spawnEnemy(t){
  clashFX=null;
  const floor=game.floor||1;
@@ -154,6 +156,9 @@ function spawnEnemy(t){
   const key=game.practiceKey||$('practiceEnemy').value;
   if(!book.seen[key]){title();return}
   archetype=P.findByKey(key);
+ }else if(DEV_MODE&&game.devOverride){
+  archetype=P.findByKey(game.devOverride);
+  game.devOverride=null;
  }else{
   archetype=P.encounterForFloor(floor,Math.random,game.lastRareFloor);
   if(archetype.rare)game.lastRareFloor=floor;
@@ -357,7 +362,10 @@ function enemy(now){
  else if(e.kind==='wraith')ctx.globalAlpha=1-recoil*.33;
  else ctx.rotate(-recoil*(e.kind==='guardian'?.075:.13));
  const color=e.color||m.accent;
- if(e.kind==='slime'){
+ // Visual-only enemy identities; attack tip uses the original contact coordinate.
+ if(VARIANT_MOTIONS?.draw(e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
+  // Dedicated silhouette drawn without changing the Web Audio clock or hitboxes.
+ }else if(e.kind==='slime'){
   // スライムは「圧縮→前傾→頭から飛びかかる」。盾に当たるのは左前方のこぶ。
   // 先端のローカル座標(+49,-58)を全員共通のhitX/hitYに揃える。
   const bulge=charge*.30,leap=smooth(p),stretch=leap*.23;
@@ -545,5 +553,27 @@ $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode===
  game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
  }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>start(false));$('homeBtn').addEventListener('click',title);$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35:0,audioContext.currentTime,.025);if(audioEnabled)sound(600,.10,'sine',.04,160)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause()});
-window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,attackSpan:game.attackSpan,offset:latencyOffset});resize();title();requestAnimationFrame(frame);
+// Developer controls exist only when loaded from the separate dev.html page.
+ // The dev page never writes progression, bestiary or timing-correction storage.
+ if(DEV_MODE)window.__parryDev=Object.freeze({
+  launch(floor=1,enemyKey=''){
+   const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
+   if(enemyKey&&!P.findByKey(enemyKey))return false;
+   start(false,null,{floor:f,enemyKey:enemyKey||null});
+   return true;
+  },
+  reset(){title()},
+  list(){return P.codexEntries().map(e=>({key:e.bookKey,name:e.displayName,rare:e.rare,boss:e.boss,elite:e.elite}))},
+  preview(floor=1,enemyKey=''){
+   const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
+   const encounter=enemyKey?P.findByKey(enemyKey):P.encounterForFloor(f,()=>.5);
+   if(!encounter)return null;
+   return {floor:f,key:encounter.bookKey,name:encounter.displayName,
+    hpMultiplier:encounter.hpMultiplier??1,atkMultiplier:encounter.atkMultiplier??1,
+    ...P.baseStats(encounter,f),boss:encounter.boss,elite:encounter.elite,rare:encounter.rare};
+  },
+  state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
+  isolated:true
+ });
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,attackSpan:game.attackSpan,offset:latencyOffset});resize();title();requestAnimationFrame(frame);
 })();

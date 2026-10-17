@@ -81,3 +81,61 @@ test('rare enemy reward values are defined but not automatically written to pers
  assert.equal(P.byId.gem_slime.soulBonus,12);
  assert.equal(P.emptyBook().defeated[rare.bookKey],undefined);
 });
+
+
+test('v0.5.4 enemy multipliers match the agreed individual balance',()=>{
+ const expected={
+  slime:[1,1],knight:[1,1],wraith:[1,1],
+  rogue:[.90,.80],duelist:[.90,.80],sentinel:[1.10,1.00],
+  cantor:[1,.90],clockwork:[1.10,.95],
+  guardian:[1.50,1],ironwarden:[1.50,1],dirgekeeper:[1.50,1],timewarden:[1.50,1],
+  golden_tone:[1,1],gem_slime:[1,1]
+ };
+ assert.equal(Object.keys(expected).length,P.all.length);
+ for(const [id,[hp,attack]] of Object.entries(expected)){
+  assert.equal(P.byId[id].hpMultiplier??1,hp,id+' HP');
+  assert.equal(P.byId[id].atkMultiplier??1,attack,id+' attack');
+ }
+});
+test('damage reductions remain effective on the first floor despite the old minimum attack',()=>{
+ const rogue=P.baseStats(P.buildEnemy(P.byId.rogue),1);
+ const duelist=P.baseStats(P.buildEnemy(P.byId.duelist),1);
+ const base=P.baseStats(P.buildEnemy(P.byId.knight),1);
+ assert.equal(base.atk,14);
+ assert.equal(rogue.atk,11);
+ assert.equal(duelist.atk,11);
+ assert.ok(rogue.atk<13,'old Math.max(13,...) must not wipe out the 0.80 factor');
+ assert.equal(P.baseStats(P.buildEnemy(P.byId.sentinel),1).atk,14);
+});
+test('boss HP uses 1.50 times the PREVIOUS boss HP and leaves attack unchanged',()=>{
+ const hpCurve=f=>Math.pow(1.18,Math.min(f-1,9))*Math.pow(1.075,Math.max(0,f-10));
+ const atkCurve=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,f-10));
+ for(const boss of P.bosses)for(const floor of [5,10,15,20,30,40]){
+  for(const elite of [false,true]){
+   const enc=P.buildEnemy(boss,elite);
+   const oldHp=Math.round(49*hpCurve(floor)*2.15*(elite?1.3:1));
+   const oldAtk=Math.max(13,Math.round(14*atkCurve(floor)*1.25*(elite?1.15:1)));
+   const current=P.baseStats(enc,floor);
+   assert.equal(current.maxHp,Math.round(oldHp*1.5),boss.id+' HP at '+floor+' elite '+elite);
+   assert.equal(current.atk,oldAtk,boss.id+' atk at '+floor+' elite '+elite);
+  }
+ }
+});
+test('floor/elite/rare multipliers compose in existing order and standard enemies stay unchanged',()=>{
+ const hpGrowth=f=>Math.pow(1.18,Math.min(f-1,9))*Math.pow(1.075,Math.max(0,f-10));
+ const atkGrowth=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,f-10));
+ for(const id of ['slime','knight','wraith','rogue','duelist','sentinel','cantor','clockwork','golden_tone','gem_slime']){
+  const def=P.byId[id];
+  for(const floor of [1,11,19,31,41]){
+   for(const elite of [false,true]){
+    // Rare entries remain rare and must not accidentally gain other class modifiers.
+    const enc=P.buildEnemy(def,elite&&!def.rare);
+    const oldHp=Math.max(1,Math.round(49*hpGrowth(floor)*(elite&&!def.rare?1.30:1)*(def.rare?1.12:1)));
+    const oldAtk=Math.max(13,Math.round(14*atkGrowth(floor)*(elite&&!def.rare?1.15:1)*(def.rare?.95:1)));
+    const out=P.baseStats(enc,floor);
+    assert.equal(out.maxHp,Math.max(1,Math.round(oldHp*(def.hpMultiplier??1))),id+' HP at '+floor);
+    assert.equal(out.atk,Math.max(1,Math.round(oldAtk*(def.atkMultiplier??1))),id+' atk at '+floor);
+   }
+  }
+ }
+});
