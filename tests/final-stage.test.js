@@ -86,9 +86,13 @@ test('new backgrounds are cosmetic, and the finale count-in restarts its shared 
  assert.match(js,/game\.mode==='phase'/);
  assert.match(js,/for\(let i=0;i<FINAL_PHASE_COUNT_BEATS;i\+\+\)/);
  assert.match(js,/scoreFinalKick\(t,i===0\)/);
- assert.match(js,/osc\.frequency\.setValueAtTime\(115,t\)/);
- assert.match(js,/osc\.frequency\.exponentialRampToValueAtTime\(48,t\+\.095\)/);
- assert.match(js,/filter\.type='lowpass'/);
+ assert.match(js,/punch\.frequency\.setValueAtTime\(220,t\)/);
+ assert.match(js,/punch\.frequency\.exponentialRampToValueAtTime\(92,t\+\.11\)/);
+ assert.match(js,/boom\.frequency\.setValueAtTime\(135,t\)/);
+ assert.match(js,/boom\.frequency\.exponentialRampToValueAtTime\(55,t\+\.17\)/);
+ assert.match(js,/crackFilter\.type='bandpass';crackFilter\.frequency\.value=950/);
+ assert.match(js,/dustFilter\.type='lowpass';dustFilter\.frequency\.value=380/);
+ assert.doesNotMatch(js,/scoreTone\(i===0\?784:523/);
  assert.match(js,/game\.mode==='phase'&&game\.phaseStage==='countin'/);
  assert.doesNotMatch(js,/scoreTone\(i===0\?784:523/);
  assert.match(js,/game\.attackBeat=FINAL_PHASE_COUNT_BEATS\*2/);

@@ -92,27 +92,49 @@ $('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.va
 function ensureAudio(){try{audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});if(!score.bus){score.bus=audioContext.createGain();score.bus.gain.value=.35;score.bus.connect(audioContext.destination)}if(!score.noise){const ac=audioContext,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;score.noise=b;}return true}catch(e){return false}}
 function scoreTone(f,d,vol,t,type='triangle',bend=0){if(!audioEnabled||!audioContext||!score.bus)return;const ac=audioContext,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(25,f),t);if(bend)o.frequency.exponentialRampToValueAtTime(Math.max(25,f+bend),t+d*.8);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(score.bus);o.start(t);o.stop(t+d+.015)}
 function scoreNoise(t,d,vol,hpf=1800){if(!audioEnabled||!audioContext||!score.noise)return;const ac=audioContext,src=ac.createBufferSource(),flt=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;flt.type='highpass';flt.frequency.value=hpf;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+d);src.connect(flt);flt.connect(g);g.connect(score.bus);src.start(t);src.stop(t+d+.01)}
-// Four deep kick-drum hits for the final boss count-in (rather than pitched beeps).
-// Both the oscillator and the muted transient use the same Web Audio clock as combat.
+// Cinematic giant-footstep drums: audible impact on small speakers + deep body + short rumble.
+// Four identical hits, slightly accented first. Every layer is scheduled on the same Web Audio beat.
 function scoreFinalKick(t,accent=false){
  if(!audioEnabled||!audioContext||!score.bus)return;
- const ac=audioContext,osc=ac.createOscillator(),gain=ac.createGain();
- osc.type='sine';
- osc.frequency.setValueAtTime(115,t);
- osc.frequency.exponentialRampToValueAtTime(48,t+.095);
- gain.gain.setValueAtTime(.0001,t);
- gain.gain.exponentialRampToValueAtTime(accent?.36:.30,t+.007);
- gain.gain.exponentialRampToValueAtTime(.0001,t+.23);
- osc.connect(gain);gain.connect(score.bus);osc.start(t);osc.stop(t+.245);
- // Low-passed attack gives the drum a soft "thump", avoiding the old bright hi-hat sound.
+ const ac=audioContext,level=accent?1.12:1;
+ // Mid-bass punch (220→92Hz) gives the "DON!" definition that sub-bass alone lacks.
+ const punch=ac.createOscillator(),punchGain=ac.createGain();
+ punch.type='triangle';
+ punch.frequency.setValueAtTime(220,t);
+ punch.frequency.exponentialRampToValueAtTime(92,t+.11);
+ punchGain.gain.setValueAtTime(.0001,t);
+ punchGain.gain.exponentialRampToValueAtTime(.34*level,t+.005);
+ punchGain.gain.exponentialRampToValueAtTime(.0001,t+.19);
+ punch.connect(punchGain);punchGain.connect(score.bus);
+ punch.start(t);punch.stop(t+.20);
+ // Chest-sized boom (135→55Hz) hangs under the sharp stomp without masking the next beat.
+ const boom=ac.createOscillator(),boomGain=ac.createGain();
+ boom.type='sine';
+ boom.frequency.setValueAtTime(135,t);
+ boom.frequency.exponentialRampToValueAtTime(55,t+.17);
+ boomGain.gain.setValueAtTime(.0001,t);
+ boomGain.gain.exponentialRampToValueAtTime(.46*level,t+.014);
+ boomGain.gain.exponentialRampToValueAtTime(.0001,t+.35);
+ boom.connect(boomGain);boomGain.connect(score.bus);
+ boom.start(t);boom.stop(t+.36);
  if(score.noise){
-  const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),transient=ac.createGain();
-  src.buffer=score.noise;filter.type='lowpass';filter.frequency.value=520;
-  transient.gain.setValueAtTime(.0001,t);
-  transient.gain.exponentialRampToValueAtTime(accent?.08:.065,t+.004);
-  transient.gain.exponentialRampToValueAtTime(.0001,t+.045);
-  src.connect(filter);filter.connect(transient);transient.connect(score.bus);
-  src.start(t);src.stop(t+.052);
+  // Short midrange crack makes every beat distinguishable on phone speakers.
+  const crack=ac.createBufferSource(),crackFilter=ac.createBiquadFilter(),crackGain=ac.createGain();
+  crack.buffer=score.noise;crackFilter.type='bandpass';crackFilter.frequency.value=950;
+  crackFilter.Q.value=.7;
+  crackGain.gain.setValueAtTime(.0001,t);
+  crackGain.gain.exponentialRampToValueAtTime(.19*level,t+.004);
+  crackGain.gain.exponentialRampToValueAtTime(.0001,t+.07);
+  crack.connect(crackFilter);crackFilter.connect(crackGain);crackGain.connect(score.bus);
+  crack.start(t);crack.stop(t+.08);
+  // A low, brief dust-cloud tail supplies weight like a huge creature landing.
+  const dust=ac.createBufferSource(),dustFilter=ac.createBiquadFilter(),dustGain=ac.createGain();
+  dust.buffer=score.noise;dustFilter.type='lowpass';dustFilter.frequency.value=380;
+  dustGain.gain.setValueAtTime(.0001,t);
+  dustGain.gain.exponentialRampToValueAtTime(.11*level,t+.014);
+  dustGain.gain.exponentialRampToValueAtTime(.0001,t+.24);
+  dust.connect(dustFilter);dustFilter.connect(dustGain);dustGain.connect(score.bus);
+  dust.start(t);dust.stop(t+.25);
  }
 }
 const NOTES=[73.42,82.41,87.31,98,110,116.54,130.81,146.83,164.81,174.61,196,220,233.08,261.63,293.66,329.63,349.23,392,440,466.16,523.25,587.33];
@@ -1452,5 +1474,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.0-4',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.0-5',window.__parryV05);requestAnimationFrame(frame);
 })();

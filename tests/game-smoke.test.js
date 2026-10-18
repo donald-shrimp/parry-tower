@@ -252,8 +252,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-4"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-5"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-5"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -946,7 +946,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-4"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-5"/);
   assert.match(html,/v0\.9\.0/);
  }
  const g=makeHarness({},true);
@@ -1265,7 +1265,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-4"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-5"'),asset);
   assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1614,13 +1614,18 @@ test('80F summit boss enters second musical phrase only after completed strike',
  g.frame(started+1500);
  assert.equal(g.state().phaseStage,'countin');
  const drumHits=g.audioEvents();
- assert.equal(drumHits.length,4,'count-in is four kick drums without extra melodic voices');
- assert.ok(drumHits.every(x=>x.type==='sine'&&x.frequency===115),
-  'each count-in oscillator is a low-pitched kick, not a high beep');
+ // Each of the four scheduled stomps has exactly two pitched layers: a punch and a boom.
+ assert.equal(drumHits.length,8,'count-in has four layered drums without melodic voices');
+ const punches=drumHits.filter(x=>x.type==='triangle'&&x.frequency===220);
+ const booms=drumHits.filter(x=>x.type==='sine'&&x.frequency===135);
+ assert.equal(punches.length,4,'mid-bass punch layer remains audible on small speakers');
+ assert.equal(booms.length,4,'sub-bass body under every stomp');
  const drumBeat=g.state().beat;
- for(let i=1;i<drumHits.length;i++)
-  assert.ok(Math.abs(drumHits[i].time-drumHits[i-1].time-drumBeat)<.00001,
-   'each kick starts exactly one beat apart on Web Audio time');
+ for(let i=0;i<4;i++){
+  assert.ok(Math.abs(punches[i].time-booms[i].time)<.00001,'impact layers start together');
+  if(i)assert.ok(Math.abs(punches[i].time-punches[i-1].time-drumBeat)<.00001,
+   'each layered stomp starts exactly one beat apart on Web Audio time');
+ }
  const countStart=g.state().phaseCountStartAt,beat=g.state().beat*1000;
  assert.ok(countStart>g.now);
  // The count-in presents only the movement title, never a full-screen instruction HUD.
