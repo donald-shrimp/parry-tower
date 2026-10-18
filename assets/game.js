@@ -8,6 +8,8 @@ const CHARACTER_SVG=window.ParryCharacterSvg;
 const CHARACTER_FLAT=window.ParryHeroFlat;
 const CHARACTER_TRACE=window.ParryHeroTrace;
 const CHARACTER_READY=window.ParryHeroReady;
+const CHARACTER_KNIGHT=window.ParryKnightTrace;
+const CHARACTER_KNIGHT_ENABLED=/(?:^|[?&])art=knight-trace(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_READY_ENABLED=/(?:^|[?&])art=ready(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_TRACE_ENABLED=/(?:^|[?&])art=trace(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_FLAT_ENABLED=/(?:^|[?&])art=flat(?:&|$)/.test(window.location?.search||'');
@@ -1276,7 +1278,9 @@ function enemy(now){
   ctx.filter='hue-rotate('+degrees+'deg) saturate('+saturation+'%)';
  }
  // Visual-only enemy identities; attack tip uses the original contact coordinate.
- if(CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
+ if(CHARACTER_KNIGHT_ENABLED&&CHARACTER_KNIGHT?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
+  // Traced knight art only: original timing, position, parry contact and saved state unchanged.
+ }else if(CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
   // Optional art-layer pilot; the attack clock and contact point are unchanged.
  }else if(VARIANT_MOTIONS?.draw(e.sprite||e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
   // Dedicated silhouette drawn without changing the Web Audio clock or hitboxes.
