@@ -1,4 +1,4 @@
-# 紅刃の剣士 / \`duelist\`
+# 紅刃の剣士 / `duelist`
 
 > 共通: [README](../README.md) → [STYLE_GUIDE](../STYLE_GUIDE.md) → 本ページ。SVG担当は [SVG_SPEC](../SVG_SPEC.md) と採用画像も必須。
 
@@ -29,14 +29,14 @@
 
 ## SVG制作担当への指示（採用画像がある時だけ）
 
-1. 採用済み参考画像 \`assets/character-art/references/duelist/approved.png\` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
+1. 採用済み参考画像 `assets/character-art/references/duelist/approved.png` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
 2. 描画モチーフと明度・形を参照画像に合わせ、兜または薄いフード、胴、両腕・両手、主剣、副剣、左右の脚、短い腰布。刀と握り手は別パーツ。
-3. 元の戦闘モーション上の注意: 一撃ずつ左右の手を交互に前へ出す。どちらが次に攻撃するか分かるよう、刀を交差させすぎない。 \`assets/game.js\` と必要なら \`assets/enemy-motions.js\` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
-4. [SVG_SPEC](../SVG_SPEC.md)に従い \`assets/character-art/svg/duelist/\` へSVGパーツと \`manifest.json\` を出力。ブラウザでレンダリング・比較テストする。
+3. 元の戦闘モーション上の注意: 一撃ずつ左右の手を交互に前へ出す。どちらが次に攻撃するか分かるよう、刀を交差させすぎない。 `assets/game.js` と必要なら `assets/enemy-motions.js` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
+4. [SVG_SPEC](../SVG_SPEC.md)に従い `assets/character-art/svg/duelist/` へSVGパーツと `manifest.json` を出力。ブラウザでレンダリング・比較テストする。
 5. 変更は **Draft PR #28 の既存ブランチ**に限定し、マージしない。
 
 ## 参照画像
 
 - 承認前: なし。ユーザーが提案画像から採用判断する。
-- 承認後の基準パス: \`assets/character-art/references/duelist/approved.png\`
-- 補足メモ: \`assets/character-art/references/duelist/notes.md`（任意）
+- 承認後の基準パス: `assets/character-art/references/duelist/approved.png`
+- 補足メモ: `assets/character-art/references/duelist/notes.md`（任意）

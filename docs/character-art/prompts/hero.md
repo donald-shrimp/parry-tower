@@ -1,4 +1,4 @@
-# 主人公 — パリィの騎士 / \`hero\`
+# 主人公 — パリィの騎士 / `hero`
 
 > 共通: [README](../README.md) → [STYLE_GUIDE](../STYLE_GUIDE.md) → 本ページ。SVG担当は [SVG_SPEC](../SVG_SPEC.md) と採用画像も必須。
 
@@ -29,14 +29,14 @@
 
 ## SVG制作担当への指示（採用画像がある時だけ）
 
-1. 採用済み参考画像 \`assets/character-art/references/hero/approved.png\` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
+1. 採用済み参考画像 `assets/character-art/references/hero/approved.png` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
 2. 描画モチーフと明度・形を参照画像に合わせ、兜／頭、胴鎧、左・右上腕と前腕、手、盾、片手剣、左右の脚、マントを独立可能に。盾の裏と握り手が別に見える。
-3. 元の戦闘モーション上の注意: 盾を素早く持ち上げる、構えを維持する、剣で反撃する。肩から盾の向きを変えても頭と胴が崩れない。 \`assets/game.js\` と必要なら \`assets/enemy-motions.js\` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
-4. [SVG_SPEC](../SVG_SPEC.md)に従い \`assets/character-art/svg/hero/\` へSVGパーツと \`manifest.json\` を出力。ブラウザでレンダリング・比較テストする。
+3. 元の戦闘モーション上の注意: 盾を素早く持ち上げる、構えを維持する、剣で反撃する。肩から盾の向きを変えても頭と胴が崩れない。 `assets/game.js` と必要なら `assets/enemy-motions.js` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
+4. [SVG_SPEC](../SVG_SPEC.md)に従い `assets/character-art/svg/hero/` へSVGパーツと `manifest.json` を出力。ブラウザでレンダリング・比較テストする。
 5. 変更は **Draft PR #28 の既存ブランチ**に限定し、マージしない。
 
 ## 参照画像
 
 - 承認前: なし。ユーザーが提案画像から採用判断する。
-- 承認後の基準パス: \`assets/character-art/references/hero/approved.png\`
-- 補足メモ: \`assets/character-art/references/hero/notes.md`（任意）
+- 承認後の基準パス: `assets/character-art/references/hero/approved.png`
+- 補足メモ: `assets/character-art/references/hero/notes.md`（任意）

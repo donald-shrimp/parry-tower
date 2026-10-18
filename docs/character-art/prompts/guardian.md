@@ -1,4 +1,4 @@
-# 鐘楼の守護者 / \`guardian\`
+# 鐘楼の守護者 / `guardian`
 
 > 共通: [README](../README.md) → [STYLE_GUIDE](../STYLE_GUIDE.md) → 本ページ。SVG担当は [SVG_SPEC](../SVG_SPEC.md) と採用画像も必須。
 
@@ -29,14 +29,14 @@
 
 ## SVG制作担当への指示（採用画像がある時だけ）
 
-1. 採用済み参考画像 \`assets/character-art/references/guardian/approved.png\` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
+1. 採用済み参考画像 `assets/character-art/references/guardian/approved.png` の**実際の絵を確認**する。なければ作業せず、ユーザーへ採用画像の添付を依頼する。
 2. 描画モチーフと明度・形を参照画像に合わせ、角兜、頭、胴胸甲、左右肩、左右腕・手、大剣、外套左右、腰鎧、両脚、胸の象徴的コア。
-3. 元の戦闘モーション上の注意: 大剣を頭上に上げて溜め、ゆっくりだが強烈に盾へ落とす。剣腕肩のピボット・大剣の鍔を見分けられる造形。 \`assets/game.js\` と必要なら \`assets/enemy-motions.js\` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
-4. [SVG_SPEC](../SVG_SPEC.md)に従い \`assets/character-art/svg/guardian/\` へSVGパーツと \`manifest.json\` を出力。ブラウザでレンダリング・比較テストする。
+3. 元の戦闘モーション上の注意: 大剣を頭上に上げて溜め、ゆっくりだが強烈に盾へ落とす。剣腕肩のピボット・大剣の鍔を見分けられる造形。 `assets/game.js` と必要なら `assets/enemy-motions.js` を読み、元のタイミング・盾への着弾点を変えずにピボットを定義する。
+4. [SVG_SPEC](../SVG_SPEC.md)に従い `assets/character-art/svg/guardian/` へSVGパーツと `manifest.json` を出力。ブラウザでレンダリング・比較テストする。
 5. 変更は **Draft PR #28 の既存ブランチ**に限定し、マージしない。
 
 ## 参照画像
 
 - 承認前: なし。ユーザーが提案画像から採用判断する。
-- 承認後の基準パス: \`assets/character-art/references/guardian/approved.png\`
-- 補足メモ: \`assets/character-art/references/guardian/notes.md`（任意）
+- 承認後の基準パス: `assets/character-art/references/guardian/approved.png`
+- 補足メモ: `assets/character-art/references/guardian/notes.md`（任意）
