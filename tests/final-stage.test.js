@@ -59,9 +59,9 @@ test('bestiary migrates unchanged, 80F enemies unlock dojo on encounter',()=>{
  assert.equal(book.seen[e.bookKey].firstFloor,80);
  assert.equal(E.findByKey('endking:elite').id,'endking');
 });
-test('61F high-floor difficulty grows slower than the old exponential, without changing 1–60F stats',()=>{
+test('61F high-floor growth preserves HP through 80F, while attack curve softens from 31F',()=>{
  function hpOld(f){return Math.pow(1.18,Math.min(f-1,9))*Math.pow(1.075,Math.max(0,f-10));}
- function atkOld(f){return Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,f-10));}
+ function atkOld(f){return Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,Math.min(f,30)-10))*Math.pow(1.03,Math.max(0,f-30));}
  const def=E.buildEnemy(E.byId.knight);
  for(const f of [1,10,11,40,41,51,60]){
   assert.equal(E.baseStats(def,f).maxHp,Math.round(49*hpOld(f)),String(f)+' HP preserved');

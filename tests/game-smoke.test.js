@@ -56,14 +56,15 @@ function makeHarness(seed={},devMode=false){
   createBufferSource(){return {connect:noop,start:noop,stop:noop}}
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
+ const windowListeners={},documentListeners={};
  const window={
-  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:noop
+  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
   createElement(tag){return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
   getElementById(id){if(!el.has(id))throw new Error('Unknown DOM id: '+id);return el.get(id)},
-  addEventListener:noop,querySelectorAll:()=>[],hidden:false
+  addEventListener:(type,listener)=>{documentListeners[type]=listener},querySelectorAll:()=>[],hidden:false
  };
  const context={
   window,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
@@ -159,7 +160,14 @@ function makeHarness(seed={},devMode=false){
    routeSkillSelect(id){el.get('routeSkillCards').listeners.click({target:{closest:()=>({dataset:{routeSkill:id}})}})},
 
 
-  parry(){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop})},
+  parry(){this.hold();this.release()},
+  hold(pointerId=1){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop,pointerId})},
+  release(pointerId=1){documentListeners.pointerup({pointerId})},
+  cancel(pointerId=1){documentListeners.pointercancel({pointerId})},
+  keyDown(code='Space'){documentListeners.keydown({code,repeat:false,preventDefault:noop})},
+  keyUp(code='Space'){documentListeners.keyup({code,preventDefault:noop})},
+  blur(){windowListeners.blur()},
+  hide(){document.hidden=true;documentListeners.visibilitychange();document.hidden=false},
   random(value){randomOverride=value},
   frame(at){clock=at;assert.ok(animation);animation(clock)},
   clock(at){clock=at},
@@ -252,8 +260,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.1-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.1-4"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.2-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.2-1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -947,7 +955,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.1-4"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.2-1"/);
   assert.match(html,/v0\.9\.1/);
  }
  const g=makeHarness({},true);
@@ -1266,7 +1274,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.1-4"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.2-1"'),asset);
   assert.match(html,/v0\.9\.1/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1768,4 +1776,73 @@ test('after the masked 24F teaser, the real 41F encounter reveals its name and u
  const raw=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
  assert.equal(raw.seen['ember_slime:normal'].firstFloor,41);
  assert.equal(raw.seen['ember_slime:elite'],undefined,'masked elite encounter stays hidden');
+});
+
+test('hold guard remains raised through repeated hits; early short tap misses instead',()=>{
+ const held=makeHarness();held.press('startBtn');
+ const d=held.bloodTest();d.setEnemyHp(999999);d.setEnemyAttack(50);
+ held.clock(held.state().attackAt-500);held.hold();
+ held.frame(held.state().attackAt+1);
+ assert.equal(held.state().hp,50,'50 attack is 15 blocked damage at 70% reduction');
+ assert.equal(held.state().guardHeld,true);
+ const enemyHp=held.state().enemyHp,second=held.state().attackAt;
+ held.frame(second+1);
+ assert.equal(held.state().hp,35,'next attack also guarded without a second press');
+ assert.equal(held.state().enemyHp,enemyHp,'guard does not automatically attack');
+ held.release();assert.equal(held.state().guardHeld,false);
+ held.frame(held.state().attackAt+1);
+ assert.equal(held.state().mode,'gameover','releasing before impact leaves player vulnerable');
+ const short=makeHarness();short.press('startBtn');
+ short.clock(short.state().attackAt-500);short.parry();
+ assert.equal(short.state().guardHeld,false);
+ short.frame(short.state().attackAt+1);
+ assert.equal(short.state().hp,65-short.state().enemyAttack,'early short tap does not grant guard');
+});
+test('holding guard reduces 80F boss damage to maxHP 40%; combo decays but is not wiped',()=>{
+ const g=makeHarness({},true),d=g.bloodTest();g.dev().launch(80,'endking:elite');
+ d.setEnemyHp(999999);d.setMaxHp(205);d.setHp(205);d.setShield(0);d.setCombo(80);
+ d.setEnemyAttack(501);
+ g.clock(g.state().attackAt-400);g.hold();
+ g.frame(g.state().attackAt+1);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().hp,123,'maxHP40%=82 guard damage');
+ assert.equal(g.state().combo,64,'80 combo loses exactly 20%');
+ assert.equal(g.state().charge,0,'guard does not generate ultimate');
+ g.release();d.setEnemyAttack(100);
+ d.setCombo(4);d.setHp(205);
+ g.clock(g.state().attackAt-400);g.hold();
+ g.frame(g.state().attackAt+1);
+ assert.equal(g.state().combo,0,'minimum five-combo penalty');
+});
+test('held defense is reset on release, cancel, blur, pause, cinematic and new floor',()=>{
+ const g=makeHarness({},true),d=g.bloodTest();
+ g.dev().launch(75,'endking:normal');
+ g.hold();assert.equal(g.state().guardHeld,true);
+ g.cancel();assert.equal(g.state().guardHeld,false);
+ g.hold();g.hide();assert.equal(g.state().guardHeld,false);
+ g.hold();g.blur();assert.equal(g.state().guardHeld,false);
+ g.hold();g.press('pauseBtn');assert.equal(g.state().guardHeld,false);
+ g.press('resumeBtn');assert.equal(g.state().mode,'combat');assert.equal(g.state().guardHeld,false);
+ g.keyDown();assert.equal(g.state().guardHeld,true);
+ g.keyUp();assert.equal(g.state().guardHeld,false);
+ g.keyDown();g.keyDown();g.keyUp();assert.equal(g.state().guardHeld,false,'repeated keydown cannot latch guard');
+ d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().guardHeld,false,'victory stops holding shield');
+ const second=makeHarness({},true),sd=second.bloodTest();
+ second.dev().launch(80,'endking:elite');
+ sd.setEnemyHp(Math.floor(second.state().enemyMaxHp*.4)+100);sd.setBaseAttack(1);
+ resolveBloodParry(second,20);
+ assert.equal(second.state().mode,'phase');
+ assert.equal(second.state().guardHeld,false);
+});
+test('press at existing just/parry timing beats hold-guard fallback',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setEnemyHp(999999);d.setEnemyAttack(40);
+ const due=g.state().attackAt;
+ g.clock(due-100);g.hold();
+ g.frame(due+1);
+ assert.equal(g.state().hp,65,'on-time press triggers parry, no guard damage');
+ assert.ok(g.state().combo>=1);
+ g.release();
 });

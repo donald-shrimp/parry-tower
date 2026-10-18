@@ -167,7 +167,8 @@
    *Math.pow(1.075,Math.max(0,Math.min(actualFloor,60)-10))
    *Math.pow(1.035,Math.max(0,actualFloor-60));
   const atkGrowth=Math.pow(1.09,Math.min(actualFloor-1,9))
-   *Math.pow(1.045,Math.max(0,Math.min(actualFloor,60)-10))
+   *Math.pow(1.045,Math.max(0,Math.min(actualFloor,30)-10))
+   *Math.pow(1.030,Math.max(0,Math.min(actualFloor,60)-30))
    *Math.pow(1.012,Math.max(0,actualFloor-60));
   const hpScale=(enc.boss?2.15:1)*(enc.elite?1.30:1)*(enc.rare?1.12:1);
   const atkScale=(enc.boss?1.25:1)*(enc.elite?1.15:1)*(enc.rare?.95:1);

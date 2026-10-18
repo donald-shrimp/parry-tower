@@ -66,6 +66,36 @@ let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 // 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
 const PARRY_STARTUP=100;
+// Guard activates after the shield is physically raised; hold to cover repeated attacks.
+const GUARD_DAMAGE_RATIO=.30;
+const GUARD_MAX_HP_RATIO=.40;
+const GUARD_COMBO_LOSS_RATIO=.20;
+const GUARD_MIN_COMBO_LOSS=5;
+const heldGuardInputs=new Set();
+function clearGuardInput(){
+ heldGuardInputs.clear();
+ if(game){game.guardHeld=false;game.guardStartedAt=0;}
+}
+function beginGuardInput(source){
+ if(game.mode!=='combat'||heldGuardInputs.has(source))return;
+ const wasHeld=heldGuardInputs.size>0;
+ heldGuardInputs.add(source);
+ if(!wasHeld){
+  game.guardHeld=true;
+  game.guardStartedAt=performance.now();
+  tap(); // Only this press edge can trigger a JUST/PARRY; continued hold is defensive.
+ }
+}
+function endGuardInput(source){
+ heldGuardInputs.delete(source);
+ if(heldGuardInputs.size===0&&game){game.guardHeld=false;game.guardStartedAt=0;}
+}
+function guardReadyAt(impact){
+ return !!game.guardHeld&&game.guardStartedAt+PARRY_STARTUP<=impact;
+}
+function guardComboAfterHit(combo){
+ return Math.max(0,combo-Math.max(GUARD_MIN_COMBO_LOSS,Math.ceil(combo*GUARD_COMBO_LOSS_RATIO)));
+}
 // Second movement: a dramatic rumble, a full four-beat musical count, then a safe wind-up.
 const FINAL_PHASE_RUMBLE_MS=1500;
 const FINAL_PHASE_COUNT_BEATS=4;
@@ -207,6 +237,7 @@ function syncDeathInputLock(now=performance.now()){
  for(const id of ['retryBtn','homeBtn','deathCodexBtn','deathUpgradeBtn'])$(id).disabled=blocked;
 }
 function setMode(mode){
+ if(mode!=='combat')clearGuardInput();
  game.mode=mode;
  $('practiceTools').hidden=!game.practice||!['combat','pause'].includes(mode);
  $('exitPracticeBtn').hidden=!game.practice||!['combat','pause'].includes(mode);
@@ -352,7 +383,7 @@ function title(){stopScore();clashFX=null;game={mode:'title',floor:1,maxHp:65,hp
 function start(practice=false,practiceKey=null,devOptions=null){
  if(practice&&(!book.seen[practiceKey]||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+10*meta.life+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:8*meta.ward,baseAtk:25+meta.attack*3,lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 // The 4F/8F rooms replace ordinary combat on each ten-floor route cycle.
 function enterFloor(at=performance.now()){
  if(!game.practice&&!(DEV_MODE&&game.devOverride)&&RT.branchKind(game.floor)){
@@ -561,6 +592,7 @@ function spawnEnemy(t){
  if(!archetype){title();return}
  // Encounter, not kill, unlocks the existing invulnerable practice mode.
  game.lastDiscovered=false;
+ clearGuardInput();
  if(!game.practice&&!archetype.preview){
   game.lastDiscovered=P.recordEncounter(book,archetype,floor);
   saveBook();
@@ -588,6 +620,7 @@ function nextStrike(){
 function beginFinalPhase(){
  const e=game.enemy;
  e.phase=2;e.rhythm=[...e.phaseRhythm];e.index=0;
+ clearGuardInput();
  game.phaseStage='rumble';game.phaseStartedAt=performance.now();
  game.phaseCountStartAt=0;
  game.attackAt=Infinity;game.attackResolved=true;game.pendingKind=null;
@@ -700,7 +733,11 @@ function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')re
   game.relicJustStreak=0;game.justStreak=0;
   if(hasRelic('stopped_hand')&&!game.relicStopUsed){
    game.relicStopUsed=true;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
-  }else game.combo=0;game.guards++;if(!lvl('aegis'))game.charge=0;applyDamage(e.atk*.60,'GUARD');if(game.mode!=='combat')return;
+  }else game.combo=guardComboAfterHit(game.combo);
+  game.guards++;
+  if(!lvl('aegis'))game.charge=0;
+  applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
+  if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');sound(250,.08,'triangle',.055,-80);
 }else if(kind==='miss'){
   game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
@@ -966,17 +1003,14 @@ function tap(){
   feedback('遅い '+Math.round(t-(game.lastImpactAt-PARRY_STARTUP))+'ms','#f7ca8e');
   return;
  }
- if(t<game.whiffUntil||game.attackResolved||game.inputLocked)return;
- // 入力したその場では倒れない。攻撃が盾に届いた瞬間だけ判定と衝突演出を発生させる。
+ if(game.attackResolved||game.inputLocked)return;
+ // Only the press edge attempts a parry. Earlier inputs raise the shield and can
+ // defend at impact IF held continuously for the full 100 ms startup.
  const delta=t-(game.attackAt-PARRY_STARTUP),perfect=getPerfectWindow(),parry=getParryWindow();
  game.lastAttemptDelta=delta;game.parryAnimAt=t;
  if(Math.abs(delta)<=perfect){game.pendingKind='just';game.inputLocked=true;game.parryAnimKind='just'}
  else if(Math.abs(delta)<=parry){game.pendingKind='parry';game.inputLocked=true;game.parryAnimKind='parry'}
- else if(delta>=-parry-24&&delta< -parry){game.pendingKind='guard';game.inputLocked=true;game.parryAnimKind='guard'}
- else{
-  game.parryAnimKind='whiff';game.whiffs++;game.whiffUntil=t+400;
-  sound(190,.09,'triangle',.015,-80);
- }
+ else game.parryAnimKind='guard';
 }
 
 function populatePracticeEnemies(selected){
@@ -1009,7 +1043,7 @@ function startPractice(key){
  if(!book.seen[key]||!P.findByKey(key))return;
  start(true,key);
 }
-function togglePause(){if(game.mode==='combat'){pauseAt=performance.now();stopScore();setMode('pause');}else if(game.mode==='pause'){const now=performance.now();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat')}}
+function togglePause(){if(game.mode==='combat'){clearGuardInput();pauseAt=performance.now();stopScore();setMode('pause');}else if(game.mode==='pause'){const now=performance.now();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat')}}
 function resize(){const r=canvas.getBoundingClientRect();w=Math.max(260,r.width);h=Math.max(300,r.height);dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 window.addEventListener('resize',resize);if('ResizeObserver'in window)new ResizeObserver(resize).observe(canvas);
 function round(x,y,r,fill,stroke='',lw=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.lineWidth=lw;ctx.strokeStyle=stroke;ctx.stroke()}}
@@ -1111,7 +1145,9 @@ function drawBackground(now){const g=ctx.createLinearGradient(0,0,0,h);g.addColo
 function hero(now){
  const s=Math.min(w/550,h/470)*1.23,x=w*.28,y=h*.80;
  const since=now-(game.parryAnimAt||-99999);
- const lift=clamp(since/95,0,1)*clamp((300-since)/130,0,1);
+ const quickLift=clamp(since/95,0,1)*clamp((300-since)/130,0,1);
+ const heldLift=game.guardHeld?clamp((now-game.guardStartedAt)/PARRY_STARTUP,0,1):0;
+ const lift=Math.max(quickLift,heldLift);
  const action=clamp(1-(now-(game.lastHitAt||-99999))/240,0,1);
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const age=now-(game.lastDeflectAt||-99999),push=(age>=0&&age<160?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:.45);
@@ -1122,8 +1158,9 @@ function hero(now){
  fillPoly([[-21,-5],[-2,-5],[-1,2],[-23,2]],'#29384c');fillPoly([[5,-5],[25,-5],[29,2],[4,2]],'#29384c');
  fillPoly([[-19,-83],[13,-85],[26,-40],[9,-30],[-18,-37]],'#738aa8');fillPoly([[-12,-78],[7,-78],[7,-40],[-8,-40]],'#263950');line([[-18,-68],[24,-54]],'#bad9e1',2.6);round(3,-57,5,'#eac791');
  fillPoly([[-17,-107],[6,-117],[20,-98],[13,-80],[-14,-81]],'#b7c6d4');fillPoly([[-16,-107],[-7,-115],[4,-118],[1,-91],[-18,-91]],'#526781');fillPoly([[4,-101],[18,-98],[13,-89],[3,-90]],'#142b3f');round(9,-95,2,'#76eff3');
- // 盾は敵のいる右側。入力から100ms程度で迎撃位置まで上げる。
- ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);ctx.rotate(-.16+lift*.18-push*.23);
+ // 盾は敵のいる右側。押している間は迎撃位置で保持し、100msで構え切る。
+ ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);
+ if(game.guardHeld&&heldLift>=1){ctx.shadowColor='#84bbef';ctx.shadowBlur=12;}ctx.rotate(-.16+lift*.18-push*.23);
  fillPoly([[-16,-25],[17,-25],[14,5],[0,24],[-14,5]],'#b5ced9');
  fillPoly([[-11,-19],[12,-19],[10,4],[0,17],[-10,4]],'#273d59');line([[0,-13],[0,10]],'#8ff0f3',3);line([[-8,-2],[8,-2]],'#8ff0f3',3);
  if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<170){ctx.shadowColor='#8ef4ff';ctx.shadowBlur=32;round(0,0,23,'#74deff35','#dcfaff',3);ctx.shadowBlur=0}
@@ -1399,17 +1436,39 @@ function update(now,dt){const m=game.mode;if(m==='combat'){scheduleScore();syncA
   game.cuePlayed=true;sfxSwing();
  }
  if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
- if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt)strikeResult(game.pendingKind||'miss',game.attackAt);
+ if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt)
+  strikeResult(game.pendingKind||(guardReadyAt(game.attackAt)?'guard':'miss'),game.attackAt);
  }else if(m==='phase')updateFinalPhase(now);
  else if(m==='victory'&&now-game.clearAt>900)showRewards();
  shake=Math.max(0,shake-dt*.08);flash=Math.max(0,flash-dt*.003);particles=particles.filter(p=>{p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vx*=.985;p.vy+=.025;p.life-=dt;return p.life>0});texts=texts.filter(a=>now-a.t<a.life);
 }
 function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover'&&game.mode!=='upgrade')update(now,dt);drawScreen(game.mode==='pause'?pauseAt:now);if(['combat','phase','victory'].includes(game.mode))syncHUD();requestAnimationFrame(frame)}
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();tap()});document.addEventListener('keydown',e=>{if((e.code==='Space'||e.code==='Enter')&&['combat'].includes(game.mode)){e.preventDefault();if(!e.repeat)tap()}else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){e.preventDefault();togglePause()}else if(e.code==='Escape'&&game.mode==='upgrade'){e.preventDefault();closeUpgrade()}});
+canvas.addEventListener('pointerdown',e=>{
+ if(game.mode!=='combat')return;
+ e.preventDefault();
+ beginGuardInput('pointer:'+(e.pointerId??'mouse'));
+});
+document.addEventListener('pointerup',e=>endGuardInput('pointer:'+(e.pointerId??'mouse')));
+document.addEventListener('pointercancel',e=>endGuardInput('pointer:'+(e.pointerId??'mouse')));
+document.addEventListener('keydown',e=>{
+ if((e.code==='Space'||e.code==='Enter')&&game.mode==='combat'){
+  e.preventDefault();
+  if(!e.repeat)beginGuardInput('key:'+e.code);
+ }else if(e.code==='Escape'&&['combat','pause'].includes(game.mode)){
+  e.preventDefault();togglePause();
+ }else if(e.code==='Escape'&&game.mode==='upgrade'){
+  e.preventDefault();closeUpgrade();
+ }
+});
+document.addEventListener('keyup',e=>{
+ if(e.code==='Space'||e.code==='Enter'){endGuardInput('key:'+e.code);if(game.mode==='combat')e.preventDefault();}
+});
+window.addEventListener('blur',clearGuardInput);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)clearGuardInput()});
 $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode==='combat'){
  const key=$('practiceEnemy').value;
  if(!book.seen[key]||!P.findByKey(key))return;
- game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
+ clearGuardInput();game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
  }});$('startBtn').addEventListener('click',()=>start(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-relic]');
  if(btn)selectRelic(btn.dataset.relic);
@@ -1479,5 +1538,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.1-4',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.2-1',window.__parryV05);requestAnimationFrame(frame);
 })();
