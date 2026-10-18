@@ -119,7 +119,7 @@ test('damage reductions remain effective on the first floor despite the old mini
 });
 test('boss HP uses 1.50 times the PREVIOUS boss HP and leaves attack unchanged',()=>{
  const hpCurve=f=>Math.pow(1.18,Math.min(f-1,9))*Math.pow(1.075,Math.max(0,f-10));
- const atkCurve=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,f-10));
+ const atkCurve=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,Math.min(f,30)-10))*Math.pow(1.03,Math.max(0,f-30));
  for(const boss of P.bosses)for(const floor of [5,10,15,20,30,40]){
   for(const elite of [false,true]){
    const enc=P.buildEnemy(boss,elite);
@@ -133,7 +133,7 @@ test('boss HP uses 1.50 times the PREVIOUS boss HP and leaves attack unchanged',
 });
 test('floor/elite/rare multipliers compose in existing order and standard enemies stay unchanged',()=>{
  const hpGrowth=f=>Math.pow(1.18,Math.min(f-1,9))*Math.pow(1.075,Math.max(0,f-10));
- const atkGrowth=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,f-10));
+ const atkGrowth=f=>Math.pow(1.09,Math.min(f-1,9))*Math.pow(1.045,Math.max(0,Math.min(f,30)-10))*Math.pow(1.03,Math.max(0,f-30));
  for(const id of ['slime','knight','wraith','rogue','duelist','sentinel','cantor','clockwork','golden_tone','gem_slime']){
   const def=P.byId[id];
   for(const floor of [1,11,19,31,41]){
@@ -196,4 +196,16 @@ test('masked trial appearances never write bestiary records, including defeat or
  assert.equal(reveal.id,'ember_slime');
  assert.equal(P.recordEncounter(book,reveal,41),true,'real encounter triggers first discovery');
  assert.equal(book.seen[reveal.bookKey].firstFloor,41);
+});
+
+test('enemy attacks preserve 1-30F strength and ease to about 325 at 80F without HP changes',()=>{
+ function oldAtk(f){return Math.round(14*Math.pow(1.09,Math.min(f-1,9))*
+  Math.pow(1.045,Math.max(0,Math.min(f,60)-10))*Math.pow(1.012,Math.max(0,f-60)));}
+ const normal=P.buildEnemy(P.byId.endking,true);
+ const expected=[[30,105],[40,142],[50,190],[60,256],[70,288],[80,325]];
+ for(const [f,atk] of expected){
+  assert.equal(P.baseStats(normal,f).atk,atk,String(f)+'F elite boss attack');
+  if(f>=40)assert.ok(P.baseStats(normal,f).atk<Math.round(oldAtk(f)*1.25*1.15));
+ }
+ assert.equal(P.baseStats(normal,80).maxHp,91028,'80F boss HP unchanged');
 });
