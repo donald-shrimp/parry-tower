@@ -57,3 +57,33 @@ test('body shield upper arm and forearm are separate, and drawing keeps ctx bala
   assert.equal(calls.filter(v=>v.key==='save').length,calls.filter(v=>v.key==='restore').length);
  }
 });
+
+test('360-degree shoulder sweep completes one turn, eases smoothly and preserves idle',()=>{
+ const art=require('../assets/character-ready.js');
+ const eps=1e-9;
+ const normal=art.armAngles(.5,false);
+ assert.ok(Math.abs(normal.shoulder-.24)<eps);
+ assert.ok(Math.abs(normal.elbow-1.85)<eps);
+ assert.deepEqual(art.armAngles(0,true),{shoulder:0,elbow:0});
+ assert.deepEqual(art.armAngles(1,true),{shoulder:0,elbow:0});
+ const half=art.armAngles(.5,true);
+ assert.ok(Math.abs(half.shoulder-Math.PI)<eps,'halfway is 180 degrees');
+ assert.ok(Math.abs(half.elbow)<eps,'elbow stays connected at middle of spin');
+ const phases=[1,.875,.75,.625,.5,.375,.25,.125,.001].map(a=>art.armAngles(a,true).shoulder);
+ assert.ok(phases.every((angle,i)=>i===0||angle>phases[i-1]),'continuous forward turn');
+ assert.ok(phases[phases.length-1]>2*Math.PI-.0001,'approaches full 360 degrees');
+ assert.ok(art.armAngles(.99,true).shoulder<.01,'soft start');
+ assert.ok(2*Math.PI-art.armAngles(.01,true).shoulder<.01,'soft end');
+});
+test('360 spin is opt-in and preview offers normal and slow comparison',()=>{
+ const src=fs.readFileSync('assets/character-ready.js','utf8');
+ assert.match(src,/spin=360/);
+ assert.match(src,/pose\.spin360===true/);
+ assert.match(src,/ctx\.translate\(211,166\);ctx\.rotate\(shoulder\)/);
+ assert.match(src,/ctx\.translate\(179,166\);ctx\.rotate\(elbow\)/);
+ const preview=fs.readFileSync('assets/character-art/tracing/hero/ready-preview.html','utf8');
+ assert.match(preview,/data-id="attack"/);
+ assert.match(preview,/data-id="spin"/);
+ assert.match(preview,/data-id="slowSpin"/);
+ assert.match(preview,/duration=mode==='slowSpin'\?960:240/);
+});

@@ -7,6 +7,8 @@
 })(typeof window!=='undefined'?window:globalThis,function(root){
  'use strict';
  const SIZE=[420,336];
+ // Optional comparison only: ?art=ready&spin=360. Old ready motion is unchanged.
+ const SPIN360_ENABLED=/(?:^|[?&])spin=360(?:&|$)/.test(root?.location?.search||'');
  const parts={
   shield:[[327,121],[380,148],[388,171],[389,215],[374,253],[356,274],[335,277],[306,247],[277,211],[271,164],[298,142]],
   upperarm:[[179,136],[200,138],[218,153],[222,174],[205,193],[185,183],[174,167]],
@@ -59,12 +61,25 @@
   return loadPromise;
  }
  const clamp=x=>Math.max(0,Math.min(1,Number(x)||0));
+ // action = 1 immediately after counter-hit, decreases to 0 over 240 ms.
+ // A complete shoulder turn naturally lands on the SAME resting pose (2π ≡ 0).
+ // Ease both ends to avoid an abrupt angular-speed change at idle.
+ function armAngles(action,fullSpin=false){
+  const a=clamp(action);
+  const sweep=a>0?Math.sin((1-a)*Math.PI):0;
+  if(!fullSpin)return {shoulder:.24*sweep,elbow:1.85*sweep};
+  if(a===0)return {shoulder:0,elbow:0};
+  const phase=1-a;
+  const eased=phase*phase*(3-2*phase);
+  return {shoulder:2*Math.PI*eased,elbow:.27*Math.sin(2*Math.PI*eased)};
+ }
  function drawHero(ctx,pose){
   if(state!=='ready'||!pose||!ctx)return false;
   const now=pose.now||0,lift=clamp(pose.lift),push=clamp(pose.push),action=clamp(pose.action);
-  // The engine supplies 1->0 during the 240ms counterstroke. A full sweep returns to idle.
-  const sweep=action>0 ? Math.sin((1-action)*Math.PI):0;
-  const shoulder=.24*sweep,elbow=1.85*sweep;
+  // Shoulder performs the full revolution, forearm/sword stay connected at the elbow.
+  // pose.spin360 allows the preview to compare both modes without reloading the module.
+  const fullSpin=pose.spin360===true||(pose.spin360!==false&&SPIN360_ENABLED);
+  const {shoulder,elbow}=armAngles(action,fullSpin);
   ctx.save();
   // Local coordinate game feet=(0,0). Full PNG/SVG traced pixel space is preserved.
   ctx.scale(.34,.34);
@@ -96,5 +111,5 @@
   ctx.restore();return true;
  }
  if(root?.document&&/(?:^|[?&])art=ready(?:&|$)/.test(root.location?.search||''))preload();
- return Object.freeze({preload,ready:()=>state==='ready',status:()=>state,drawHero});
+ return Object.freeze({preload,ready:()=>state==='ready',status:()=>state,drawHero,armAngles});
 });
