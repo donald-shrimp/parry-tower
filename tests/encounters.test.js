@@ -170,8 +170,10 @@ test('blood trials sometimes tease signature enemies from exactly two zones ahea
    'future guest uses current-floor scaling only');
  }
  for(const [f,id] of [[24,'molten_sentinel'],[34,'silver_duelist'],
-  [44,'orbital_clockwork'],[54,'last_assassin']])
-  assert.equal(P.foreshadowTrialForFloor(f,()=>.49).id,id);
+  [44,'orbital_clockwork'],[54,'last_assassin']]){
+  let count=0;
+  assert.equal(P.foreshadowTrialForFloor(f,()=>++count===1?.1:.99).id,id);
+ }
  assert.equal(P.FORESHADOW_RATE,.5);
  assert.equal(P.foreshadowTrialForFloor(4,()=>.5),null);
 });

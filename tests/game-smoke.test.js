@@ -1737,9 +1737,9 @@ test('blood trial remains an ordinary elite when mystery chance fails or future 
  const early=makeCrossroads(4);
  early.g.random(.99);early.g.routeSelect('trial');
  assert.equal(early.g.state().preview,false);
- assert.equal(early.g.state().enemy,'knight');
+ assert.equal(early.g.state().enemy,'wraith');
  assert.ok(early.g.state().encounterKey);
- assert.equal(early.g.storage.has('parryTowerBestiary_v1'),true);
+ assert.ok(early.g.state().discovered.includes('wraith:elite'),'ordinary blood trial still unlocks the enemy in-memory');
  const late=makeCrossroads(64);
  late.g.random(0);late.g.routeSelect('trial');
  assert.equal(late.g.state().preview,false,'no preview past zone six');
@@ -1747,11 +1747,18 @@ test('blood trial remains an ordinary elite when mystery chance fails or future 
  assert.ok(late.g.state().encounterKey);
 });
 test('after the masked 24F teaser, the real 41F encounter reveals its name and unlocks practice',()=>{
- const {g,d}=makeCrossroads(24);
+ const g=makeHarness(),d=g.bloodTest();
+ g.press('startBtn'); // normal mode persists real encounters; dev mode is intentionally read-only
+ d.jumpFloor(24);
+ assert.equal(g.state().mode,'route');
  g.random(0);g.routeSelect('trial');
  assert.equal(g.el.get('enemyName').textContent,'？？？');
+ const initial=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
+ assert.equal(initial.seen['ember_slime:elite'],undefined);
  d.setEnemyHp(1);resolveBloodParry(g,20);
  assert.equal(g.state().mode,'victory');
+ const hidden=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
+ assert.equal(hidden.seen['ember_slime:elite'],undefined,'preview kill not persisted');
  d.jumpFloor(41);
  assert.equal(g.state().enemy,'ember_slime');
  assert.equal(g.state().preview,false);
