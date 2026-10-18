@@ -15,11 +15,12 @@ jobs:
           node --check assets/relics.js
           node --check assets/progression.js
           node --check assets/game.js
+          node --check assets/character-art.js
       - name: Check dedicated enemies and developer launcher syntax
         run: |
           node --check assets/enemy-motions.js
           node --check assets/dev-tools.js
-          node --test tests/enemy-motions.test.js
+          node --test tests/enemy-motions.test.js tests/character-art.test.js
       - name: Check encounter data and gameplay invariants
         run: |
           node --check assets/encounters.js
