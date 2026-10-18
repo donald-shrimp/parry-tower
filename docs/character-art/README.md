@@ -2,6 +2,17 @@
 
 画像生成担当とSVG制作担当は**このREADMEだけを入口**にする。作業は必ず既存の [Draft PR #28](https://github.com/donald-shrimp/parry-tower/pull/28)（ブランチ `experiment/character-art-canvas-v1`）にまとめ、別PRも `main` へのマージも行わない。
 
+## SVG下絵の方向性：幾何学的フラットデザイン（2026-10-18再訂正）
+
+**[FLAT_VECTOR_SPEC.md](./FLAT_VECTOR_SPEC.md) がSVG下絵の画風を最優先で定義する。** 既存の「3/4視点」「フラットセル塗り」「影1段階」などではまだ装飾されたイラストになってしまうため、下絵段階では禁止。
+
+- 大きな単色図形20〜30個程度、4色まで＋必要ならアクセント1色、一定幅の輪郭線
+- **影0、グラデーション0、金属光沢0、細部装飾0**。小さな線の描き込みも原則なし
+- 正面寄りの平面的な2D表現、盾・剣・マント・足を単純な図形として分離し、周囲に15%程度の余白
+- 「デフォルメ騎士の綺麗なイラスト」ではなく「図形だけで描けるボードゲームの駒／ピクトグラム」
+
+以前の画像生成ではこの違いを指示しきれず、結果が細密なSD騎士になった。**その生成画像は新下絵として未採用**。旧SVGも不採用の比較用に留める。
+
 ## 重要：設定画とSVG下絵は別の成果物
 
 **新方式（2026-10-18改訂）**:
@@ -13,19 +24,19 @@
 | 役割 | 読むファイル | 作成するもの | ユーザーへの確認 |
 | --- | --- | --- | --- |
 | 設定画生成（任意） | [CONCEPT_GUIDE](./CONCEPT_GUIDE.md) と対象 `prompts/<id>.md` | 世界観・装備の設定画 | 意匠を採用するか |
-| **SVG下絵生成（必須）** | [SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md) と対象 `prompts/<id>.md` | **背景なし・1体・全身・簡略化した1枚の立ち絵** | 下絵を採用するか |
+| **SVG下絵生成（必須）** | **[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)** ＋ [SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md) と対象 `prompts/<id>.md` | **背景なし・1体・全身・簡略化した1枚の立ち絵** | 下絵を採用するか |
 | SVG制作 | [SVG_SPEC](./SVG_SPEC.md) と対象 `prompts/<id>.md` | パーツ別SVG・manifest・ゲームでの試験表示 | SVGを採用するか |
 
 ## 別チャットへの短い指示
 
 **主人公の簡略立ち絵を再生成:**
-> [このREADME](./README.md)、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero.md](./prompts/hero.md)、[hero-svg-base.md](./prompts/hero-svg-base.md)を読んで。今回は主人公の**SVG下絵を1枚だけ生成**して。絵を見て採否を伝えるので、SVG化もGitHub登録もしないで。
+> このREADMEと **[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)**、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero-svg-base](./prompts/hero-svg-base.md)を読んで、**影も質感もない幾何学的フラットデザイン**の主人公を1枚生成して。装備と全身が約30個の単純図形で説明できるように。採用するか判断するまで、SVG化もGitHub登録もしないで。
 
 **別のキャラの簡略立ち絵を生成:**
-> このREADMEとSVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、ゲーム用の簡略立ち絵1体を1枚生成して。設定画や複数角度は出さず、採否待ちで止めて。
+> このREADMEと **FLAT_VECTOR_SPEC**、SVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、**図形20〜30個程度・影なし・輪郭線一定の幾何学的フラットデザイン**で1体を1枚生成して。イラスト風の陰影や装飾は禁止。採否待ちで止めて。
 
 **SVG制作エージェント:**
-> このREADMEとWORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
+> このREADMEと **FLAT_VECTOR_SPEC**、WORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
 
 > 注: 他チャットから相対リンクが解決できない場合は、[GitHub上の本README](https://github.com/donald-shrimp/parry-tower/blob/experiment/character-art-canvas-v1/docs/character-art/README.md)を開いてリンクを辿る。
 
