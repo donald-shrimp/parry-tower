@@ -234,8 +234,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.8\.0-1"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.8\.0-1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -245,7 +245,7 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  const seed={'parryTowerPrototype_v1':oldMeta,'parryTowerBestiary_v1':oldBook,'parryTowerAudioOffset_v05':'5'};
  const g=makeHarness(seed,true),dev=g.dev();
  assert.ok(dev?.isolated);
- assert.equal(dev.list().length,38);
+ assert.equal(dev.list().length,50);
  assert.equal(dev.launch(21,'cantor:normal'),true);
  assert.equal(g.state().floor,21);
  assert.equal(g.state().enemy,'cantor');
@@ -264,6 +264,15 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  assert.equal(dev.launch(51,'frost_wraith:normal'),true);
  assert.equal(g.state().floor,51);
  assert.equal(g.state().enemy,'frost_wraith');
+ assert.equal(dev.launch(61,'star_cantor:normal'),true);
+ assert.equal(g.state().floor,61);
+ assert.equal(g.state().enemy,'star_cantor');
+ assert.equal(dev.launch(71,'void_knight:normal'),true);
+ assert.equal(g.state().floor,71);
+ assert.equal(g.state().enemy,'void_knight');
+ assert.equal(dev.launch(80,'endking:elite'),true);
+ assert.equal(g.state().enemy,'endking');
+ assert.equal(g.state().bossPhase,1);
  assert.equal(dev.launch(30,'golden_tone:rare'),true);
  assert.equal(g.state().enemy,'golden_tone');
  assert.equal(g.state().encounterRare,true);
@@ -722,7 +731,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.8\.0/);
+  assert.match(html,/v0\.9\.0/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -919,8 +928,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.8\.0-1"/);
-  assert.match(html,/v0\.8\.0/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-1"/);
+  assert.match(html,/v0\.9\.0/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1238,8 +1247,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.8.0-1"'),asset);
-  assert.match(html,/v0\.8\.0/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-1"'),asset);
+  assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1562,4 +1571,47 @@ test('8F can choose an elite fight while fixed 9F elite and 10F boss remain unch
  g.press('healBtn');
  assert.equal(g.state().floor,10);
  assert.equal(g.state().encounterKey,'guardian:elite');
+});
+
+test('80F summit boss enters second musical phrase only after completed strike',()=>{
+ const g=makeHarness({},true),dev=g.dev();
+ assert.equal(dev.launch(80,'endking:elite'),true);
+ assert.equal(g.state().bossPhase,1);
+ assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.endking.rhythm);
+ const hp=g.state().enemyMaxHp;
+ g.bloodTest().setEnemyHp(Math.floor(hp*.49)+100);
+ g.bloodTest().setBaseAttack(1);
+ assert.equal(g.state().bossPhase,1,'the already-telegraphed strike is not altered by HP updates');
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().bossPhase,2);
+ assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.endking.phaseRhythm);
+ assert.ok(g.state().attackSpan>0);
+ assert.equal(g.state().attackSpan,1.5*g.state().beat*1000);
+ assert.equal(g.state().attackBeat,5.5,'previous first four-beat lead is retained');
+ assert.equal(g.storage.size,0,'developer run never modifies persistent storage');
+});
+test('80F defeat is immediately recorded as summit completion and the game can continue to 81F',()=>{
+ const g=makeHarness();
+ g.press('startBtn');
+ g.bloodTest().jumpFloor(80);
+ assert.equal(g.state().enemy,'endking');
+ assert.equal(g.state().encounterElite,true);
+ g.random(.99);
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().finalClear,true);
+ const persisted=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.equal(persisted.bestFloor,80,'summit clear is recorded before next death');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic','final boss continues to the existing relic offer');
+ g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'reward');
+ assert.match(g.el.get('rewardTitle').textContent,/80F制覇/);
+ assert.match(g.el.get('rewardNote').textContent,/81Fから無限踏破/);
+ g.press('healBtn');
+ assert.equal(g.state().floor,81);
+ assert.equal(g.state().enemy,'slime','endless floor loops to the original first sector');
+ assert.equal(g.state().mode,'combat');
 });
