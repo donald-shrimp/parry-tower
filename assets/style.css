@@ -202,7 +202,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .credits-page .notice{padding:12px 16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}
 .credits-page .back{display:inline-block;margin-bottom:16px}
 
-/* Oversized logotype: only the hiragana "の" is half-height. Keep it on one line. */
+/* Oversized logotype: the hiragana "の" visually matches the small-kana "ィ". */
 #titleCover h2.title-logo{
  font-size:clamp(46px,14vw,82px);
  line-height:1.15;
@@ -212,15 +212,16 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 }
 #titleCover h2 .title-no{
  display:inline-block;
- font-size:.5em;
+ font-size:.7em;
  line-height:1;
- vertical-align:.16em;
+ vertical-align:.12em;
 }
 .brand h1 .title-no{
  display:inline-block;
- font-size:.5em;
+ font-family:inherit;
+ font-size:.7em;
  line-height:1;
- vertical-align:.15em;
+ vertical-align:.1em;
  margin-left:0;
  font-weight:inherit;
  letter-spacing:0;
