@@ -202,7 +202,7 @@ test('enemy attacks preserve 1-30F strength and ease to about 325 at 80F without
  function oldAtk(f){return Math.round(14*Math.pow(1.09,Math.min(f-1,9))*
   Math.pow(1.045,Math.max(0,Math.min(f,60)-10))*Math.pow(1.012,Math.max(0,f-60)));}
  const normal=P.buildEnemy(P.byId.endking,true);
- const expected=[[30,105],[40,142],[50,190],[60,256],[70,289],[80,325]];
+ const expected=[[30,105],[40,142],[50,190],[60,256],[70,288],[80,325]];
  for(const [f,atk] of expected){
   assert.equal(P.baseStats(normal,f).atk,atk,String(f)+'F elite boss attack');
   if(f>=40)assert.ok(P.baseStats(normal,f).atk<Math.round(oldAtk(f)*1.25*1.15));

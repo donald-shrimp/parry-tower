@@ -140,7 +140,7 @@ function makeHarness(seed={},devMode=false){
   setEnemyAttack:attack=>{game.enemy.atk=attack},
   setBaseAttack:attack=>{game.baseAtk=attack},
   info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,charge:game.charge,
-   guards:game.guards,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
+   guards:game.guards,charge:game.charge,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
  };})();`);
  vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
@@ -389,7 +389,7 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
   }
   assert.match(html,/HOW TO PLAY/);
   assert.match(html,/リズムに合わせて敵を斬れ！/);
-  assert.match(html,/画面タップまたは <span class="key">Space<\/span> キーでパリィ/);
+  assert.match(html,/短押しでパリィ、長押しで盾を構えてガード/);
   assert.doesNotMatch(html,/id="codexCount"|体遭遇済み/);
   assert.doesNotMatch(html,/id="timingInfo"|id="musicStatus"/);
  }
@@ -633,8 +633,13 @@ test('practice and developer page do not write permanent progression',()=>{
 function resolveBloodParry(g,delta=0){
  const impact=g.state().attackAt;
  g.clock(impact-100+delta);
- g.parry();
+ // Historic '-40ms' tests represent the old early guard. Now they must keep
+ // holding through the impact to prove the new defensive stance actually works.
+ const guarding=delta<=-40;
+ if(guarding)g.hold();
+ else g.parry();
  g.frame(impact+1);
+ if(guarding)g.release();
 }
 test('blood formula scales from 8% to 18%, retains minimum two HP and caps one parry to 25% max HP',()=>{
  const g=makeHarness(),calc=g.bloodTest().bloodHealAmount;
@@ -710,7 +715,7 @@ test('guard reflection and burn damage do not grant blood healing; successful pa
  resolveBloodParry(g,-40);
  assert.equal(d.info().guards,1);
  assert.ok(d.info().enemyHp<before,'guard reflection should damage the enemy');
- assert.equal(g.state().hp,18,'guard does 12 damage but does not heal');
+ assert.equal(g.state().hp,24,'guard reduces incoming 20 to 6, without healing');
  d.setHp(15);d.setBurn(100);
  const afterGuard=d.info().enemyHp;
  g.frame(g.now+55);
@@ -758,7 +763,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.1/);
+  assert.match(html,/v0\.9\.2/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -956,7 +961,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
   assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.2-1"/);
-  assert.match(html,/v0\.9\.1/);
+  assert.match(html,/v0\.9\.2/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1105,9 +1110,9 @@ test('rare relic: silver mirror only mitigates GUARD HP damage, by 20% up to 8',
  const {g,d}=makeRelicFight(['silver_mirror']);
  d.setShield(0);d.setEnemyAttack(50);
  resolveBloodParry(g,-40);
- assert.equal(g.state().hp,41,'50*60%=30 guard -6=24 damage');
+ assert.equal(g.state().hp,53,'50*30%=15 guard -3 mirror=12 damage');
  resolveBloodParry(g,-40);
- assert.equal(g.state().hp,17);
+ assert.equal(g.state().hp,41);
 });
 test('rare relic: royal banner awards ten barrier points at 10, 20 etc combo',()=>{
  const {g,d}=makeRelicFight(['royal_banner']);
@@ -1149,7 +1154,7 @@ test('legendary relic: stopped hand preserves combo on first GUARD each floor, b
  assert.equal(g.state().combo,10);
  assert.equal(d.relicInfo().stopUsed,true);
  resolveBloodParry(g,-40);
- assert.equal(g.state().combo,0);
+ assert.equal(g.state().combo,5,'second guard pays the minimum 5-combo penalty');
 });
 test('legendary relic: duet mask stores exactly one slash on JUST, consumes on next success',()=>{
  const {g,d}=makeRelicFight(['duet_mask']);
@@ -1275,7 +1280,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
   for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.2-1"'),asset);
-  assert.match(html,/v0\.9\.1/);
+  assert.match(html,/v0\.9\.2/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1807,7 +1812,7 @@ test('holding guard reduces 80F boss damage to maxHP 40%; combo decays but is no
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().hp,123,'maxHP40%=82 guard damage');
  assert.equal(g.state().combo,64,'80 combo loses exactly 20%');
- assert.equal(g.state().charge,0,'guard does not generate ultimate');
+ assert.equal(d.info().charge,0,'guard does not generate ultimate');
  g.release();d.setEnemyAttack(100);
  d.setCombo(4);d.setHp(205);
  g.clock(g.state().attackAt-400);g.hold();
