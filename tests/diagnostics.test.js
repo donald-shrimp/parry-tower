@@ -84,7 +84,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   'relics.js','routes.js','events.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
-  assert.match(s,/<meta name="parry-build" content="v0\.9\.1-1">/);
+  assert.match(s,/<meta name="parry-build" content="v0\.9\.1-2">/);
   assert.match(s,/v0\.9\.1/);
   for(const name of required)assert.ok(s.includes('./assets/'+name+'?v='+BUILD),name+' in '+file);
   for(const asset of [...s.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)]){
