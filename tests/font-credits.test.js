@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
-const build = 'v0.9.3-1';
+const build = 'v0.9.3-2';
 
 test('self-hosted subset is a valid-size WOFF2 and retains the license notice', () => {
  const font = fs.readFileSync(path.join(root, 'assets/fonts/cp-period-display.woff2'));

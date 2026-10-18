@@ -160,3 +160,38 @@ test('base-stat reads normalize legacy, malformed and forged levels without chan
  assert.equal(P.baseValue({life:3},'typo'),0);
  assert.equal(P.VERSION,1);
 });
+
+test('v0.9.3 phase 2 expands regen, boss ward, and soul reward without changing old tiers',()=>{
+ const expectations={
+  regen:{costs:[12,24,45,80,140],values:[5,10,15,18,20]},
+  bossWard:{costs:[15,30,55,90,155,235],values:[5,10,15,25,40,55]},
+  soulGain:{costs:[30,60,100,150,225],values:[5,10,15,20,25]}
+ };
+ for(const [id,exp] of Object.entries(expectations)){
+  const def=P.UPGRADES.find(x=>x.id===id);
+  assert.deepEqual([...def.costs],exp.costs,id+' costs');
+  assert.deepEqual([...def.values],exp.values,id+' bonuses');
+  for(let lvl=0;lvl<exp.costs.length;lvl++){
+   assert.equal(P.costNext({[id]:lvl},id),exp.costs[lvl]);
+   assert.equal(P.value({[id]:lvl},id),lvl?exp.values[lvl-1]:0);
+  }
+  assert.equal(P.costNext({[id]:exp.costs.length},id),Infinity);
+  assert.equal(P.normalize({[id]:999},skills)[id],exp.costs.length);
+  assert.equal(P.normalize({[id]:3},skills)[id],3,'old owned tier persists');
+ }
+});
+test('one-time rescue milestones are deterministic, bounded and never pay twice',()=>{
+ assert.deepEqual(P.RUN_RESCUE_MILESTONES.map(x=>[x.runs,x.bonus]),[[3,20],[8,35],[15,60]]);
+ assert.deepEqual(P.rescueReward(2,0),{bonus:0,mask:0,atRuns:[]});
+ assert.deepEqual(P.rescueReward(3,0),{bonus:20,mask:1,atRuns:[3]});
+ assert.deepEqual(P.rescueReward(8,1),{bonus:35,mask:3,atRuns:[8]});
+ assert.deepEqual(P.rescueReward(15,3),{bonus:60,mask:7,atRuns:[15]});
+ assert.deepEqual(P.rescueReward(25,0),{bonus:115,mask:7,atRuns:[3,8,15]});
+ assert.deepEqual(P.rescueReward(99,7),{bonus:0,mask:7,atRuns:[]});
+ assert.deepEqual(P.rescueReward(5,9),{bonus:0,mask:1,atRuns:[]});
+ for(const bad of [-1,NaN,Infinity,'15',null]){
+  assert.deepEqual(P.rescueReward(bad,0),{bonus:0,mask:0,atRuns:[]});
+  assert.equal(P.rescueMask(bad),0);
+ }
+ assert.equal(P.rescueMask(255),7,'reserved bits cannot accidentally unlock future rewards');
+});
