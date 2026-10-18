@@ -270,8 +270,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-1"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-2"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-2"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -970,7 +970,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-1"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-2"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1289,7 +1289,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-1"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-2"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1961,4 +1961,106 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
  invalid.press('startBtn');
  assert.equal(invalid.state().maxHp,185);
  assert.equal(invalid.state().shield,96);
+});
+
+function loseRun(g){
+ if(g.state().mode==='title')g.press('startBtn');
+ for(let i=0;i<12&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+ assert.equal(g.state().mode,'gameover','player must eventually die without parries');
+}
+test('v0.9.3 phase 2 shop expands only recovery, boss shield and soul gain, leaving older prices intact',()=>{
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:2200}),
+  'parryTowerPermanent_v1':JSON.stringify({regen:3,bossWard:3,soulGain:3})});
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ const before=g.el.get('upgradeList').innerHTML;
+ for(const [name,max] of [['再生力',5],['守護の備え',6],['魂の共鳴',5]]){
+  assert.match(before,new RegExp(name+'[^]*?Lv.3/'+max));
+ }
+ for(const [id,n] of [['regen',2],['bossWard',3],['soulGain',2]])
+  for(let i=0;i<n;i++)g.upgradeBuy('extra',id);
+ assert.equal(g.state().souls,2200-(80+140+90+155+235+150+225));
+ assert.equal(g.state().permanent.regen,5);
+ assert.equal(g.state().permanent.bossWard,6);
+ assert.equal(g.state().permanent.soulGain,5);
+ const saved=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
+ assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[5,6,5]);
+ const after=g.el.get('upgradeList').innerHTML;
+ assert.match(after,/階層クリア時 HP 20%回復/);
+ assert.match(after,/ボス戦開始時 障壁 \+55/);
+ assert.match(after,/獲得する魂の欠片 \+25%/);
+ const coins=g.state().souls;
+ for(const id of ['regen','bossWard','soulGain'])g.upgradeBuy('extra',id);
+ assert.equal(g.state().souls,coins,'MAX upgrades never spend souls');
+ const dev=makeHarness({'parryTowerPermanent_v1':JSON.stringify(saved)},true);
+ assert.equal(dev.dev().launch(5,'guardian:normal'),true);
+ assert.equal(dev.state().shield,55,'boss receives new +55 ward');
+});
+test('fifth regeneration tier heals 20% after clearing a floor',()=>{
+ const seed={'parryTowerPermanent_v1':JSON.stringify({regen:5})};
+ const g=makeHarness(seed);g.press('startBtn');
+ const d=g.bloodTest();
+ g.frame(g.state().attackAt+1);
+ assert.equal(g.state().hp,51);
+ d.setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().hp,64,'65 max HP regains ceil(65*.20)=13 on floor clear');
+});
+test('rescue payments at 3, 8, and 15 defeated attempts are one-time and use saved run count',()=>{
+ const cases=[
+  {runs:2,mask:0,bonus:20,nextMask:1},
+  {runs:7,mask:1,bonus:35,nextMask:3},
+  {runs:14,mask:3,bonus:60,nextMask:7},
+  {runs:25,mask:0,bonus:115,nextMask:7},
+  {runs:25,mask:7,bonus:0,nextMask:7}
+ ];
+ for(const item of cases){
+  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({
+   coins:100,runs:item.runs,rescueClaimMask:item.mask,life:0,attack:0,ward:0
+  })});
+  assert.equal(g.state().souls,100,'old save is not unexpectedly changed on page load');
+  loseRun(g);
+  const result=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+  assert.equal(result.runs,item.runs+1);
+  assert.equal(result.rescueClaimMask,item.nextMask);
+  assert.equal(result.coins,103+item.bonus,'floor one death grants 3 basic plus fixed rescue reward');
+  if(item.bonus){
+   assert.match(g.el.get('deathSummary').innerHTML,new RegExp('累計挑戦ボーナス \\+'+item.bonus));
+  }else{
+   assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス/);
+  }
+  g.frame(g.now+500);g.press('retryBtn');
+  loseRun(g);
+  const again=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+  assert.equal(again.coins,106+item.bonus,'same milestone never pays twice');
+  assert.equal(again.rescueClaimMask,item.nextMask);
+ }
+});
+test('rescue grants are separate from soul gain and developer mode never persists them',()=>{
+ const permanent=JSON.stringify({soulGain:5});
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2}),
+  'parryTowerPermanent_v1':permanent});
+ loseRun(g);
+ const save=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.equal(save.coins,24,'ceil(3*1.25)=4 base plus flat 20 rescue');
+ const prev=JSON.stringify({coins:70,runs:14,rescueClaimMask:3});
+ const dev=makeHarness({'parryTowerPrototype_v1':prev,'parryTowerPermanent_v1':permanent},true);
+ loseRun(dev);
+ assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
+});
+
+test('base upgrade panel advertises run milestones and updates claimed states after defeat',()=>{
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ const early=g.el.get('upgradeList').innerHTML;
+ assert.match(early,/累計挑戦応援（現在 2回）/);
+ assert.match(early,/○ 未受取 3回：\+20 ✧/);
+ assert.match(early,/○ 未受取 8回：\+35 ✧/);
+ assert.match(early,/○ 未受取 15回：\+60 ✧/);
+ g.press('upgradeCloseBtn');loseRun(g);
+ g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
+ const after=g.el.get('upgradeList').innerHTML;
+ assert.match(after,/累計挑戦応援（現在 3回）/);
+ assert.match(after,/✓ 受取済 3回：\+20 ✧/);
+ assert.match(after,/○ 未受取 8回：\+35 ✧/);
 });
