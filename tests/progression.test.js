@@ -27,7 +27,7 @@ test('normalizer rejects malformed progress, forged levels, invalid slots and du
  assert.deepEqual(p.unlockedSkills,['blood','blade','future_epic']);
  assert.deepEqual(p.equipped,['blood',null]);
  assert.equal(p.regen,0);
- assert.equal(p.bossWard,3);
+ assert.equal(p.bossWard,6);
  assert.equal(p.revive,0);
  assert.equal(p.choice4,1);
  assert.deepEqual(P.normalize(null,skills),P.defaults());
@@ -64,7 +64,7 @@ test('permanent modifiers have explicit level caps and price steps',()=>{
  assert.equal(P.value(p,'extraReroll'),1);
  assert.equal(P.value(p,'choice4'),4);
  assert.equal(P.value(p,'revive'),30);
- assert.equal(P.costNext(p,'regen'),Infinity);
+ assert.equal(P.costNext(p,'regen'),80,'former max level now unlocks fourth tier');
  assert.equal(P.costNext(P.defaults(),'regen'),12);
  assert.equal(P.costNext({regen:1},'regen'),24);
  assert.equal(P.costNext({regen:2},'regen'),45);
