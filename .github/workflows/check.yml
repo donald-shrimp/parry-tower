@@ -24,6 +24,8 @@ jobs:
         run: |
           node --check assets/encounters.js
           node --test tests/final-stage.test.js tests/deep-zones.test.js tests/diagnostics.test.js tests/encounters.test.js tests/progression.test.js tests/relics.test.js tests/routes.test.js tests/events.test.js tests/game-smoke.test.js
+      - name: Check concise UI copy and preserve gameplay rules
+        run: node --test tests/ui-copy.test.js
       - name: Check font license credit and display asset
         run: node --test tests/font-credits.test.js
       - name: Check Pages entry and asset links
@@ -31,7 +33,7 @@ jobs:
         run: |
           from pathlib import Path
           html = Path('index.html').read_text(encoding='utf-8')
-          build = 'v0.9.1-2'
+          build = 'v0.9.1-3'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
               'progression.js', 'relics.js', 'routes.js', 'events.js', 'game.js'
