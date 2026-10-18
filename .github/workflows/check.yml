@@ -35,7 +35,7 @@ jobs:
               assert doc.attrib['width'] == '200' and doc.attrib['height'] == '165'
               assert doc.attrib['viewBox'] == '-100 -150 200 165'
           png = Path('assets/character-art/references/hero/approved.png').read_bytes()
-          assert png.startswith(b'\\x89PNG\\r\\n\\x1a\\n')
+          assert png.startswith(b'\x89PNG\r\n\x1a\n')
           assert struct.unpack('>II', png[16:24]) == (128, 120)
           print('Hero SVG layers and reference PNG valid')
       - name: Check dedicated enemies and developer launcher syntax
