@@ -177,3 +177,27 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .version-warning button{padding:9px 14px;border-radius:8px;border:1px solid #ffd99c;background:#ffe0aa;color:#292030;font-weight:800;cursor:pointer}
 .version-warning button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @media(max-width:540px){.version-warning{padding:10px;font-size:12px;gap:8px}.version-warning p{flex-basis:100%}}
+
+/* Display type only: explanatory copy, button labels, captions and help keep the UI font.
+   Glyph-subset fallback is intentional for any future characters absent from this WOFF2. */
+@font-face{
+ font-family:"Checkpoint Period Display";
+ src:local("CP period"),local("チェックポイント．（ピリオド）"),
+     url("./fonts/cp-period-display.woff2") format("woff2");
+ font-style:normal;font-weight:400;font-display:swap
+}
+.brand h1,.modal h2,.floorlabel strong,.stat .num,.credits-title{
+ font-family:"Checkpoint Period Display",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+ font-weight:400;font-synthesis:none
+}
+.brand h1 span{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-weight:500}
+.site-footer{display:flex;justify-content:center;gap:12px;padding-top:20px;font-size:12px;color:var(--muted)}
+.site-footer a{color:#b8cfed;text-decoration:underline;text-underline-offset:3px}
+.site-footer a:hover,.site-footer a:focus-visible{color:var(--gold)}
+.credits-page{max-width:800px;margin:0 auto;padding:28px 18px 60px}
+.credits-page h1{font-size:clamp(28px,5vw,42px);margin:12px 0 24px}
+.credits-page h2{font-size:18px;margin:24px 0 12px;color:var(--gold)}
+.credits-page p,.credits-page li{font-size:14px;line-height:1.9;color:#d5deee}
+.credits-page a{color:var(--cyan)}
+.credits-page .notice{padding:12px 16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}
+.credits-page .back{display:inline-block;margin-bottom:16px}
