@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.1-1">
+<meta name="parry-build" content="v0.9.1-3">
 <title>パリィの塔 | 開発者テスト v0.9.1</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.1-1">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.1-1">
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.1-3&font=4">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.1-3">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
@@ -24,15 +24,15 @@
 </section>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div class="brandmark" aria-hidden="true">⚔️</div><div><h1>パリィの塔 <span>v0.9.1 DEV</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.1 DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♫ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <div class="layout">
   <main class="main">
    <section class="arena-card">
-    <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span>COMBO <strong id="comboLabel">0</strong></span></div></div>
+    <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。タップかスペースキーでパリィ"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><div class="modal-symbol">⚔️</div><h2>パリィの塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ 恒久強化・装備</button></div></div></div>
+     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ 恒久強化・装備</button></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
@@ -43,7 +43,7 @@
       <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>← 候補に戻る</button><button type="button" class="secondary" id="relicSkipBtn">今回は見送る →</button></div>
       </div></div>
      <div class="cover" id="routeCover" hidden><div class="modal crossroads-modal">
-       <div class="modal-kicker">THE TOWER · CROSSROADS</div><h2>岐路の祭壇</h2><p id="routeHint">進む道を選べ。</p>
+       <div class="modal-kicker">THE TOWER · CROSSROADS</div><h2>岐路の祭壇</h2>
        <div id="routeCards" class="route-cards"></div>
       </div></div>
      <div class="cover" id="roomCover" hidden><div class="modal crossroads-modal">
@@ -55,7 +55,7 @@
      <div class="cover" id="routeSkillCover" hidden><div class="modal reward-modal">
        <div class="modal-kicker">A GIFT OF THE TOWER</div><h2 id="routeSkillTitle">スキルをひとつ選べ</h2>
        <div id="routeSkillCards" class="reward-cards"></div>
-       <p class="smallnote">この報酬では引き直し・HP回復はできません。</p>
+       
       </div></div>
      <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ 恒久強化</button></div></div></div>
      <div class="cover" id="codexCover" hidden><div class="modal codex-modal">
@@ -93,15 +93,16 @@
    <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作</span></div><div class="help"><div class="howto-brief">リズムに合わせて敵を斬れ！<br>画面タップまたは <span class="key">Space</span> キーでパリィ</div><div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音と判定がずれる場合に調整</span></div></div>
   </aside>
  </div>
+ <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.1-1" defer></script>
-<script src="./assets/encounters.js?v=v0.9.1-1" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.1-1" defer></script>
-<script src="./assets/progression.js?v=v0.9.1-1" defer></script>
-<script src="./assets/relics.js?v=v0.9.1-1" defer></script>
-<script src="./assets/routes.js?v=v0.9.1-1" defer></script>
-<script src="./assets/events.js?v=v0.9.1-1" defer></script>
-<script src="./assets/game.js?v=v0.9.1-1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.1-1" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.1-3" defer></script>
+<script src="./assets/encounters.js?v=v0.9.1-3" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.1-3" defer></script>
+<script src="./assets/progression.js?v=v0.9.1-3" defer></script>
+<script src="./assets/relics.js?v=v0.9.1-3" defer></script>
+<script src="./assets/routes.js?v=v0.9.1-3" defer></script>
+<script src="./assets/events.js?v=v0.9.1-3" defer></script>
+<script src="./assets/game.js?v=v0.9.1-3" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.1-3" defer></script>
 </body>
 </html>
