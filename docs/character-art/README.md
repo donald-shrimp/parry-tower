@@ -82,3 +82,12 @@
 - **現行既定表示**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight`
 
 フラットSVGは7グループのパーツを独立描画し、盾・剣・頭・マントが簡単に動く。元の攻撃時計・命中判定・データに変更はない。**ユーザーがゲーム画面で可視範囲と動きを目視確認するまでは採用しない**。詳細は [フラット試作の説明](../../assets/character-art/svg/HERO_FLAT_EXPERIMENT.md)。
+
+## 静止画トレース：原画との比較（工程1〜4）
+
+元画像の輪郭を色領域として抽出した新しい静止SVGを追加した。従来の `?art=flat` は**不採用の比較用として維持**し、現在はまだゲームに組み込まない。
+
+- [静止SVGと検証手順](../../assets/character-art/tracing/hero/README.md)
+- [今回の静止SVG](../../assets/character-art/tracing/hero/hero-static.svg)
+
+静止画を元絵と比較して**ユーザーが承認した後**にだけ、可動パーツの分割へ進む。
