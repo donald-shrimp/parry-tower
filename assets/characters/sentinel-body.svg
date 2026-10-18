@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="144" viewBox="-60 -140 120 144">
+<title>鉄壁の番兵（試作胴体）</title>
+<defs>
+ <linearGradient id="armor" x1=".12" y1="0" x2=".93" y2="1"><stop stop-color="#d7e1e0"/><stop offset=".3" stop-color="#819bad"/><stop offset=".75" stop-color="#496479"/><stop offset="1" stop-color="#354658"/></linearGradient>
+ <linearGradient id="cloak" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#45596e"/><stop offset="1" stop-color="#1b2c42"/></linearGradient>
+ <linearGradient id="bronze" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fce4b0"/><stop offset=".6" stop-color="#ad8255"/><stop offset="1" stop-color="#644a41"/></linearGradient>
+</defs>
+<g stroke-linejoin="round" stroke-linecap="round">
+<!-- Broad bell-like profile and tattered blue steel surcoat. -->
+<path d="M-31-95 Q-48-72-51-24 L-44-5-25-18-10-6 31-17 29-83Z" fill="url(#cloak)" stroke="#122236" stroke-width="3"/>
+<path d="M-41-42-47-13-35-19 M-30-76-37-29" fill="none" stroke="#6f8195" stroke-width="2"/>
+<!-- Wide planted boots. -->
+<path d="M-29-52-6-54-13-7-38-5Z M5-54 25-51 39-6 13-7Z" fill="#50677b" stroke="#1b2939" stroke-width="3"/>
+<path d="M-37-17-12-17-13 1-46 2Z M12-18 35-18 46 2 11 1Z" fill="#384a5b" stroke="#102134" stroke-width="3"/>
+<path d="M-34-13-14-13 M16-13 35-13" stroke="#d0bd94" stroke-width="3"/>
+<path d="M-29-39-11-40 M13-38 29-37" stroke="#97adb9" stroke-width="2"/>
+<!-- Chest is wider than the hero's and leans over the tower shield. -->
+<path d="M-34-94-15-108 25-103 36-78 29-48-28-49-41-74Z" fill="url(#armor)" stroke="#16283c" stroke-width="4"/>
+<path d="M-29-91-6-103 3-55-29-54-35-70Z" fill="#688399" stroke="#293f56" stroke-width="2"/>
+<path d="M5-101 24-96 30-76 25-55 3-55Z" fill="#546d81" stroke="#263c50" stroke-width="2"/>
+<path d="M-8-101 5-101 13-56-15-56Z" fill="#334b5e" stroke="url(#bronze)" stroke-width="2.5"/>
+<path d="M-8-94 4-94 M-7-84 6-84 M-5-72 8-72" fill="none" stroke="#b9c9cf" stroke-width="2"/>
+<path d="M-36-91-48-86-45-64-30-61-18-80Z" fill="url(#armor)" stroke="#1b3043" stroke-width="3"/>
+<path d="M14-102 33-97 43-75 28-65 17-84Z" fill="url(#armor)" stroke="#192c40" stroke-width="3"/>
+<path d="M-45-76-32-72 M32-88 38-75" stroke="#e5d2a1" stroke-width="3.5"/>
+<!-- Reinforced kettle helmet with an angled crest and amber eye slit. -->
+<path d="M-29-120-15-130 10-134 30-119 30-102 19-96-23-98-34-107Z" fill="url(#armor)" stroke="#12283d" stroke-width="3.5"/>
+<path d="M-29-114-35-125-19-123-12-111 M22-118 38-125 31-109" fill="url(#bronze)" stroke="#24394c" stroke-width="2.7"/>
+<path d="M-26-105 26-105 24-97-25-97Z" fill="#24394b" stroke="#0d1d2f" stroke-width="2"/>
+<path d="M-19-102 20-102" stroke="#ffe2a7" stroke-width="4.2"/>
+<path d="M-4-132-4-109 5-107 5-134" fill="url(#bronze)" stroke="#253c50" stroke-width="1.8"/>
+<path d="M-21-117-12-124 M13-126 24-116" stroke="#f4f6e8" stroke-width="1.7" opacity=".85"/>
+<!-- High-contrast insignia remains visible behind the moving shield. -->
+<path d="M-17-70-8-78 1-71-8-61Z" fill="url(#bronze)" stroke="#283b4b" stroke-width="1.7"/>
+</g>
+</svg>
