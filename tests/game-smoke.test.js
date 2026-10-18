@@ -1824,10 +1824,13 @@ test('held defense is reset on release, cancel, blur, pause, cinematic and new f
  g.dev().launch(75,'endking:normal');
  g.hold();assert.equal(g.state().guardHeld,true);
  g.cancel();assert.equal(g.state().guardHeld,false);
- g.hold();g.hide();assert.equal(g.state().guardHeld,false);
+ g.hold();g.hide();
+ assert.equal(g.state().guardHeld,false,'background tab releases the held shield');
+ assert.equal(g.state().mode,'pause','existing visibility handler auto-pauses combat');
+ g.press('resumeBtn');assert.equal(g.state().mode,'combat');
  g.hold();g.blur();assert.equal(g.state().guardHeld,false);
  g.hold();g.press('pauseBtn');
- assert.equal(g.state().mode,'pause','pause control suspends combat');
+ assert.equal(g.state().mode,'pause','manual pause suspends combat');
  assert.equal(g.state().guardHeld,false);
  g.keyDown('Escape');assert.equal(g.state().mode,'combat');assert.equal(g.state().guardHeld,false);
  g.keyDown();assert.equal(g.state().guardHeld,true);
