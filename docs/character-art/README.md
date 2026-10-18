@@ -2,6 +2,12 @@
 
 画像生成担当とSVG制作担当は**このREADMEだけを入口**にする。作業は必ず既存の [Draft PR #28](https://github.com/donald-shrimp/parry-tower/pull/28)（ブランチ `experiment/character-art-canvas-v1`）にまとめ、別PRも `main` へのマージも行わない。
 
+## 戦闘ポーズを先に決める（2026-10-18追記）
+
+**[POSE_GUIDE.md](./POSE_GUIDE.md) は全キャラ必読**。今後の画像生成は、単なる直立や剣を下げた立ち絵ではなく、攻撃・防御の出発点となる**戦闘待機姿勢（combat-ready idle）**を優先する。主人公は敵のいる**画面右へ盾を構え、剣は肩の高さから振り出せるよう肘を曲げて斜め上**。これまでの `?art=trace` は静止画の再現には成功したが、剣を下げた元ポーズから武器だけを回しているため動きが不自然だった。
+
+制作順は **ポーズ指定 → 新PNGの採用 → 原画トレース → 静止SVG一致確認 → 肩・肘・握り点を含む分割 → モーション確認**。見た目が気に入られた旧版は比較用として残し、新ポーズの採用前に上書きしない。
+
 ## SVG下絵の方向性：幾何学的フラットデザイン（2026-10-18再訂正）
 
 **[FLAT_VECTOR_SPEC.md](./FLAT_VECTOR_SPEC.md) がSVG下絵の画風を最優先で定義する。** 既存の「3/4視点」「フラットセル塗り」「影1段階」などではまだ装飾されたイラストになってしまうため、下絵段階では禁止。
@@ -30,13 +36,13 @@
 ## 別チャットへの短い指示
 
 **主人公の簡略立ち絵を再生成:**
-> このREADMEと **[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)**、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero-svg-base](./prompts/hero-svg-base.md)を読んで、**影も質感もない幾何学的フラットデザイン**の主人公を1枚生成して。装備と全身が約30個の単純図形で説明できるように。採用するか判断するまで、SVG化もGitHub登録もしないで。
+> このREADMEと **[POSE_GUIDE](./POSE_GUIDE.md)**、[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero-svg-base](./prompts/hero-svg-base.md)を読んで、**影も質感もない幾何学的フラットデザイン**の主人公を1枚生成して。装備と全身が約30個の単純図形で説明できるように。採用するか判断するまで、SVG化もGitHub登録もしないで。
 
 **別のキャラの簡略立ち絵を生成:**
-> このREADMEと **FLAT_VECTOR_SPEC**、SVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、**図形20〜30個程度・影なし・輪郭線一定の幾何学的フラットデザイン**で1体を1枚生成して。イラスト風の陰影や装飾は禁止。採否待ちで止めて。
+> このREADMEと **POSE_GUIDE**、FLAT_VECTOR_SPEC、SVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、**図形20〜30個程度・影なし・輪郭線一定の幾何学的フラットデザイン**で1体を1枚生成して。イラスト風の陰影や装飾は禁止。採否待ちで止めて。
 
 **SVG制作エージェント:**
-> このREADMEと **FLAT_VECTOR_SPEC**、WORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
+> このREADMEと **POSE_GUIDE**、FLAT_VECTOR_SPEC、WORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
 
 > 注: 他チャットから相対リンクが解決できない場合は、[GitHub上の本README](https://github.com/donald-shrimp/parry-tower/blob/experiment/character-art-canvas-v1/docs/character-art/README.md)を開いてリンクを辿る。
 

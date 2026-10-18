@@ -2,7 +2,7 @@
 
 ## 絶対に読む順番
 
-[README](./README.md) → **[FLAT_VECTOR_SPEC（最優先・必須）](./FLAT_VECTOR_SPEC.md)** → [STYLE_GUIDE](./STYLE_GUIDE.md) → 対象`prompts/<id>.md` → このガイド。主人公は [hero-svg-base](./prompts/hero-svg-base.md) の完成プロンプトを使う。
+[README](./README.md) → **[POSE_GUIDE](./POSE_GUIDE.md)** → **[FLAT_VECTOR_SPEC（最優先・必須）](./FLAT_VECTOR_SPEC.md)** → [STYLE_GUIDE](./STYLE_GUIDE.md) → 対象`prompts/<id>.md` → このガイド。主人公は [hero-svg-base](./prompts/hero-svg-base.md) の完成プロンプトを使う。
 
 ## 目標の取り違えに注意
 
@@ -12,7 +12,7 @@
 
 ## 必須条件
 
-- 1体、1ポーズ、1方向、背景なし、文字なし、余分な資料なし。
+- 1体、1ポーズ、1方向、背景なし、文字なし、余分な資料なし。**ただし1ポーズは直立ではなく、[POSE_GUIDE](./POSE_GUIDE.md)で定める戦闘待機（combat-ready idle）**。
 - キャラ全体を20〜30個程度の基本図形で説明可能なデザイン。単色面は4色まで＋アクセント1色、**輪郭は1色で一定線幅**。
 - **影、グラデーション、テクスチャ、金属の反射、細かい皺、装飾、複雑な陰影すべて禁止**。「セル塗り」より厳格な「完全フラット塗り」と指定する。
 - 盾・剣・足・マントの外周が欠けない。全装備を含む外周から四辺へ15%程度の余白。
