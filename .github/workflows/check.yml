@@ -24,6 +24,11 @@ jobs:
         run: |
           node --check assets/encounters.js
           node --test tests/final-stage.test.js tests/deep-zones.test.js tests/diagnostics.test.js tests/encounters.test.js tests/progression.test.js tests/relics.test.js tests/routes.test.js tests/events.test.js tests/game-smoke.test.js
+      - name: Reproduce permanent-upgrade boss balance simulation
+        run: |
+          node --check scripts/balance-simulation.js
+          node --test tests/balance-simulation.test.js
+          node scripts/balance-simulation.js
       - name: Check concise UI copy and preserve gameplay rules
         run: node --test tests/ui-copy.test.js
       - name: Check font license credit and display asset
