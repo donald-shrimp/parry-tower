@@ -1,53 +1,62 @@
 # パリィの塔 — キャラクターアート制作の入口
 
-このページが **画像生成エージェントとSVG化エージェント共通の入口** です。会話ではこのURLとキャラIDを指定するだけで進められるようにしています。
+画像生成担当とSVG制作担当は**このREADMEだけを入口**にする。作業は必ず既存の [Draft PR #28](https://github.com/donald-shrimp/parry-tower/pull/28)（ブランチ `experiment/character-art-canvas-v1`）にまとめ、別PRも `main` へのマージも行わない。
 
-- 制作対象リポジトリ: `donald-shrimp/parry-tower`
-- 現在の作業先: Draft PR #28 の `experiment/character-art-canvas-v1` ブランチ
-- **画像生成 → 人が選別 → 参考画像をGitHubへ登録 → SVG化** の順で進める
-- 現在のCanvas描画は比較用として保存し、**採用承認なしに置換・マージしない**
-- この文書は **GitHub上のブランチにある最新版** を参照すること。別ブランチの古い内容と混同しない
+## 重要：設定画とSVG下絵は別の成果物
 
-## 最短の依頼文（そのまま別チャットへ）
+**新方式（2026-10-18改訂）**:
 
-**画像生成担当へ:**
-> このREADMEとリンク先の `STYLE_GUIDE.md`、`WORKFLOW.md`、対象の `prompts/<キャラID>.md` を読んで、キャラの全身設定画を1案生成してください。今回は **画像生成のみ**。コード変更、SVG作成、GitHubアップロードはしないでください。見せた画像は私が採否を判断します。
+`設定画（任意）→ ユーザーが意匠を採用 → ゲーム用の簡略立ち絵を1枚生成 → ユーザーが下絵を採用 → 下絵の原寸PNGをGitHubへ登録 → SVG化 → ブラウザの実画面で検証 → ユーザーがSVGを採否判断`
 
-**SVG化担当へ:**
-> このREADME、`STYLE_GUIDE.md`、`SVG_SPEC.md`、`WORKFLOW.md`、対象の `prompts/<キャラID>.md` を読んでください。私が採用した `assets/character-art/references/<キャラID>/approved.png` を参考に、ゲーム用の **パーツ分割SVG** を設計・制作してください。画像が読めない場合は、勝手に別の絵を想像して進めず添付を求めてください。変更は既存Draft PR #28のブランチ内だけにしてください。
+設定画に含まれる三面図・装備アップ・細密情報をそのままSVGへ転写しない。ユーザーが採用した**設定画**と**SVG下絵**と**実装SVG**はそれぞれ別に承認する。
 
-※ `<キャラID>` は下記の `hero`、`knight` などに置き換えてください。参照画像がまだ未登録ならSVG化を始めないこと。
-
-## 読む順番
-
-1. [WORKFLOW.md](./WORKFLOW.md) — 画像生成、採用、アップロード、SVG化の順序
-2. [STYLE_GUIDE.md](./STYLE_GUIDE.md) — 全員共通の美術仕様
-3. [対象キャラの指示書](./prompts/hero.md) — キャラ固有の目的・配色・形・可動パーツ
-4. SVG化時だけ [SVG_SPEC.md](./SVG_SPEC.md) — 座標、分割、出力、検証
-5. 派生敵は [VARIANTS.md](./VARIANTS.md) も参照
-
-## 基本キャラクター（各1ファイル）
-
-| ID | キャラクター | 指示書 | 描画の特徴 |
+| 役割 | 読むファイル | 作成するもの | ユーザーへの確認 |
 | --- | --- | --- | --- |
-| `hero` | 主人公 | [hero.md](./prompts/hero.md) | 盾・片手剣・マント |
-| `knight` | 錆びた騎士 | [knight.md](./prompts/knight.md) | 錆びた剣・甲冑 |
-| `slime` | 残響スライム | [slime.md](./prompts/slime.md) | 青緑のゲル・核 |
-| `rogue` | 影の暗殺者 | [rogue.md](./prompts/rogue.md) | フード・素早い一撃 |
-| `duelist` | 紅刃の剣士 | [duelist.md](./prompts/duelist.md) | 双剣・左右非対称 |
-| `wraith` | 塔の亡霊 | [wraith.md](./prompts/wraith.md) | 浮遊ローブ・爪 |
-| `cantor` | 残響の詠み手 | [cantor.md](./prompts/cantor.md) | 術式・発光する手 |
-| `sentinel` | 鉄壁の番兵 | [sentinel.md](./prompts/sentinel.md) | 大盾・重甲冑 |
-| `clockwork` | 時計仕掛けの兵士 | [clockwork.md](./prompts/clockwork.md) | 真鍮機構・歯車 |
-| `guardian` | 鐘楼の守護者 | [guardian.md](./prompts/guardian.md) | 大剣・巨体・角兜 |
+| 設定画生成（任意） | [CONCEPT_GUIDE](./CONCEPT_GUIDE.md) と対象 `prompts/<id>.md` | 世界観・装備の設定画 | 意匠を採用するか |
+| **SVG下絵生成（必須）** | [SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md) と対象 `prompts/<id>.md` | **背景なし・1体・全身・簡略化した1枚の立ち絵** | 下絵を採用するか |
+| SVG制作 | [SVG_SPEC](./SVG_SPEC.md) と対象 `prompts/<id>.md` | パーツ別SVG・manifest・ゲームでの試験表示 | SVGを採用するか |
 
-同じ系統でも別名の個体は [VARIANTS.md](./VARIANTS.md) の差分指示を必ず追加で読む。
+## 別チャットへの短い指示
 
-## 参照画像の所在・受け渡し
+**主人公の簡略立ち絵を再生成:**
+> [このREADME](./README.md)、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero.md](./prompts/hero.md)、[hero-svg-base.md](./prompts/hero-svg-base.md)を読んで。今回は主人公の**SVG下絵を1枚だけ生成**して。絵を見て採否を伝えるので、SVG化もGitHub登録もしないで。
 
-- **採用前**: チャット内で画像を提案・比較する。GitHubには保存しない。**主人公(hero)は1案採用済み**。
-- **採用後**: 人が `assets/character-art/references/<キャラID>/approved.png` をアップロード。必要に応じて同じフォルダに `notes.md` で「どの点を採用したか」を記録。
-- 選別・画像のアップロード手順: [参照画像README](../../assets/character-art/references/README.md)
-- SVGの出力先・パーツ名は [SVG_SPEC.md](./SVG_SPEC.md) に記載。
+**別のキャラの簡略立ち絵を生成:**
+> このREADMEとSVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、ゲーム用の簡略立ち絵1体を1枚生成して。設定画や複数角度は出さず、採否待ちで止めて。
 
-**現在の進捗（2026-10-18）:** 主人公の採用画像を軽量化した切り出しコピーは [`references/hero/approved.png`](../../assets/character-art/references/hero/approved.png) に登録済み（128×120px）。元の設定画は1536×1024pxで、GitHub上のコピーは高解像度原本ではありません。主人公の分割SVGは [`svg/hero`](../../assets/character-art/svg/hero/README.md) に試作実装済み。**実機での見た目の採否はまだ判断していない**。他キャラは引き続き未登録です。
+**SVG制作エージェント:**
+> このREADMEとWORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
+
+> 注: 他チャットから相対リンクが解決できない場合は、[GitHub上の本README](https://github.com/donald-shrimp/parry-tower/blob/experiment/character-art-canvas-v1/docs/character-art/README.md)を開いてリンクを辿る。
+
+## 基本キャラクター別指示書
+
+| ID | 名称 | キャラ固有の設計書 |
+| --- | --- | --- |
+| `hero` | 主人公 | [hero](./prompts/hero.md) / **[簡略立ち絵用プロンプト](./prompts/hero-svg-base.md)** |
+| `knight` | 錆びた騎士 | [knight](./prompts/knight.md) |
+| `slime` | 残響スライム | [slime](./prompts/slime.md) |
+| `rogue` | 影の暗殺者 | [rogue](./prompts/rogue.md) |
+| `duelist` | 紅刃の剣士 | [duelist](./prompts/duelist.md) |
+| `wraith` | 塔の亡霊 | [wraith](./prompts/wraith.md) |
+| `cantor` | 残響の詠み手 | [cantor](./prompts/cantor.md) |
+| `sentinel` | 鉄壁の番兵 | [sentinel](./prompts/sentinel.md) |
+| `clockwork` | 時計仕掛けの兵士 | [clockwork](./prompts/clockwork.md) |
+| `guardian` | 鐘楼の守護者 | [guardian](./prompts/guardian.md) |
+
+派生敵は [VARIANTS](./VARIANTS.md) も読む。キャラ別ファイルに以前の「画像生成用指示」が残っている場合、**現在の生成モードの CONCEPT_GUIDE / SVG_BASE_GUIDE が出力形式に優先**する。
+
+## 参照素材の名前と配置
+
+[アップロード手順](../../assets/character-art/references/README.md)
+
+- `references/<id>/concept-approved.png` — **意匠設定画**の採用版（任意）。直接のSVG作画開始根拠にしない。
+- `references/<id>/svg-base-approved.png` — **簡略立ち絵**の採用版（SVG化開始に必須）。
+- `references/<id>/notes.md` — 採用内容・差し戻し履歴・元画像との違い・参照の優先順位。
+- 旧 `references/hero/approved.png` は**設定画からの低解像度切り出し（128×120px）で、新方式の下絵に該当しない**。
+
+## 主人公の現状
+
+2026-10-18、**設定画は採用済み**。一方、設定画から作ったSVG実装はユーザーから**「全体的に微妙、盾が切れる」**と不採用評価を受け、**要再制作・現在のSVGは旧比較用のみ**。現行の `?art=svg` も完成品ではない。新しい `hero/svg-base-approved.png` は**未登録**で、SVG担当は再制作に進まないこと。
+
+[制作フロー・承認ゲート](./WORKFLOW.md) / [共通美術スタイル](./STYLE_GUIDE.md) / [SVG制作仕様](./SVG_SPEC.md)

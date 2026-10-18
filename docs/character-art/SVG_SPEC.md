@@ -4,7 +4,8 @@
 
 - [STYLE_GUIDE.md](./STYLE_GUIDE.md)
 - [キャラ別の指示](./README.md#基本キャラクター各1ファイル)
-- ユーザーが採用した参照画像: `assets/character-art/references/<id>/approved.png`
+- **ユーザーがSVG下絵として採用した画像**: `assets/character-art/references/<id>/svg-base-approved.png`（原寸PNG）
+- 設定画を使う場合は補助参照 `assets/character-art/references/<id>/concept-approved.png`。従来の `hero/approved.png` も**補助参照のみ**。これらの存在だけではSVG化を始めない。
 - オプションの採用メモ: `assets/character-art/references/<id>/notes.md`
 - 元のゲームコード `assets/game.js`、`assets/enemy-motions.js`、`assets/encounters.js`
 
@@ -28,6 +29,17 @@
 - **SVG内のデザイン座標 = 当たり判定座標とは限らない。** manifestでのスケール・ピボット調整により、既存の当たり判定の見た目に寄せる。攻撃側の判定値は書き換えない。
 - 既存の横反転、リコイル、待機の揺れを使うので、SVG素材には**静的なパーツ形状**だけを含める。
 
+## viewBox・盾の欠け・表示範囲（重要なゲート）
+
+以前の主人公SVGは盾が欠けた。美術のディテールとは切り分けて、**座標と実表示の検証**を必須にする。
+
+1. **素材ごとのローカル座標・viewBox・width・heightを明記**。画像の描画先矩形とSVGのintrinsic寸法が一致しているか調べる。全パーツ共通viewBoxを使う場合も、変換後の形状がその範囲へ収まるか確認する。
+2. 各パーツの**外接矩形とピボット**を明示し、回転／並進／スケールをかけた時の極値を求める。必要ならviewBoxの余白を増やすか、描画座標を見直す。**SVG内部のクリップとCanvasのクリップを別々に確認**する。
+3. ゲーム側で `ctx.drawImage()` する場合、画像の実寸、描画先（dx,dy,dw,dh）、元の座標系と腕・盾のtransformが整合するようにする。盾が欠けた原因を単に「細密すぎるから」と決めつけない。
+4. 最低限 **待機、パリィ挙上の途中、盾最大挙上、反撃中、ジャスト、被弾反動** を同じスケールで実際に描画し、**盾の上下・左右端、剣先、頭、足がすべて見えること**を目視確認する。
+5. 通常画面＋小さいスマホ相当画面で比較する。画像がクリップされた状態で「成功」と報告しない。
+6. SVGの構文・CI通過は**視覚合格の代替にならない**。ブラウザ実画面の確認ができない場合は未検証と明記し、ユーザーに完成を宣言しない。
+
 ## SVG実装品質
 
 - 静的な `<svg>`、`<path>`、`<g>`、`<circle>` 等で構成。外部CSS、外部画像、外部フォント、`<script>`、`<foreignObject>`、イベントハンドラ、外部参照は使わない。
@@ -43,7 +55,7 @@
 {
   "id": "hero",
   "status": "prototype",
-  "reference": "assets/character-art/references/hero/approved.png",
+  "reference": "assets/character-art/references/hero/svg-base-approved.png",
   "coordinateSystem": "game-local",
   "feetY": 0,
   "parts": [
@@ -66,6 +78,8 @@
 - レア・精鋭・パレット派生の判読性確認
 - モバイルサイズで顔・盾・武器が識別可能
 - 描画以外のテストと既存CIが通る
+- 盾・剣・マントが各ポーズで欠けず、腕の支点が自然であることを確認
+- **必須の採用PNGが存在し、ユーザーによるSVG下絵承認が確認できること**
 - SVGのデータや画像をゲームに入れても **デフォルトでは旧描画**、`?art=prototype` 等の試験モードのみ新描画
 
 マージ判断はユーザーが行う。画像生成・SVG制作担当は勝手に本番反映しない。

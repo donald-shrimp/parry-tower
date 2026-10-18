@@ -1,15 +1,20 @@
-# 採用した画像の置き場（アップロードはユーザーの承認後）
+# 採用画像の管理 — 設定画とSVG下絵を混同しない
 
-このディレクトリは、画像生成エージェントの**全候補を収集する場所ではない**。ユーザーが採用した参考画像だけを保存する。
+画像生成物は**採否を人が確認してから**、既存のDraft PR #28のブランチ `experiment/character-art-canvas-v1` に登録する。
 
-1. GitHubで **Draft PR #28のブランチ `experiment/character-art-canvas-v1`** を選ぶ。
-2. `assets/character-art/references/<id>/approved.png` をアップロード。<id>は`hero`, `knight`, `slime`など、`docs/character-art/prompts/`で定めたID。
-3. 画像の採用ポイントや修正点があれば同じフォルダへ `notes.md` を作り、採用理由、生成元、修正希望、ユーザー承認日を記録する。
-4. 対象SVGエージェントに `docs/character-art/README.md` とIDを渡す。
-5. SVG担当は画像を**実際に閲覧できたことを確認**してから制作する。閲覧できなければ画像ファイルの添付を依頼する。
+| ファイル | 目的 | SVG化の主参照にできるか |
+| --- | --- | --- |
+| `<id>/concept-approved.png` | 世界観／意匠を決める設定画。任意 | **できない** |
+| `<id>/svg-base-approved.png` | 1体・1ポーズ・全身・簡略立ち絵の**承認済み原寸PNG** | **できる** |
+| `<id>/notes.md` | 承認日、採用ポイント、差し戻し理由、出典・履歴 | — |
+| **旧互換** `hero/approved.png` | 以前の1536×1024px設定画から切り出した128×120pxの減色コピー | **できない** |
 
-複数候補を選んだ場合でも`approved.png`は優先参照1枚だけ。副参照は`alternative-01.png`などにし、`notes.md`で優先順位を書く。
+## 運用
 
-**主人公（hero）だけ採用画像の軽量切り出しコピーが登録済み**。`hero/notes.md` に原本が1536×1024pxの設定画である旨と低解像度（128×120px）コピーの注意を記載。SVG制作時は可能なら元の高解像度添付も照合する。その他のキャラは採用画像未登録。画像登録だけで本番ゲームへの反映は行わない。
+1. [制作入口](../../../docs/character-art/README.md) と [WORKFLOW](../../../docs/character-art/WORKFLOW.md) に従い、ユーザーに生成画像を見せて採用判断を待つ。
+2. ユーザーが**SVG下絵を採用**した後、`<id>/svg-base-approved.png` を**元画像の解像度を維持して**アップロード。縮小・減色したプレビューを `svg-base-approved.png` として使わない。
+3. ファイルが上書きされても履歴が分かるように、`notes.md` に新旧の差、採用理由、再生成の理由を残す。GitHub上の過去版はコミット履歴から参照できる。
+4. SVG担当が画像を視覚確認できなければ、別チャットに画像を添付してもらう。ファイル名だけをもとにSVGを作らない。
+5. SVG担当が成果物を作ったら、[SVG_SPEC](../../../docs/character-art/SVG_SPEC.md) で欠け・ズレ・ゲーム内の実寸を検証する。
 
-個別指示書や工程の詳細: [制作ガイド](../../../docs/character-art/README.md) / [WORKFLOW](../../../docs/character-art/WORKFLOW.md)
+現在、`hero` の設定画の意匠だけが承認済み。**新方式のSVG下絵 `hero/svg-base-approved.png` は未登録**。2026-10-18の試作SVGは不採用・旧比較用であり、これを完成版として扱わない。
