@@ -1,104 +1,64 @@
-# パリィの塔 — キャラクターアート制作の入口
+# パリィの塔 — キャラクターアート制作入口
 
-画像生成担当とSVG制作担当は**このREADMEだけを入口**にする。作業は必ず既存の [Draft PR #28](https://github.com/donald-shrimp/parry-tower/pull/28)（ブランチ `experiment/character-art-canvas-v1`）にまとめ、別PRも `main` へのマージも行わない。
+**別のエージェントには、このREADMEのURLと対象キャラIDだけを渡せばよい。** まずユーザーが希望する工程とそのキャラの採用状況を確認する。画像生成・SVG制作・ゲーム実装は**同じターンで無断で連続実行しない**。採用ゲートで止まる。
 
-## 戦闘ポーズを先に決める（2026-10-18追記）
+> 実装先: [Draft PR #28](https://github.com/donald-shrimp/parry-tower/pull/28) / ブランチ `experiment/character-art-canvas-v1`。別PRや`main`へのマージはユーザーの明示指示がない限り行わない。
 
-**[POSE_GUIDE.md](./POSE_GUIDE.md) は全キャラ必読**。今後の画像生成は、単なる直立や剣を下げた立ち絵ではなく、攻撃・防御の出発点となる**戦闘待機姿勢（combat-ready idle）**を優先する。主人公は敵のいる**画面右へ盾を構え、剣は肩の高さから振り出せるよう肘を曲げて斜め上**。これまでの `?art=trace` は静止画の再現には成功したが、剣を下げた元ポーズから武器だけを回しているため動きが不自然だった。
+## 確定した制作方式（2026-10-18）
 
-制作順は **ポーズ指定 → 新PNGの採用 → 原画トレース → 静止SVG一致確認 → 肩・肘・握り点を含む分割 → モーション確認**。見た目が気に入られた旧版は比較用として残し、新ポーズの採用前に上書きしない。
+**ポーズを決める → SVG化しやすい原寸PNGを1枚生成 → 人間が採用 → 原寸PNGを保存 → 色面を自動トレース → 静止SVGを元PNGと重ねてレビュー → 身体・武器などをマスク分割してリグ化 → ゲーム内で動作プレビュー → 人間がアニメーションを採用**。
 
-## SVG下絵の方向性：幾何学的フラットデザイン（2026-10-18再訂正）
+最初からJSの図形を目測で配置して立ち絵を作り直さない。**原画の輪郭と色をSVGで保ってから、アニメーションする**。主人公ではこの方式が良好だった。
 
-**[FLAT_VECTOR_SPEC.md](./FLAT_VECTOR_SPEC.md) がSVG下絵の画風を最優先で定義する。** 既存の「3/4視点」「フラットセル塗り」「影1段階」などではまだ装飾されたイラストになってしまうため、下絵段階では禁止。
+- **[PIPELINE.md](./PIPELINE.md)** — エージェントの工程・成果物・承認ゲート・GitHub更新手順（最優先）
+- **[TRACING_AND_RIGGING.md](./TRACING_AND_RIGGING.md)** — OpenCVトレース、静止重ね合わせ、可動部位抽出と可動テスト
+- [POSE_GUIDE.md](./POSE_GUIDE.md) — 最初から武器や攻撃部位を構え、肩・肘・核などの可動を成立させる
+- [FLAT_VECTOR_SPEC.md](./FLAT_VECTOR_SPEC.md) — フラットな輪郭・配色。**図形数は上限ではない**。原画忠実度を優先
+- [SVG_BASE_GUIDE.md](./SVG_BASE_GUIDE.md) — 生成画像の構図とNG集
+- [SVG_SPEC.md](./SVG_SPEC.md) — SVG・Canvas可動層・ピボット・viewBoxの品質基準
+- [WORKFLOW.md](./WORKFLOW.md) — 短い運用チェックリストと失敗例
+- [STYLE_GUIDE.md](./STYLE_GUIDE.md) — キャラ造形の共通方向性
+- [CONCEPT_GUIDE.md](./CONCEPT_GUIDE.md) — 多面図などの設定画（任意）。**ゲーム用下絵とは別**。
 
-- 大きな単色図形20〜30個程度、4色まで＋必要ならアクセント1色、一定幅の輪郭線
-- **影0、グラデーション0、金属光沢0、細部装飾0**。小さな線の描き込みも原則なし
-- 正面寄りの平面的な2D表現、盾・剣・マント・足を単純な図形として分離し、周囲に15%程度の余白
-- 「デフォルメ騎士の綺麗なイラスト」ではなく「図形だけで描けるボードゲームの駒／ピクトグラム」
+## 主人公は採用済みの基準実装
 
-以前の画像生成ではこの違いを指示しきれず、結果が細密なSD騎士になった。**その生成画像は新下絵として未採用**。旧SVGも不採用の比較用に留める。
+**主人公の外観・構え・反撃の逆回転360°は2026-10-18にユーザーが正式採用。**
 
-## 重要：設定画とSVG下絵は別の成果物
+- 採用デザイン：白銀の兜・青いマント・金縁の青盾・肩横に剣を掲げた戦闘待機姿勢。
+- **標準モーション `?art=ready`**：肩を**−360°（−2π）**回し、肘・前腕・握った剣を連動させて振り抜く。戦闘側の240msの表示ウィンドウを維持。
+- 比較用 `?art=ready&spin=360`（正回転）、`?art=ready&spin=legacy`（小振り）。`spin=-360`は明示指定でも標準と同じ。
+- **[採用主人公の制作メモ](../../assets/character-art/tracing/hero/READY_POSE.md)**、[清書静止SVG](../../assets/character-art/tracing/hero/hero-ready-static.svg)、[動作比較ページ](../../assets/character-art/tracing/hero/ready-preview.html)、[実装](../../assets/character-ready.js)、[関節記録](../../assets/character-art/tracing/hero/ready-manifest.json)を**成功事例**として読む。
+- 旧`?art=svg`、`?art=flat`、`?art=trace`は試作の比較・履歴であって、本仕様ではない。主人公`?art=ready`は**ブランチ内の採用仕様**であり、`main`にマージされたわけではない。
+- 注意：主人公の採用PNG原本（1402×1122）は**GitHub未登録**。基準画像が必要ならユーザーが会話で承認した元添付を確認する。古い`hero/approved.png`（128×120）を使わない。
 
-**新方式（2026-10-18改訂）**:
+**重要：−360°は主人公に限る。** 敵の攻撃には一律適用しない。敵は`assets/game.js`と`assets/enemy-motions.js`の**攻撃方向・届く座標・予備動作・タイミング**からモーションを設計する。
 
-`設定画（任意）→ ユーザーが意匠を採用 → ゲーム用の簡略立ち絵を1枚生成 → ユーザーが下絵を採用 → 下絵の原寸PNGをGitHubへ登録 → SVG化 → ブラウザの実画面で検証 → ユーザーがSVGを採否判断`
+## 次の対象：錆びた騎士 `knight`
 
-設定画に含まれる三面図・装備アップ・細密情報をそのままSVGへ転写しない。ユーザーが採用した**設定画**と**SVG下絵**と**実装SVG**はそれぞれ別に承認する。
+<Link>でなく普通のURLリンクとして直接辿れる：**[騎士の個別指示書](./prompts/knight.md)** / **[騎士のSVG下絵用完成プロンプト](./prompts/knight-svg-base.md)**。
 
-| 役割 | 読むファイル | 作成するもの | ユーザーへの確認 |
-| --- | --- | --- | --- |
-| 設定画生成（任意） | [CONCEPT_GUIDE](./CONCEPT_GUIDE.md) と対象 `prompts/<id>.md` | 世界観・装備の設定画 | 意匠を採用するか |
-| **SVG下絵生成（必須）** | **[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)** ＋ [SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md) と対象 `prompts/<id>.md` | **背景なし・1体・全身・簡略化した1枚の立ち絵** | 下絵を採用するか |
-| SVG制作 | [SVG_SPEC](./SVG_SPEC.md) と対象 `prompts/<id>.md` | パーツ別SVG・manifest・ゲームでの試験表示 | SVGを採用するか |
+**別チャットで画像生成を依頼する文**：
+> この [README](./README.md) と [PIPELINE](./PIPELINE.md)、[POSE_GUIDE](./POSE_GUIDE.md)、[knight-svg-base](./prompts/knight-svg-base.md) を読んで。錆びた騎士`knight`の**戦闘待機ポーズのPNGを1枚**生成して見せて。元PNGの採否を伝えるまでは、GitHub登録・トレース・実装に進まないで。
 
-## 別チャットへの短い指示
+**PNG採用後のSVG制作を依頼する文**：
+> このREADMEと[PIPELINE](./PIPELINE.md)、[TRACING_AND_RIGGING](./TRACING_AND_RIGGING.md)、[SVG_SPEC](./SVG_SPEC.md)、対象の`prompts/<id>.md`を読んで。承認済みの**原寸PNGを実際に開いて**、元画像と同じ輪郭の静止SVGを作り、等寸重ね合わせ画像と96px/128pxプレビューを出して。**静止画の採用確認で止めて**。
 
-**主人公の簡略立ち絵を再生成:**
-> このREADMEと **[POSE_GUIDE](./POSE_GUIDE.md)**、[FLAT_VECTOR_SPEC](./FLAT_VECTOR_SPEC.md)、[SVG_BASE_GUIDE](./SVG_BASE_GUIDE.md)、[hero-svg-base](./prompts/hero-svg-base.md)を読んで、**影も質感もない幾何学的フラットデザイン**の主人公を1枚生成して。装備と全身が約30個の単純図形で説明できるように。採用するか判断するまで、SVG化もGitHub登録もしないで。
+**静止SVG採用後の可動化を依頼する文**：
+> このREADMEとPIPELINEとTRACING_AND_RIGGINGを読んで。採用済み静止SVGを使って、部位を**マスク分割（または必要な個別SVGへ分割）**し、関節・親子関係・攻撃先端を元ゲームへ合わせて、**Draft PR #28に独立試験モードで実装**して。待機・予備・攻撃・接触・戻りの比較とテストを提出して。ユーザーの採否判断まで既存描画は残して。
 
-**別のキャラの簡略立ち絵を生成:**
-> このREADMEと **POSE_GUIDE**、FLAT_VECTOR_SPEC、SVG_BASE_GUIDE、対象のprompts/<id>.mdを読んで、**図形20〜30個程度・影なし・輪郭線一定の幾何学的フラットデザイン**で1体を1枚生成して。イラスト風の陰影や装飾は禁止。採否待ちで止めて。
+## キャラクター別指示書
 
-**SVG制作エージェント:**
-> このREADMEと **POSE_GUIDE**、FLAT_VECTOR_SPEC、WORKFLOW、SVG_SPEC、対象のprompts/<id>.mdを読んで。ユーザーが承認した`assets/character-art/references/<id>/svg-base-approved.png`を**実際に開いて確認**し、パーツ別SVGとmanifestにして。同じDraft PR #28を更新し、旧表示は残す。画像がない・読めない場合は制作せず確認して。切り欠け・盾の欠落がないように、待機／パリィ／攻撃／反動のレンダリング画像を検査して。
-
-> 注: 他チャットから相対リンクが解決できない場合は、[GitHub上の本README](https://github.com/donald-shrimp/parry-tower/blob/experiment/character-art-canvas-v1/docs/character-art/README.md)を開いてリンクを辿る。
-
-## 基本キャラクター別指示書
-
-| ID | 名称 | キャラ固有の設計書 |
+| ID | 対象 | 指示書 |
 | --- | --- | --- |
-| `hero` | 主人公 | [hero](./prompts/hero.md) / **[簡略立ち絵用プロンプト](./prompts/hero-svg-base.md)** |
-| `knight` | 錆びた騎士 | [knight](./prompts/knight.md) |
-| `slime` | 残響スライム | [slime](./prompts/slime.md) |
-| `rogue` | 影の暗殺者 | [rogue](./prompts/rogue.md) |
-| `duelist` | 紅刃の剣士 | [duelist](./prompts/duelist.md) |
-| `wraith` | 塔の亡霊 | [wraith](./prompts/wraith.md) |
-| `cantor` | 残響の詠み手 | [cantor](./prompts/cantor.md) |
-| `sentinel` | 鉄壁の番兵 | [sentinel](./prompts/sentinel.md) |
-| `clockwork` | 時計仕掛けの兵士 | [clockwork](./prompts/clockwork.md) |
-| `guardian` | 鐘楼の守護者 | [guardian](./prompts/guardian.md) |
+| `hero` | 主人公・採用済み | [hero.md](./prompts/hero.md) / [svg-base](./prompts/hero-svg-base.md) |
+| `knight` | 錆びた騎士・次の推奨対象 | [knight.md](./prompts/knight.md) / [svg-base](./prompts/knight-svg-base.md) |
+| `slime` | 残響スライム | [slime.md](./prompts/slime.md) |
+| `rogue` | 影の暗殺者 | [rogue.md](./prompts/rogue.md) |
+| `duelist` | 紅刃の剣士 | [duelist.md](./prompts/duelist.md) |
+| `wraith` | 塔の亡霊 | [wraith.md](./prompts/wraith.md) |
+| `cantor` | 残響の詠み手 | [cantor.md](./prompts/cantor.md) |
+| `sentinel` | 鉄壁の番兵 | [sentinel.md](./prompts/sentinel.md) |
+| `clockwork` | 時計仕掛けの兵士 | [clockwork.md](./prompts/clockwork.md) |
+| `guardian` | 鐘楼の守護者 | [guardian.md](./prompts/guardian.md) |
 
-派生敵は [VARIANTS](./VARIANTS.md) も読む。キャラ別ファイルに以前の「画像生成用指示」が残っている場合、**現在の生成モードの CONCEPT_GUIDE / SVG_BASE_GUIDE が出力形式に優先**する。
-
-## 参照素材の名前と配置
-
-[アップロード手順](../../assets/character-art/references/README.md)
-
-- `references/<id>/concept-approved.png` — **意匠設定画**の採用版（任意）。直接のSVG作画開始根拠にしない。
-- `references/<id>/svg-base-approved.png` — **簡略立ち絵**の採用版（SVG化開始に必須）。
-- `references/<id>/notes.md` — 採用内容・差し戻し履歴・元画像との違い・参照の優先順位。
-- 旧 `references/hero/approved.png` は**設定画からの低解像度切り出し（128×120px）で、新方式の下絵に該当しない**。
-
-## 主人公の現状
-
-2026-10-18、**設定画は採用済み**。一方、設定画から作ったSVG実装はユーザーから**「全体的に微妙、盾が切れる」**と不採用評価を受け、**要再制作・現在のSVGは旧比較用のみ**。現行の `?art=svg` も完成品ではない。新しい `hero/svg-base-approved.png` は**未登録**で、SVG担当は再制作に進まないこと。
-
-[制作フロー・承認ゲート](./WORKFLOW.md) / [共通美術スタイル](./STYLE_GUIDE.md) / [SVG制作仕様](./SVG_SPEC.md)
-
-## フラットなSVG主人公の比較試作（採否未確定）
-
-2026-10-18の会話中に作成した手描きSVGを[assets/character-art/svg/hero-flat.svg](../../assets/character-art/svg/hero-flat.svg)として保存した。**これは「原寸の採用画像の再トレース」でも最終採用版でもない、候補を試すための実験**。候補PNGの正式登録や旧SVGの上書きはまだ行わない。
-
-- **新・フラットSVG試作**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=flat`
-- **従来Canvas試作**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=prototype`
-- **以前の不採用SVG**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=svg`
-- **現行既定表示**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight`
-
-フラットSVGは7グループのパーツを独立描画し、盾・剣・頭・マントが簡単に動く。元の攻撃時計・命中判定・データに変更はない。**ユーザーがゲーム画面で可視範囲と動きを目視確認するまでは採用しない**。詳細は [フラット試作の説明](../../assets/character-art/svg/HERO_FLAT_EXPERIMENT.md)。
-
-## 静止画トレース：原画との比較（工程1〜4）
-
-元画像の輪郭を色領域として抽出した新しい静止SVGを追加した。従来の `?art=flat` は**不採用の比較用として維持**し、現在はまだゲームに組み込まない。
-
-- [静止SVGと検証手順](../../assets/character-art/tracing/hero/README.md)
-- [今回の静止SVG](../../assets/character-art/tracing/hero/hero-static.svg)
-
-静止画を元絵と比較して**ユーザーが承認した後**にだけ、可動パーツの分割へ進む。
-
-
-## 主人公の構え直し：新トレース動作モード
-
-元画像が「両方の装備を構えた待機姿勢」の採用版となったので、[制作経緯・ゲーム試作](../../assets/character-art/tracing/hero/READY_POSE.md)を追加した。**`?art=ready`** のみ反映。旧 `?art=trace` は比較用に保持。
+派生敵は [VARIANTS.md](./VARIANTS.md) も読む。個別指示書に古い「中立ポーズ」「3/4の陰影イラスト」等が残る場合は、**PIPELINE／POSE_GUIDE／SVG_BASE_GUIDEが優先**。ブランチの更新は履歴を壊さない通常コミットとし、マージはユーザーが指示する。
