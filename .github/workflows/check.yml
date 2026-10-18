@@ -24,6 +24,8 @@ jobs:
         run: |
           node --check assets/encounters.js
           node --test tests/final-stage.test.js tests/deep-zones.test.js tests/diagnostics.test.js tests/encounters.test.js tests/progression.test.js tests/relics.test.js tests/routes.test.js tests/events.test.js tests/game-smoke.test.js
+      - name: Check font license credit and display asset
+        run: node --test tests/font-credits.test.js
       - name: Check Pages entry and asset links
         shell: python
         run: |

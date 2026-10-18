@@ -186,7 +186,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
      url("./fonts/cp-period-display.woff2") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
-.brand h1,.modal h2,.floorlabel strong,.stat .num,.credits-title{
+.brand h1,#titleCover h2,#routeCover h2,#deathCover h2,#codexCover h2,#upgradeCover h2,#pauseCover h2,.floorlabel strong,.stat .num:not(#chargeStat){
  font-family:"Checkpoint Period Display",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
  font-weight:400;font-synthesis:none
 }
