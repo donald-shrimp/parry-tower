@@ -78,10 +78,13 @@ function makeHarness(seed={},devMode=false){
  const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
   // Test-only recording of what is actually drawn in the canvas at each phase.
   const phaseDrawLabels=[];
+  const hudDrawLabels=[];
   const originalTextDraw=textDraw;
   textDraw=function(...args){
    if(game.enemy?.finalBoss&&['phase','combat'].includes(game.mode))
     phaseDrawLabels.push({mode:game.mode,label:String(args[0]),y:args[2]});
+   if(game.mode==='combat'&&(String(args[0]).includes(' COMBO')||String(args[0]).startsWith('FLOOR ')))
+    hudDrawLabels.push({label:String(args[0]),y:args[2],size:args[3]});
    return originalTextDraw(...args);
   };
   const rawDamageEnemy=damageEnemy;
@@ -94,6 +97,8 @@ function makeHarness(seed={},devMode=false){
   window.__parryBloodTest={
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
    clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
+   hudDrawLabels:()=>hudDrawLabels.map(x=>({...x})),
+   clearHudDrawLabels:()=>{hudDrawLabels.length=0},
    hits:()=>hitLog.map(h=>({...h})),
    resetHits:()=>{hitLog.length=0},
    rewardPool:()=>choosePool().map(skill=>skill.id),
@@ -160,6 +165,10 @@ function makeHarness(seed={},devMode=false){
    routeSkillSelect(id){el.get('routeSkillCards').listeners.click({target:{closest:()=>({dataset:{routeSkill:id}})}})},
 
 
+  resize(width,height){
+   el.get('gameCanvas').getBoundingClientRect=()=>({width,height});
+   windowListeners.resize();
+  },
   parry(){this.hold();this.release()},
   hold(pointerId=1){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop,pointerId})},
   release(pointerId=1){documentListeners.pointerup({pointerId})},
@@ -260,8 +269,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.2-1"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.2-1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.2-2"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.2-2"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -960,7 +969,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.2-1"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.2-2"/);
   assert.match(html,/v0\.9\.2/);
  }
  const g=makeHarness({},true);
@@ -1279,7 +1288,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.2-1"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.2-2"'),asset);
   assert.match(html,/v0\.9\.2/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1855,4 +1864,27 @@ test('press at existing just/parry timing beats hold-guard fallback',()=>{
  assert.equal(g.state().hp,65,'on-time press triggers parry, no guard damage');
  assert.ok(g.state().combo>=1);
  g.release();
+});
+
+test('combo HUD and floor entry title have non-overlapping, stable lanes on desktop and mobile',()=>{
+ for(const [width,height] of [[800,500],[320,355],[260,345]]){
+  const g=makeHarness({},true),d=g.bloodTest();
+  g.resize(width,height);
+  g.dev().launch(11,'sentinel:normal');
+  d.setCombo(42);
+  d.clearHudDrawLabels();
+  g.frame(g.now+20);
+  const labels=d.hudDrawLabels();
+  const floor=labels.find(x=>x.label==='FLOOR 11');
+  const combo=labels.find(x=>x.label==='×42 COMBO');
+  assert.ok(floor&&combo,'both titles render on floor entry at '+width+'×'+height);
+  assert.ok(combo.y+combo.size/2+5<floor.y-floor.size/2,
+   'at least 5px visible clearance between combo and floor title at '+width+'×'+height);
+  d.clearHudDrawLabels();
+  g.frame(g.now+1400);
+  const after=d.hudDrawLabels();
+  assert.equal(after.some(x=>x.label.startsWith('FLOOR ')),false,'floor hint expires');
+  assert.equal(after.find(x=>x.label==='×42 COMBO')?.y,combo.y,
+   'combo remains at a fixed y when the floor title disappears');
+ }
 });
