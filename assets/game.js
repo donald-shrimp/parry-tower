@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getCon
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 // The SVG experiment is query-gated: regular gameplay keeps the old renderer.
-const ART_PREVIEW=/(?:\\?|&)art=preview(?:&|$)/.test(window.location?.search||'');
+const ART_PREVIEW=/[?&]art=preview(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_ART=ART_PREVIEW?window.ParryCharacterArt:null;
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
 const PR=window.ParryProgression;if(!PR)throw Error('Missing assets/progression.js');
