@@ -243,3 +243,8 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .stat .label{font-size:10px}
  .floorlabel{font-size:12px}
 }
+
+/* v0.9.3: readable, accessible tier progression on the three base upgrades. */
+.upgrade-progress{display:flex;gap:3px;width:min(100%,260px);margin-top:8px}
+.upgrade-progress span{height:7px;flex:1 1 0;border-radius:3px;background:#344357;min-width:0}
+.upgrade-progress span.filled{background:#78baa2}

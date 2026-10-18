@@ -6,6 +6,38 @@
  'use strict';
  const VERSION=1;
  const SLOT_COSTS=Object.freeze([20,65]);
+ // Original five tiers and their prices are fixed for save compatibility.
+ // Additional survivability levels give struggling players a long-term path forward.
+ const ORIGINAL_BASE_COSTS=[8,21,40,65,96];
+ const SURVIVAL_EXTRA_COSTS=[100,130,165,205,250,300,360];
+ const BASE_UPGRADES=Object.freeze([
+  Object.freeze({id:'life',icon:'♡',name:'生命の祝福',effect:'最大HP',
+   max:12,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
+   bonuses:Object.freeze(Array.from({length:12},(_,i)=>(i+1)*10))}),
+  Object.freeze({id:'attack',icon:'⚔',name:'剣の研鑽',effect:'基礎反撃ダメージ',
+   max:8,costs:Object.freeze([...ORIGINAL_BASE_COSTS,150,210,285]),
+   bonuses:Object.freeze(Array.from({length:8},(_,i)=>i<5?(i+1)*3:15+(i-4)*2))}),
+  Object.freeze({id:'ward',icon:'🛡',name:'守護の祈り',effect:'初期障壁',
+   max:12,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
+   bonuses:Object.freeze(Array.from({length:12},(_,i)=>(i+1)*8))})
+ ]);
+ const KNOWN_BASE_UPGRADES=Object.freeze(Object.fromEntries(BASE_UPGRADES.map(v=>[v.id,v])));
+ function baseLevel(progress,id){
+  const def=KNOWN_BASE_UPGRADES[id];
+  if(!def)return 0;
+  return safeLevel(progress?.[id],def.max);
+ }
+ function baseValue(progress,id){
+  const def=KNOWN_BASE_UPGRADES[id];
+  const level=baseLevel(progress,id);
+  return def&&level?def.bonuses[level-1]:0;
+ }
+ function baseCostNext(progress,id){
+  const def=KNOWN_BASE_UPGRADES[id];
+  if(!def)return Infinity;
+  const level=baseLevel(progress,id);
+  return level===def.max?Infinity:def.costs[level];
+ }
  const DEFAULT_SKILL_COSTS=Object.freeze({common:25,rare:90,epic:300});
  const SKILL_COST_OVERRIDES=Object.freeze({
   blade:15,thunder:25,blood:25,aegis:25,precision:20,focus:25,stability:20,ember:20,heal:30,
@@ -99,7 +131,7 @@
   const level=safeLevel(progress?.[id],def.costs.length);
   return level===def.costs.length?Infinity:def.costs[level];
  }
- const api=Object.freeze({VERSION,SLOT_COSTS,DEFAULT_SKILL_COSTS,UPGRADES,
+ const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,DEFAULT_SKILL_COSTS,UPGRADES,
   defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;
