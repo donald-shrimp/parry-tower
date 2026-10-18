@@ -85,7 +85,12 @@ test('new backgrounds are cosmetic, and the finale count-in restarts its shared 
  assert.match(js,/game\.attackBeat\+=beats;game\.attackSpan=beats\*score\.beat\*1000;syncAttackClock\(\)/);
  assert.match(js,/game\.mode==='phase'/);
  assert.match(js,/for\(let i=0;i<FINAL_PHASE_COUNT_BEATS;i\+\+\)/);
- assert.match(js,/scoreTone\(i===0\?784:523/);
+ assert.match(js,/scoreFinalKick\(t,i===0\)/);
+ assert.match(js,/osc\.frequency\.setValueAtTime\(115,t\)/);
+ assert.match(js,/osc\.frequency\.exponentialRampToValueAtTime\(48,t\+\.095\)/);
+ assert.match(js,/filter\.type='lowpass'/);
+ assert.match(js,/game\.mode==='phase'&&game\.phaseStage==='countin'/);
+ assert.doesNotMatch(js,/scoreTone\(i===0\?784:523/);
  assert.match(js,/game\.attackBeat=FINAL_PHASE_COUNT_BEATS\*2/);
  assert.match(js,/game\.finalClear=!game\.practice&&game\.floor===80&&defeated\.id==='endking'/);
 });

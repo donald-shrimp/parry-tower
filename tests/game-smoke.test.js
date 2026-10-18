@@ -4,6 +4,7 @@ const P=require('../assets/encounters.js');
 
 function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
+ const audioEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -44,7 +45,13 @@ function makeHarness(seed={},devMode=false){
   getOutputTimestamp(){return {performanceTime:clock,contextTime:clock/1000}}
   resume(){return Promise.resolve()}
   createGain(){return {gain:para(),connect:noop}}
-  createOscillator(){return {frequency:para(),type:'sine',connect:noop,start:noop,stop:noop}}
+  createOscillator(){
+   const osc={frequency:null,initialFrequency:null,type:'sine',connect:noop,
+    start(time){audioEvents.push({time,frequency:osc.initialFrequency,type:osc.type})},stop:noop};
+   osc.frequency=para();
+   osc.frequency.setValueAtTime=(hz)=>{osc.initialFrequency=hz};
+   return osc;
+  }
   createBuffer(){return {getChannelData:()=>new Float32Array(22050)}}
   createBufferSource(){return {connect:noop,start:noop,stop:noop}}
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
@@ -140,6 +147,7 @@ function makeHarness(seed={},devMode=false){
  },{filename:'dev-tools.js'});
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
@@ -244,8 +252,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-3"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-3"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-4"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-4"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -938,7 +946,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-3"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-4"/);
   assert.match(html,/v0\.9\.0/);
  }
  const g=makeHarness({},true);
@@ -1257,7 +1265,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-3"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-4"'),asset);
   assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1602,8 +1610,17 @@ test('80F summit boss enters second musical phrase only after completed strike',
  g.parry();assert.equal(g.state().enemyHp,before,'parry input is inert during interlude');
  g.frame(started+1499);
  assert.equal(g.state().phaseStage,'rumble');
+ g.clearAudioEvents();
  g.frame(started+1500);
  assert.equal(g.state().phaseStage,'countin');
+ const drumHits=g.audioEvents();
+ assert.equal(drumHits.length,4,'count-in is four kick drums without extra melodic voices');
+ assert.ok(drumHits.every(x=>x.type==='sine'&&x.frequency===115),
+  'each count-in oscillator is a low-pitched kick, not a high beep');
+ const drumBeat=g.state().beat;
+ for(let i=1;i<drumHits.length;i++)
+  assert.ok(Math.abs(drumHits[i].time-drumHits[i-1].time-drumBeat)<.00001,
+   'each kick starts exactly one beat apart on Web Audio time');
  const countStart=g.state().phaseCountStartAt,beat=g.state().beat*1000;
  assert.ok(countStart>g.now);
  // The count-in presents only the movement title, never a full-screen instruction HUD.
