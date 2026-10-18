@@ -29,7 +29,7 @@ jobs:
         run: |
           from pathlib import Path
           html = Path('index.html').read_text(encoding='utf-8')
-          build = 'v0.9.0-5'
+          build = 'v0.9.1-1'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
               'progression.js', 'relics.js', 'routes.js', 'events.js', 'game.js'

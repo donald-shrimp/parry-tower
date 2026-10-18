@@ -4,7 +4,7 @@
  const ROOMS=Object.freeze({
   rest:Object.freeze({id:'rest',name:'安息の間',icon:'🔥',tag:'SAFE',desc:'HP35%回復、または障壁+20と引き直し+1',risk:'戦闘なし・通常スキル報酬なし・コンボ終了'}),
   merchant:Object.freeze({id:'merchant',name:'行商人の隠れ処',icon:'🛒',tag:'TRADE',desc:'塔貨でラン限定の強化を購入（訪問ごとに1品）',risk:'戦闘なし・通常スキル報酬なし・コンボ終了'}),
-  trial:Object.freeze({id:'trial',name:'血闘の間',icon:'⚔️',tag:'DANGER',desc:'HP1.3倍・攻撃力1.15倍の精鋭戦。勝利で塔貨14枚と通常戦利品',risk:'戦闘あり・既存20%レリック抽選'}),
+  trial:Object.freeze({id:'trial',name:'血闘の間',icon:'⚔️',tag:'DANGER',desc:'HP1.3倍・攻撃力1.15倍の精鋭戦。勝利で塔貨14枚と通常戦利品',risk:'戦闘あり・時折、正体不明の精鋭が現れる'}),
   event:Object.freeze({id:'event',name:'奇遇の間',icon:'🔮',tag:'MYSTERY',desc:'祭壇・鏡・遺品・宝箱などのランダムイベント',risk:'戦闘なし・通常スキル報酬なし・コンボ終了'})
  });
  const PATHS=Object.freeze({

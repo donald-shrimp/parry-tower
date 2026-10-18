@@ -252,8 +252,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-5"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-5"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.1-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.1-1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -749,7 +749,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.0/);
+  assert.match(html,/v0\.9\.1/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -946,8 +946,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-5"/);
-  assert.match(html,/v0\.9\.0/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.1-1"/);
+  assert.match(html,/v0\.9\.1/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1265,8 +1265,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-5"'),asset);
-  assert.match(html,/v0\.9\.0/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.1-1"'),asset);
+  assert.match(html,/v0\.9\.1/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1703,4 +1703,61 @@ test('second movement transition does not change normal bosses, premature thresh
  g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+30);
  resolveBloodParry(g,20);
  assert.equal(g.state().mode,'combat','non-final bosses never transition');
+});
+
+test('blood trial mystery guest hides identity, uses the current floor stats and awards normal loot without unlock',()=>{
+ const {g,d}=makeCrossroads(24);
+ g.random(0); // 50% mystery, first eligible future-zone enemy.
+ g.routeSelect('trial');
+ assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().routeTrial,true);
+ assert.equal(g.state().preview,true);
+ assert.equal(g.state().enemy,'？？？');
+ assert.equal(g.state().encounterKey,null,'public status does not reveal the guest');
+ assert.equal(g.el.get('enemyName').textContent,'？？？');
+ assert.equal(g.el.get('enemyBarName').textContent,'？？？');
+ assert.equal(g.state().encounterElite,true);
+ const guest=P.foreshadowTrialForFloor(24,()=>0);
+ assert.equal(g.state().enemyMaxHp,P.baseStats(guest,24).maxHp);
+ assert.equal(g.state().enemyAttack,P.baseStats(guest,24).atk);
+ assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.ember_slime.rhythm);
+ assert.deepEqual(Array.from(g.state().discovered),[]);
+ assert.equal(g.storage.has('parryTowerBestiary_v1'),false,'mystery does not write bestiary');
+ g.random(.99);d.setEnemyHp(1);resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().towerCoins,14,'blood trial keeps its 14 coins');
+ assert.equal(g.storage.has('parryTowerBestiary_v1'),false,'mystery kill must stay out of bestiary');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'reward','normal skill reward is retained');
+ assert.doesNotMatch(g.el.get('rewardNote').textContent,/図鑑登録/);
+ g.press('healBtn');
+ assert.equal(g.state().floor,25);
+});
+test('blood trial remains an ordinary elite when mystery chance fails or future zone is unavailable',()=>{
+ const early=makeCrossroads(4);
+ early.g.random(.99);early.g.routeSelect('trial');
+ assert.equal(early.g.state().preview,false);
+ assert.equal(early.g.state().enemy,'knight');
+ assert.ok(early.g.state().encounterKey);
+ assert.equal(early.g.storage.has('parryTowerBestiary_v1'),true);
+ const late=makeCrossroads(64);
+ late.g.random(0);late.g.routeSelect('trial');
+ assert.equal(late.g.state().preview,false,'no preview past zone six');
+ assert.equal(late.g.state().encounterElite,true);
+ assert.ok(late.g.state().encounterKey);
+});
+test('after the masked 24F teaser, the real 41F encounter reveals its name and unlocks practice',()=>{
+ const {g,d}=makeCrossroads(24);
+ g.random(0);g.routeSelect('trial');
+ assert.equal(g.el.get('enemyName').textContent,'？？？');
+ d.setEnemyHp(1);resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ d.jumpFloor(41);
+ assert.equal(g.state().enemy,'ember_slime');
+ assert.equal(g.state().preview,false);
+ assert.equal(g.el.get('enemyName').textContent,'灼熱スライム');
+ assert.ok(g.state().discovered.includes('ember_slime:normal'));
+ const raw=JSON.parse(g.storage.get('parryTowerBestiary_v1'));
+ assert.equal(raw.seen['ember_slime:normal'].firstFloor,41);
+ assert.equal(raw.seen['ember_slime:elite'],undefined,'masked elite encounter stays hidden');
 });
