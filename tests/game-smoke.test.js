@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const P=require('../assets/encounters.js');
+const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
@@ -1913,7 +1914,8 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  assert.deepEqual([saved.life,saved.attack,saved.ward],[12,8,12]);
  assert.equal(saved.bestFloor,60);
  assert.equal(saved.runs,25);
- assert.equal(g.storage.has('parryTowerPermanent_v1'),false,'separate permanent save is not created');
+ assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),PR.defaults(),
+  'legacy stat upgrade never alters the content of the separate equipment save');
  html=g.el.get('upgradeList').innerHTML;
  assert.match(html,/Lv.12\/12/);
  assert.match(html,/Lv.8\/8/);
@@ -1953,7 +1955,7 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
  const dev=makeHarness(seed,true);
  dev.press('upgradeOpenBtn');dev.upgradeTab('base');dev.upgradeBuy('legacy','life');
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),JSON.stringify(seeded));
- assert.equal(dev.state().souls,700);
+ assert.equal(dev.state().souls,640,'level 12 costs 360 shards');
  const invalid=makeHarness({'parryTowerPrototype_v1':JSON.stringify({life:999,ward:999,attack:999,coins:10})});
  invalid.press('startBtn');
  assert.equal(invalid.state().maxHp,185);
