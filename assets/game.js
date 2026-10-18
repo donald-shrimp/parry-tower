@@ -360,7 +360,11 @@ function renderUpgradeScreen(){
    const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
    return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc:o.description(nextValue)});
   });
-  $('upgradeList').innerHTML=legacy.concat(extra).join('');
+  // Make rescue milestones discoverable; claiming still happens only on game over.
+  const rescueNote=upgradeTab==='base'
+   ?`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`
+   :'';
+  $('upgradeList').innerHTML=rescueNote+legacy.concat(extra).join('');
  }
 }
 function openUpgrade(){

@@ -2048,3 +2048,19 @@ test('rescue grants are separate from soul gain and developer mode never persist
  loseRun(dev);
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
+
+test('base upgrade panel advertises run milestones and updates claimed states after defeat',()=>{
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ const early=g.el.get('upgradeList').innerHTML;
+ assert.match(early,/累計挑戦応援（現在 2回）/);
+ assert.match(early,/○ 未受取 3回：\+20 ✧/);
+ assert.match(early,/○ 未受取 8回：\+35 ✧/);
+ assert.match(early,/○ 未受取 15回：\+60 ✧/);
+ g.press('upgradeCloseBtn');loseRun(g);
+ g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
+ const after=g.el.get('upgradeList').innerHTML;
+ assert.match(after,/累計挑戦応援（現在 3回）/);
+ assert.match(after,/✓ 受取済 3回：\+20 ✧/);
+ assert.match(after,/○ 未受取 8回：\+35 ✧/);
+});
