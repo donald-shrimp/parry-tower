@@ -869,7 +869,7 @@ function renderRelicReward(){
  const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
  const selected=game.relicSwapTarget&&RR.BY_ID[game.relicSwapTarget];
  $('relicOfferTitle').textContent=selected?'交換する遺物を選べ':'遺物をひとつ選べ';
- $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD+'　·　各候補の効果を確認しよう';
+ $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD;
  $('relicOfferCards').innerHTML=selected?'':
   offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc}</span><small>相性：${r.affinity}</small></button>`).join('');
  $('relicReplaceList').hidden=!selected;
