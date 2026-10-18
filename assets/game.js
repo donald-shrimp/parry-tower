@@ -895,12 +895,53 @@ function round(x,y,r,fill,stroke='',lw=1){ctx.beginPath();ctx.arc(x,y,r,0,Math.P
 function line(points,color,width=2){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke()}
 function fillPoly(points,color){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=color;ctx.fill()}
 function textDraw(t,x,y,size,color='#fff',align='center',weight='bold'){ctx.textAlign=align;ctx.textBaseline='middle';ctx.font=`${weight} ${size}px system-ui, sans-serif`;ctx.fillStyle=color;ctx.fillText(t,x,y)}
+
+function paintDeepZone(now,scene){
+ if(scene!=='forge'&&scene!=='frost')return;
+ ctx.save();
+ const floorY=h*.80;
+ if(scene==='forge'){
+  // Heated masonry, glowing furnaces and drifting sparks: cosmetic only.
+  ctx.fillStyle='#69281851';ctx.fillRect(0,0,w,floorY);
+  for(let k=0;k<4;k++){
+   const x=(k+.5)*w/4,boxW=w*.09;
+   ctx.fillStyle='#4e292c';ctx.fillRect(x-boxW*.65,h*.22,boxW*1.3,h*.49);
+   ctx.fillStyle='#e85f2777';ctx.fillRect(x-boxW*.45,h*.35,boxW*.9,h*.24);
+   ctx.fillStyle='#ffd29344';ctx.fillRect(x-boxW*.18,h*.39,boxW*.36,h*.18);
+   ctx.fillStyle='#f5a05d';round(x,h*.71,Math.max(2,w*.006),'#f5a05d');
+  }
+  for(let k=0;k<17;k++){
+   const x=((k*71+17)%101)/101*w;
+   const y=((k*43+now*.022)%290)/290*(h*.64)+h*.15;
+   round(x,y,1.3+(k%3)*.55,k%2?'#ffcf8b90':'#f78c5f95');
+  }
+  ctx.fillStyle='#bf4f2926';ctx.fillRect(0,floorY,w,h-floorY);
+ }else{
+  // Ice hanging above the corridor, cold reflections and gentle snow.
+  ctx.fillStyle='#4a99ba35';ctx.fillRect(0,0,w,floorY);
+  for(let k=0;k<11;k++){
+   const x=(k+.5)*w/11;
+   const size=h*(.045+(k%3)*.014);
+   fillPoly([[x-9,0],[x+9,0],[x+((k%2)?4:-4),size]],'#b4eaf0a0');
+   line([[x-6,0],[x,size*.68]],'#d6f7ff9c',1.5);
+  }
+  for(let k=0;k<15;k++){
+   const x=((k*79+25)%103)/103*w;
+   const y=(k*47+now*.016)%(h*.69)+h*.05;
+   round(x,y,1.3+k%3*.5,'#dffbff8c');
+  }
+  ctx.fillStyle='#b5e6ff1b';ctx.fillRect(0,floorY,w,h-floorY);
+  line([[0,floorY+6],[w,floorY+6]],'#b9edff9a',2);
+ }
+ ctx.restore();
+}
 function drawBackground(now){const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#10152c');g.addColorStop(.6,'#1a1b35');g.addColorStop(1,'#132135');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);const center=w*.52;
   for(let i=0;i<6;i++){let x=(i/5)*w-30;ctx.fillStyle=i%2?'#141c31':'#151d33';ctx.fillRect(x,0,Math.max(18,w*.07),h*.79);ctx.fillStyle='#29304c';ctx.fillRect(x+7,0,2,h*.8)}
   const doorW=Math.min(w*.4,260);ctx.fillStyle='#0d1429';ctx.beginPath();ctx.moveTo(center-doorW/2,h*.79);ctx.lineTo(center-doorW/2,h*.28);ctx.quadraticCurveTo(center-doorW/2,h*.09,center,h*.08);ctx.quadraticCurveTo(center+doorW/2,h*.09,center+doorW/2,h*.28);ctx.lineTo(center+doorW/2,h*.79);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle='#48506b';ctx.stroke();let shine=ctx.createRadialGradient(center,h*.35,10,center,h*.35,doorW*.65);shine.addColorStop(0,'#60547477');shine.addColorStop(1,'#43335100');ctx.fillStyle=shine;ctx.fillRect(center-doorW,h*.09,doorW*2,h*.75);
   for(let i=0;i<4;i++){let cx=(i%2===0?w*.09:w*.91)+(Math.floor(i/2)?25:-25),cy=h*(i<2?.23:.51);round(cx,cy,4,'#f6bc73');round(cx,cy,15,'#e9b36a22')}
   for(let i=0;i<30;i++){const x=((i*97+29)%1000)/1000*w,y=(i*163%600)/600*h*.75+Math.sin(now*.00065+i)*7;round(x,y,1.1+((i*3)%3)*.33,i%4?'#b7adc350':'#edd0ac80')}
   const floorY=h*.80;const gr=ctx.createLinearGradient(0,floorY,0,h);gr.addColorStop(0,'#3e3d4d');gr.addColorStop(.1,'#272b43');gr.addColorStop(1,'#11192a');ctx.fillStyle=gr;ctx.fillRect(0,floorY,w,h-floorY);ctx.fillStyle='#626078';ctx.fillRect(0,floorY,w,3);ctx.strokeStyle='#ffffff0e';ctx.lineWidth=1;for(let i=0;i<9;i++){const x=i*w/8;line([[x,floorY],[w*.5+(x-w*.5)*1.6,h]],'#ffffff0e',1)}for(let y=floorY+26;y<h;y+=28)line([[0,y],[w,y]],'#ffffff12',1);
+  paintDeepZone(now,P.zoneForFloor(game.floor||1).scene);
   if(game.enemy?.boss){let gl=ctx.createRadialGradient(w*.71,h*.56,4,w*.71,h*.56,h*.55);gl.addColorStop(0,'#d77f4537');gl.addColorStop(1,'#f59f4800');ctx.fillStyle=gl;ctx.fillRect(0,0,w,h)}
 }
 function hero(now){
@@ -970,8 +1011,15 @@ function enemy(now){
  else if(e.kind==='wraith')ctx.globalAlpha=1-recoil*.33;
  else ctx.rotate(-recoil*(e.kind==='guardian'?.075:.13));
  const color=e.color||m.accent;
+ // One palette filter recolors the entire existing silhouette (including dedicated sprites).
+ // It is strictly visual: attack contacts and score timings remain unchanged.
+ if(e.palette&&'filter' in ctx){
+  const degrees=Number(e.palette.hueRotate)||0;
+  const saturation=Number(e.palette.saturation)||100;
+  ctx.filter='hue-rotate('+degrees+'deg) saturate('+saturation+'%)';
+ }
  // Visual-only enemy identities; attack tip uses the original contact coordinate.
- if(VARIANT_MOTIONS?.draw(e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
+ if(VARIANT_MOTIONS?.draw(e.sprite||e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
   // Dedicated silhouette drawn without changing the Web Audio clock or hitboxes.
  }else if(e.kind==='slime'){
   // スライムは「圧縮→前傾→頭から飛びかかる」。盾に当たるのは左前方のこぶ。
@@ -1228,5 +1276,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.7.1-1',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.8.0-1',window.__parryV05);requestAnimationFrame(frame);
 })();
