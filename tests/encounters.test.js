@@ -5,7 +5,9 @@ test('each 10-floor sector has a consistent name and fixed story encounters',()=
  const expected=[['slime','knight','knight','guardian'],['sentinel','knight','sentinel','ironwarden'],
   ['wraith','cantor','cantor','dirgekeeper'],['clockwork','duelist','clockwork','timewarden'],
   ['ember_slime','molten_sentinel','molten_sentinel','forge_master'],
-  ['frost_wraith','silver_duelist','silver_duelist','frost_priest']];
+  ['frost_wraith','silver_duelist','silver_duelist','frost_priest'],
+  ['star_cantor','orbital_clockwork','orbital_clockwork','star_warden'],
+  ['void_knight','last_assassin','void_knight','endking']];
  for(let z=0;z<expected.length;z++){
   const start=1+10*z;
   assert.equal(P.encounterForFloor(start,()=>.99).id,expected[z][0]);
@@ -18,7 +20,8 @@ test('each 10-floor sector has a consistent name and fixed story encounters',()=
   assert.equal(final.id,expected[z][3]);assert.equal(final.boss,true);assert.equal(final.elite,true);
   assert.equal(P.zoneForFloor(start),P.zoneForFloor(start+9));
  }
- assert.equal(P.zoneForFloor(61),P.zoneForFloor(1));
+ assert.equal(P.zoneForFloor(81),P.zoneForFloor(1));
+ assert.notEqual(P.zoneForFloor(61),P.zoneForFloor(1));
  assert.notEqual(P.zoneForFloor(41),P.zoneForFloor(1));
  assert.notEqual(P.zoneForFloor(51),P.zoneForFloor(41));
 });
@@ -50,7 +53,7 @@ test('practice sessions use baseline stats, not deep-floor exponential HP',()=>{
  assert.equal(P.baseStats(boss,99,true).maxHp,P.baseStats(boss,5).maxHp);
 });
 test('one encounter unlocks practice even without a defeat, while wins remain separate',()=>{
- const expected=12*2+6*2+2;
+ const expected=16*2+8*2+2;
  assert.equal(P.codexEntries().length,expected);
  const book=P.emptyBook(),slime=P.encounterForFloor(1),key=slime.bookKey;
  assert.equal(Object.keys(book.seen).length,0);
@@ -93,8 +96,9 @@ test('v0.5.4 enemy multipliers match the agreed individual balance',()=>{
   rogue:[.90,.80],duelist:[.90,.80],sentinel:[1.10,1.00],
   cantor:[1,.90],clockwork:[1.10,.95],
   ember_slime:[1,1],molten_sentinel:[1.10,1],frost_wraith:[1,.90],silver_duelist:[.90,.80],
+  star_cantor:[1,.90],orbital_clockwork:[1.10,.95],void_knight:[1.10,.95],last_assassin:[.90,.80],
   guardian:[1.50,1],ironwarden:[1.50,1],dirgekeeper:[1.50,1],timewarden:[1.50,1],
-  forge_master:[1.50,1],frost_priest:[1.50,1],
+  forge_master:[1.50,1],frost_priest:[1.50,1],star_warden:[1.50,1],endking:[1.50,1],
   golden_tone:[1,1],gem_slime:[1,1]
  };
  assert.equal(Object.keys(expected).length,P.all.length);

@@ -28,7 +28,20 @@
    desc:'冷気に潜む亡霊。長い間から半拍の差で爪を伸ばす。'},
   {id:'silver_duelist',name:'白銀の双剣士',kind:'rogue',sprite:'duelist',palette:{hueRotate:190,saturation:80},
    hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[2,1,2,1],color:'#a6d8ef',
-   desc:'白銀の二刀を交互に振る。短い連撃と間合いの変化を読む。'}
+   desc:'白銀の二刀を交互に振る。短い連撃と間合いの変化を読む。'},
+  // v0.9.0: final ascent — familiar silhouettes with advanced but readable score phrases.
+  {id:'star_cantor',name:'星屑の詠み手',kind:'wraith',sprite:'cantor',palette:{hueRotate:85,saturation:135},
+   hpMultiplier:1.00,atkMultiplier:0.90,rhythm:[3,1.5,2,1.5],color:'#d9a8f3',
+   desc:'星座の軌跡を描く詠唱。裏拍が交じる非対称なフレーズ。'},
+  {id:'orbital_clockwork',name:'天球の機兵',kind:'knight',sprite:'clockwork',palette:{hueRotate:60,saturation:115},
+   hpMultiplier:1.10,atkMultiplier:0.95,rhythm:[2,1.5,1.5,2],color:'#bcb5ef',
+   desc:'天球儀を模した機兵。均等な打点を細かな連撃に変える。'},
+  {id:'void_knight',name:'影喰いの騎士',kind:'knight',sprite:'knight',palette:{hueRotate:115,saturation:80},
+   hpMultiplier:1.10,atkMultiplier:0.95,rhythm:[2,1,2.5,1.5],color:'#aa89bf',
+   desc:'光を呑む甲冑。重い斬撃から間合いを外して追撃する。'},
+  {id:'last_assassin',name:'終幕の刺客',kind:'rogue',sprite:'rogue',palette:{hueRotate:145,saturation:110},
+   hpMultiplier:0.90,atkMultiplier:0.80,rhythm:[1.5,1,1.5,2],color:'#d374a7',
+   desc:'終幕を告げる刺客。鋭い半拍と単拍を取り混ぜる。'}
  ];
  const bosses=[
   {id:'guardian',name:'鐘楼の守護者',kind:'guardian',hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,2,1,3,1,3],color:'#ffcc86',boss:true,desc:'鐘の拍に合わせて大剣を振り下ろす。'},
@@ -40,7 +53,14 @@
    desc:'灼熱の炉を統べる巨兵。重い二撃から拍を刻み直す。'},
   {id:'frost_priest',name:'氷冠の司祭',kind:'guardian',sprite:'guardian',palette:{hueRotate:180,saturation:75},
    hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[3,1.5,1,2,1.5,3],color:'#b2d5ff',boss:true,
-   desc:'凍てついた冠を戴き、休符と裏拍で相手を揺さぶる。'}
+   desc:'凍てついた冠を戴き、休符と裏拍で相手を揺さぶる。'},
+  {id:'star_warden',name:'星界の監視者',kind:'guardian',sprite:'timewarden',palette:{hueRotate:80,saturation:115},
+   hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[3,1.5,1.5,2,2],color:'#ded0fc',boss:true,
+   desc:'星の軌道を見通す監視者。左右非対称の拍を繰り返す。'},
+  {id:'endking',name:'終刻の王',kind:'guardian',sprite:'guardian',palette:{hueRotate:145,saturation:135},
+   hpMultiplier:1.50,atkMultiplier:1.00,rhythm:[2,2,1,3,1,2],phaseRhythm:[1.5,1.5,2,1,2,2],
+   color:'#d8b1f0',boss:true,finalBoss:true,
+   desc:'塔の最上層で待つ終刻の王。残りHP半分で第二楽章に移る。'}
  ];
  const rares=[
   {id:'golden_tone',name:'黄金の音叉',kind:'wraith',rhythm:[3,3,2],color:'#ffe0a1',rare:true,soulBonus:8,desc:'黄金の鐘の音を響かせる希少な亡霊。'},
@@ -70,15 +90,26 @@
    fixed:{1:'frost_wraith',2:'silver_duelist',9:'silver_duelist'},
    pools:{3:['frost_wraith','silver_duelist'],4:['silver_duelist','frost_wraith'],
     6:['frost_wraith','silver_duelist'],7:['silver_duelist','frost_wraith'],
-    8:['silver_duelist','frost_wraith']}}
+    8:['silver_duelist','frost_wraith']}},
+  {name:'星詠みの観測所',accent:'#c5b5f4',scene:'astral',boss:'star_warden',
+   fixed:{1:'star_cantor',2:'orbital_clockwork',9:'orbital_clockwork'},
+   pools:{3:['star_cantor','orbital_clockwork'],4:['orbital_clockwork','star_cantor'],
+    6:['star_cantor','orbital_clockwork'],7:['orbital_clockwork','star_cantor'],
+    8:['orbital_clockwork','star_cantor']}},
+  {name:'虚無の天蓋',accent:'#c49bcf',scene:'void',boss:'endking',
+   fixed:{1:'void_knight',2:'last_assassin',9:'void_knight'},
+   pools:{3:['void_knight','last_assassin'],4:['last_assassin','void_knight'],
+    6:['void_knight','last_assassin'],7:['last_assassin','void_knight'],
+    8:['void_knight','last_assassin']}}
  ];
- // Scale zone cycling with the catalog; after 60F the original tomb returns.
+ // The eight-zone ascent ends at 80F; endless play cycles back to the first zone.
  const zoneForFloor=f=>ZONES[Math.floor((((Math.max(1,Math.floor(f))-1)%(ZONES.length*10))+(ZONES.length*10))%(ZONES.length*10)/10)];
  const positionInZone=f=>((Math.max(1,Math.floor(f))-1)%10)+1;
  const enemyKey=e=>e.id+':'+(e.rare?'rare':e.elite?'elite':'normal');
  function buildEnemy(def,elite=false){
   if(!def)throw Error('Unknown enemy');
-  return {...def,rhythm:[...def.rhythm],elite:!!elite,rare:!!def.rare,boss:!!def.boss,
+  return {...def,rhythm:[...def.rhythm],...(def.phaseRhythm?{phaseRhythm:[...def.phaseRhythm]}:{}),
+   elite:!!elite,rare:!!def.rare,boss:!!def.boss,
    displayName:(elite?'精鋭・':'')+def.name,bookKey:enemyKey({...def,elite})};
  }
  function encounterForFloor(f,rng=Math.random,lastRareFloor=-9999){
@@ -109,8 +140,12 @@
  function baseStats(enc,f,arena=false){
   const actualFloor=arena?(enc.boss?5:1):Math.max(1,Math.floor(f));
   // Keep the original difficulty curve through floor 10, then soften its exponential growth.
-  const hpGrowth=Math.pow(1.18,Math.min(actualFloor-1,9))*Math.pow(1.075,Math.max(0,actualFloor-10));
-  const atkGrowth=Math.pow(1.09,Math.min(actualFloor-1,9))*Math.pow(1.045,Math.max(0,actualFloor-10));
+  const hpGrowth=Math.pow(1.18,Math.min(actualFloor-1,9))
+   *Math.pow(1.075,Math.max(0,Math.min(actualFloor,60)-10))
+   *Math.pow(1.035,Math.max(0,actualFloor-60));
+  const atkGrowth=Math.pow(1.09,Math.min(actualFloor-1,9))
+   *Math.pow(1.045,Math.max(0,Math.min(actualFloor,60)-10))
+   *Math.pow(1.012,Math.max(0,actualFloor-60));
   const hpScale=(enc.boss?2.15:1)*(enc.elite?1.30:1)*(enc.rare?1.12:1);
   const atkScale=(enc.boss?1.25:1)*(enc.elite?1.15:1)*(enc.rare?.95:1);
   // Preserve the pre-v0.5.4 floor/elite/rare curve and minimum attack floor,
@@ -118,7 +153,7 @@
   // would erase most of the intended damage reduction on early floors.
   const baseHp=Math.max(1,Math.round(49*hpGrowth*hpScale));
   const baseAtk=Math.max(13,Math.round(14*atkGrowth*atkScale));
-  const hpMultiplier=enc.hpMultiplier??1;
+  const hpMultiplier=(enc.hpMultiplier??1)*(enc.finalBoss&&actualFloor===80&&!arena?1.35:1);
   const atkMultiplier=enc.atkMultiplier??1;
   return {maxHp:Math.max(1,Math.round(baseHp*hpMultiplier)),
    atk:Math.max(1,Math.round(baseAtk*atkMultiplier))};

@@ -9,14 +9,14 @@ const fs=require('node:fs');
 const newMonsters=['ember_slime','molten_sentinel','frost_wraith','silver_duelist'];
 const newBosses=['forge_master','frost_priest'];
 
-test('41–60F are two distinct zones and 61F restarts the complete six-zone cycle',()=>{
- assert.equal(E.ZONES.length,6);
+test('41–60F are two distinct zones and 61F introduces the astral stage',()=>{
+ assert.equal(E.ZONES.length,8);
  assert.equal(E.zoneForFloor(41).name,'熔鉄の工房');
  assert.equal(E.zoneForFloor(50).scene,'forge');
  assert.equal(E.zoneForFloor(51).name,'白霜の回廊');
  assert.equal(E.zoneForFloor(60).scene,'frost');
- assert.equal(E.zoneForFloor(61).name,E.zoneForFloor(1).name);
- assert.equal(E.zoneForFloor(101).name,E.zoneForFloor(41).name);
+ assert.equal(E.zoneForFloor(61).name,'星詠みの観測所');
+ assert.equal(E.zoneForFloor(121).name,E.zoneForFloor(41).name);
  for(const [start,boss] of [[41,'forge_master'],[51,'frost_priest']]){
   assert.equal(E.encounterForFloor(start+4,()=>.5).id,boss);
   assert.equal(E.encounterForFloor(start+9,()=>.5).id,boss);
@@ -28,9 +28,9 @@ test('41–60F are two distinct zones and 61F restarts the complete six-zone cyc
  }
 });
 test('new monsters reuse proven silhouettes, color filters and half-beat score intervals',()=>{
- assert.equal(E.monsters.length,12);
- assert.equal(E.bosses.length,6);
- assert.equal(E.codexEntries().length,38);
+ assert.equal(E.monsters.length,16);
+ assert.equal(E.bosses.length,8);
+ assert.equal(E.codexEntries().length,50);
  const oldKinds=new Set(['slime','knight','rogue','wraith','guardian']);
  for(const id of [...newMonsters,...newBosses]){
   const e=E.byId[id],sprite=E.byId[e.sprite];

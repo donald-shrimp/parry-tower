@@ -4,6 +4,7 @@ const P=require('../assets/encounters.js');
 
 function makeHarness(seed={},devMode=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
+ const audioEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -44,7 +45,13 @@ function makeHarness(seed={},devMode=false){
   getOutputTimestamp(){return {performanceTime:clock,contextTime:clock/1000}}
   resume(){return Promise.resolve()}
   createGain(){return {gain:para(),connect:noop}}
-  createOscillator(){return {frequency:para(),type:'sine',connect:noop,start:noop,stop:noop}}
+  createOscillator(){
+   const osc={frequency:null,initialFrequency:null,type:'sine',connect:noop,
+    start(time){audioEvents.push({time,frequency:osc.initialFrequency,type:osc.type})},stop:noop};
+   osc.frequency=para();
+   osc.frequency.setValueAtTime=(hz)=>{osc.initialFrequency=hz};
+   return osc;
+  }
   createBuffer(){return {getChannelData:()=>new Float32Array(22050)}}
   createBufferSource(){return {connect:noop,start:noop,stop:noop}}
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
@@ -68,6 +75,14 @@ function makeHarness(seed={},devMode=false){
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
  const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
+  // Test-only recording of what is actually drawn in the canvas at each phase.
+  const phaseDrawLabels=[];
+  const originalTextDraw=textDraw;
+  textDraw=function(...args){
+   if(game.enemy?.finalBoss&&['phase','combat'].includes(game.mode))
+    phaseDrawLabels.push({mode:game.mode,label:String(args[0]),y:args[2]});
+   return originalTextDraw(...args);
+  };
   const rawDamageEnemy=damageEnemy;
   damageEnemy=function(n,color,label){
    const before=game.enemy?.hp||0;
@@ -76,6 +91,8 @@ function makeHarness(seed={},devMode=false){
    return outcome;
   };
   window.__parryBloodTest={
+   phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
+   clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
    hits:()=>hitLog.map(h=>({...h})),
    resetHits:()=>{hitLog.length=0},
    rewardPool:()=>choosePool().map(skill=>skill.id),
@@ -130,6 +147,7 @@ function makeHarness(seed={},devMode=false){
  },{filename:'dev-tools.js'});
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
@@ -234,8 +252,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.8\.0-1"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.8\.0-1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-5"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-5"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -245,7 +263,7 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  const seed={'parryTowerPrototype_v1':oldMeta,'parryTowerBestiary_v1':oldBook,'parryTowerAudioOffset_v05':'5'};
  const g=makeHarness(seed,true),dev=g.dev();
  assert.ok(dev?.isolated);
- assert.equal(dev.list().length,38);
+ assert.equal(dev.list().length,50);
  assert.equal(dev.launch(21,'cantor:normal'),true);
  assert.equal(g.state().floor,21);
  assert.equal(g.state().enemy,'cantor');
@@ -264,6 +282,15 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  assert.equal(dev.launch(51,'frost_wraith:normal'),true);
  assert.equal(g.state().floor,51);
  assert.equal(g.state().enemy,'frost_wraith');
+ assert.equal(dev.launch(61,'star_cantor:normal'),true);
+ assert.equal(g.state().floor,61);
+ assert.equal(g.state().enemy,'star_cantor');
+ assert.equal(dev.launch(71,'void_knight:normal'),true);
+ assert.equal(g.state().floor,71);
+ assert.equal(g.state().enemy,'void_knight');
+ assert.equal(dev.launch(80,'endking:elite'),true);
+ assert.equal(g.state().enemy,'endking');
+ assert.equal(g.state().bossPhase,1);
  assert.equal(dev.launch(30,'golden_tone:rare'),true);
  assert.equal(g.state().enemy,'golden_tone');
  assert.equal(g.state().encounterRare,true);
@@ -722,7 +749,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.8\.0/);
+  assert.match(html,/v0\.9\.0/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -919,8 +946,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.8\.0-1"/);
-  assert.match(html,/v0\.8\.0/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-5"/);
+  assert.match(html,/v0\.9\.0/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1238,8 +1265,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.8.0-1"'),asset);
-  assert.match(html,/v0\.8\.0/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-5"'),asset);
+  assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1562,4 +1589,118 @@ test('8F can choose an elite fight while fixed 9F elite and 10F boss remain unch
  g.press('healBtn');
  assert.equal(g.state().floor,10);
  assert.equal(g.state().encounterKey,'guardian:elite');
+});
+
+test('80F summit boss enters second musical phrase only after completed strike',()=>{
+ const g=makeHarness({},true),dev=g.dev();
+ assert.equal(dev.launch(80,'endking:elite'),true);
+ assert.equal(g.state().bossPhase,1);
+ assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.endking.rhythm);
+ const hp=g.state().enemyMaxHp;
+ g.bloodTest().setEnemyHp(Math.floor(hp*.49)+100);
+ g.bloodTest().setBaseAttack(1);
+ assert.equal(g.state().bossPhase,1,'the already-telegraphed strike is not altered by HP updates');
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'phase','half HP enters invulnerable cinematic between strikes');
+ assert.equal(g.state().bossPhase,2);
+ assert.equal(g.state().phaseStage,'rumble');
+ assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.endking.phaseRhythm);
+ assert.equal(g.state().attackAt,Infinity,'the old attack is disabled during cinematic');
+ const before=g.state().enemyHp,started=g.now;
+ g.parry();assert.equal(g.state().enemyHp,before,'parry input is inert during interlude');
+ g.frame(started+1499);
+ assert.equal(g.state().phaseStage,'rumble');
+ g.clearAudioEvents();
+ g.frame(started+1500);
+ assert.equal(g.state().phaseStage,'countin');
+ const drumHits=g.audioEvents();
+ // Each of the four scheduled stomps has exactly two pitched layers: a punch and a boom.
+ assert.equal(drumHits.length,8,'count-in has four layered drums without melodic voices');
+ const punches=drumHits.filter(x=>x.type==='triangle'&&x.frequency===220);
+ const booms=drumHits.filter(x=>x.type==='sine'&&x.frequency===135);
+ assert.equal(punches.length,4,'mid-bass punch layer remains audible on small speakers');
+ assert.equal(booms.length,4,'sub-bass body under every stomp');
+ const drumBeat=g.state().beat;
+ for(let i=0;i<4;i++){
+  assert.ok(Math.abs(punches[i].time-booms[i].time)<.00001,'impact layers start together');
+  if(i)assert.ok(Math.abs(punches[i].time-punches[i-1].time-drumBeat)<.00001,
+   'each layered stomp starts exactly one beat apart on Web Audio time');
+ }
+ const countStart=g.state().phaseCountStartAt,beat=g.state().beat*1000;
+ assert.ok(countStart>g.now);
+ // The count-in presents only the movement title, never a full-screen instruction HUD.
+ g.bloodTest().setCombo(18);
+ g.bloodTest().clearPhaseDrawLabels();
+ g.frame(countStart+2*beat+10);
+ const labels=g.bloodTest().phaseDrawLabels();
+ assert.ok(labels.some(x=>x.mode==='phase'&&x.label==='第二楽章'));
+ assert.ok(!labels.some(x=>/ゴゴ|リズムを取れ|READY|COMBO|^[1-4]$/.test(x.label)),
+  'the transition is a quiet title with musical beats, not a numbered cover or combo overlay');
+ g.frame(countStart+3*beat+10);
+ assert.equal(g.state().mode,'phase','all four count-in beats are safe');
+ g.parry();assert.equal(g.state().enemyHp,before,'count-in is never a combat attack');
+ g.bloodTest().clearPhaseDrawLabels();
+ g.frame(countStart+4*beat+1);
+ assert.equal(g.state().mode,'combat','the bar finished before combat restarts');
+ const resumeLabels=g.bloodTest().phaseDrawLabels();
+ assert.ok(resumeLabels.some(x=>x.mode==='combat'&&x.label==='×18 COMBO'),
+  'combo HUD is visible again after the transition');
+ assert.ok(!resumeLabels.some(x=>x.label.includes('第二楽章')),
+  'the movement title disappears on return and cannot overlap the combo HUD');
+ assert.equal(g.state().phaseStage,null);
+ assert.equal(g.state().attackBeat,8);
+ assert.ok(g.state().attackAt-g.now>=3.9*beat,'fresh telegraph allows a full four beats after count-in');
+ assert.equal(g.storage.size,0,'developer run never modifies persistent storage');
+});
+test('80F defeat is immediately recorded as summit completion and the game can continue to 81F',()=>{
+ const g=makeHarness();
+ g.press('startBtn');
+ g.bloodTest().jumpFloor(80);
+ assert.equal(g.state().enemy,'endking');
+ assert.equal(g.state().encounterElite,true);
+ g.random(.99);
+ g.bloodTest().setEnemyHp(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().finalClear,true);
+ const persisted=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.equal(persisted.bestFloor,80,'summit clear is recorded before next death');
+ g.frame(g.now+950);
+ assert.equal(g.state().mode,'relic','final boss continues to the existing relic offer');
+ g.press('relicSkipBtn');
+ assert.equal(g.state().mode,'reward');
+ assert.match(g.el.get('rewardTitle').textContent,/80F制覇/);
+ assert.match(g.el.get('rewardNote').textContent,/81Fから無限踏破/);
+ g.press('healBtn');
+ assert.equal(g.state().floor,81);
+ assert.equal(g.state().enemy,'slime','endless floor loops to the original first sector');
+ assert.equal(g.state().mode,'combat');
+});
+
+test('interlude recovers safely after tab throttling and never resumes on an expired hit',()=>{
+ const g=makeHarness({},true);
+ g.dev().launch(80,'endking:elite');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+60);
+ g.bloodTest().setBaseAttack(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'phase');
+ g.frame(g.now+1500);
+ const start=g.state().phaseCountStartAt,beat=g.state().beat*1000;
+ g.frame(start+9*beat);
+ assert.equal(g.state().mode,'phase','missed count-in is rescheduled, not skipped');
+ assert.equal(g.state().phaseStage,'countin');
+ assert.ok(g.state().phaseCountStartAt>start);
+});
+test('second movement transition does not change normal bosses, premature thresholds or other enemies',()=>{
+ const g=makeHarness({},true);
+ g.dev().launch(75,'endking:normal');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.7)+30);
+ g.bloodTest().setBaseAttack(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'combat','above half health remains ordinary combat');
+ assert.equal(g.state().bossPhase,1);
+ g.dev().launch(80,'star_warden:normal');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+30);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'combat','non-final bosses never transition');
 });
