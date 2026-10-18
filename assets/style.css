@@ -178,15 +178,15 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .version-warning button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @media(max-width:540px){.version-warning{padding:10px;font-size:12px;gap:8px}.version-warning p{flex-basis:100%}}
 
-/* Display type only: explanatory copy, button labels, captions and help keep the UI font.
-   Glyph-subset fallback is intentional for any future characters absent from this WOFF2. */
+/* Display typography for scene titles, UI headings, big counters and canvas feedback.
+   Reading copy, action labels, item descriptions and help remain system UI. */
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
      url("./fonts/cp-period-display.woff2") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
-.brand h1,#titleCover h2,#routeCover h2,#deathCover h2,#codexCover h2,#upgradeCover h2,#pauseCover h2,.floorlabel strong,.stat .num:not(#chargeStat){
+.brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{
  font-family:"Checkpoint Period Display",system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
  font-weight:400;font-synthesis:none
 }
@@ -201,3 +201,44 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .credits-page a{color:var(--cyan)}
 .credits-page .notice{padding:12px 16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}
 .credits-page .back{display:inline-block;margin-bottom:16px}
+
+/* Oversized logotype: only the hiragana "の" is half-height. Keep it on one line. */
+#titleCover h2.title-logo{
+ font-size:clamp(46px,14vw,82px);
+ line-height:1.15;
+ letter-spacing:.015em;
+ white-space:nowrap;
+ margin:12px 0 22px;
+}
+#titleCover h2 .title-no{
+ display:inline-block;
+ font-size:.5em;
+ line-height:1;
+ vertical-align:.16em;
+}
+.brand h1 .title-no{
+ display:inline-block;
+ font-size:.5em;
+ line-height:1;
+ vertical-align:.15em;
+ margin-left:0;
+ font-weight:inherit;
+ letter-spacing:0;
+ color:inherit;
+}
+.panel-title{font-size:15px;line-height:1.3;letter-spacing:.045em}
+.panel-title .side-sub{font-size:11px}
+.floorlabel{font-size:14px}
+.floorlabel strong{font-size:24px}
+.modal-kicker{font-size:12px}
+.stat .num{font-size:clamp(20px,2vw,26px);white-space:nowrap}
+.stat #chargeStat{font-size:clamp(16px,1.75vw,23px)}
+.stat .label{font-size:11px;line-height:1.35}
+@media(max-width:520px){
+ #titleCover h2.title-logo{font-size:clamp(42px,14vw,57px)}
+ .panel-title{font-size:14px}
+ .stat .num{font-size:20px}
+ .stat #chargeStat{font-size:16px}
+ .stat .label{font-size:10px}
+ .floorlabel{font-size:12px}
+}

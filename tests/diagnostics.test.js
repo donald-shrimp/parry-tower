@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const BUILD='v0.9.1-1';
+const BUILD='v0.9.1-2';
 const source=fs.readFileSync('assets/diagnostics.js','utf8');
 
 function diagnosticPage(page='index.html',options={}){
@@ -93,7 +93,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   assert.ok(s.indexOf('assets/diagnostics.js')<s.indexOf('assets/game.js'),'guard loads before game');
  }
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.1-1',window.__parryV05)"));
+ assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.1-2',window.__parryV05)"));
 });
 test('healthy game reports technical status and correct floor-specific route with no warning',()=>{
  const p=diagnosticPage();
