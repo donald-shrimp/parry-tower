@@ -269,8 +269,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.2-2"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.2-2"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -772,7 +772,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.2/);
+  assert.match(html,/v0\.9\.3/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -969,8 +969,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.2-2"/);
-  assert.match(html,/v0\.9\.2/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-1"/);
+  assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1288,8 +1288,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.2-2"'),asset);
-  assert.match(html,/v0\.9\.2/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-1"'),asset);
+  assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1887,4 +1887,75 @@ test('combo HUD and floor entry title have non-overlapping, stable lanes on desk
   assert.equal(after.find(x=>x.label==='×42 COMBO')?.y,combo.y,
    'combo remains at a fixed y when the floor title disappears');
  }
+});
+
+test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then stop at cap',()=>{
+ const prev={coins:10000,life:5,attack:5,ward:5,bestFloor:60,runs:25};
+ const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify(prev)});
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ let html=g.el.get('upgradeList').innerHTML;
+ assert.match(html,/生命の祝福[^]*?Lv.5\/12/);
+ assert.match(html,/剣の研鑽[^]*?Lv.5\/8/);
+ assert.match(html,/守護の祈り[^]*?Lv.5\/12/);
+ assert.match(html,/現在：最大HP \+50 → Lv.6：\+60/);
+ assert.match(html,/現在：基礎反撃ダメージ \+15 → Lv.6：\+17/);
+ assert.match(html,/現在：初期障壁 \+40 → Lv.6：\+48/);
+ assert.match(html,/class="upgrade-progress" role="progressbar"/);
+ g.upgradeBuy('legacy','life');
+ g.upgradeBuy('legacy','attack');
+ g.upgradeBuy('legacy','ward');
+ assert.equal(g.state().souls,9650,'first extra HP/attack/ward tiers cost 100+150+100');
+ for(let i=0;i<6;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
+ for(let i=0;i<2;i++)g.upgradeBuy('legacy','attack');
+ const expected=10000-((1740-230)*2)-(875-230);
+ assert.equal(g.state().souls,expected);
+ const saved=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
+ assert.deepEqual([saved.life,saved.attack,saved.ward],[12,8,12]);
+ assert.equal(saved.bestFloor,60);
+ assert.equal(saved.runs,25);
+ assert.equal(g.storage.has('parryTowerPermanent_v1'),false,'separate permanent save is not created');
+ html=g.el.get('upgradeList').innerHTML;
+ assert.match(html,/Lv.12\/12/);
+ assert.match(html,/Lv.8\/8/);
+ assert.match(html,/最大強化/);
+ assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
+ assert.equal((html.match(/aria-valuenow="12"/g)||[]).length,2);
+ assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
+ g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','attack');g.upgradeBuy('legacy','ward');
+ g.upgradeBuy('legacy','invalid');
+ assert.equal(g.state().souls,expected,'a maxed or unknown upgrade cannot spend currency');
+ g.press('upgradeCloseBtn');g.press('startBtn');
+ assert.equal(g.state().maxHp,185,'12 HP levels give +120 HP');
+ assert.equal(g.state().shield,96,'12 ward levels give +96 initial shield');
+ assert.equal(g.state().souls,expected);
+ const d=g.bloodTest();
+ d.setEnemyHp(100000);d.setCombo(0);
+ resolveBloodParry(g,20);
+ assert.ok(g.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
+});
+test('new base tiers stay affordable only at exact price and maintain old first five prices',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:99,life:5})};
+ const g=makeHarness(seed);g.press('upgradeOpenBtn');g.upgradeTab('base');
+ g.upgradeBuy('legacy','life');
+ assert.equal(g.state().souls,99,'99 cannot buy the 100-cost sixth tier');
+ const fresh=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:8})});
+ fresh.press('upgradeOpenBtn');fresh.upgradeTab('base');fresh.upgradeBuy('legacy','life');
+ assert.equal(fresh.state().souls,0,'existing level 1 price remains 8');
+ assert.equal(JSON.parse(fresh.storage.get('parryTowerPrototype_v1')).life,1);
+});
+test('old meta values survive load, excess levels are capped, and dev edits stay read-only',()=>{
+ const seeded={coins:1000,life:11,attack:5,ward:12,bestFloor:42,bestCombo:87,runs:9};
+ const seed={'parryTowerPrototype_v1':JSON.stringify(seeded)};
+ const normal=makeHarness(seed);
+ normal.press('startBtn');
+ assert.equal(normal.state().maxHp,175);
+ assert.equal(normal.state().shield,96);
+ const dev=makeHarness(seed,true);
+ dev.press('upgradeOpenBtn');dev.upgradeTab('base');dev.upgradeBuy('legacy','life');
+ assert.equal(dev.storage.get('parryTowerPrototype_v1'),JSON.stringify(seeded));
+ assert.equal(dev.state().souls,700);
+ const invalid=makeHarness({'parryTowerPrototype_v1':JSON.stringify({life:999,ward:999,attack:999,coins:10})});
+ invalid.press('startBtn');
+ assert.equal(invalid.state().maxHp,185);
+ assert.equal(invalid.state().shield,96);
 });

@@ -115,3 +115,48 @@ test('Fate Seal load normalizes duplicates, malformed IDs, future removals and e
  const restored=P.normalize({sealSlots:1,sealedSkills:['future_new']},[...skills,{id:'future_new',rarity:'rare'}]);
  assert.deepEqual(restored.sealedSkills,['future_new'],'newly registered skill IDs need no hard-coded lists');
 });
+
+test('v0.9.3 baseline stat tiers retain all five original prices and effects',()=>{
+ const defs=Object.fromEntries(P.BASE_UPGRADES.map(x=>[x.id,x]));
+ assert.equal(P.BASE_UPGRADES.length,3);
+ assert.deepEqual(P.BASE_UPGRADES.map(x=>x.max),[12,8,12]);
+ for(const id of ['life','attack','ward']){
+  assert.deepEqual([...defs[id].costs.slice(0,5)],[8,21,40,65,96]);
+  for(let level=0;level<5;level++)
+   assert.equal(P.baseCostNext({[id]:level},id),defs[id].costs[level]);
+ }
+ assert.deepEqual(Array.from({length:6},(_,i)=>P.baseValue({life:i},'life')),[0,10,20,30,40,50]);
+ assert.deepEqual(Array.from({length:6},(_,i)=>P.baseValue({attack:i},'attack')),[0,3,6,9,12,15]);
+ assert.deepEqual(Array.from({length:6},(_,i)=>P.baseValue({ward:i},'ward')),[0,8,16,24,32,40]);
+ assert.equal([8,21,40,65,96].reduce((a,b)=>a+b),230);
+});
+test('new survivability levels, slowed attack growth, prices and upgrade caps are exact',()=>{
+ for(const id of ['life','ward'])
+  assert.deepEqual(Array.from({length:7},(_,i)=>P.baseCostNext({[id]:i+5},id)),[100,130,165,205,250,300,360]);
+ assert.deepEqual(Array.from({length:3},(_,i)=>P.baseCostNext({attack:i+5},'attack')),[150,210,285]);
+ assert.equal(P.baseCostNext({attack:8},'attack'),Infinity);
+ assert.equal(P.baseCostNext({life:12},'life'),Infinity);
+ assert.equal(P.baseCostNext({ward:12},'ward'),Infinity);
+ assert.equal(P.baseValue({life:12},'life'),120);
+ assert.equal(P.baseValue({ward:12},'ward'),96);
+ assert.deepEqual([5,6,7,8].map(l=>P.baseValue({attack:l},'attack')),[15,17,19,21]);
+ assert.equal(P.BASE_UPGRADES[0].costs.reduce((a,b)=>a+b),1740);
+ assert.equal(P.BASE_UPGRADES[1].costs.reduce((a,b)=>a+b),875);
+});
+test('base-stat reads normalize legacy, malformed and forged levels without changing permanent-save v1',()=>{
+ for(const id of ['life','attack','ward']){
+  const max=P.BASE_UPGRADES.find(x=>x.id===id).max;
+  assert.equal(P.baseLevel({[id]:Number.MAX_SAFE_INTEGER},id),max);
+  assert.equal(P.baseLevel({[id]:max+9},id),max);
+  assert.equal(P.baseLevel({[id]:-13},id),0);
+  assert.equal(P.baseLevel({[id]:3.8},id),3);
+  assert.equal(P.baseLevel({[id]:Infinity},id),0);
+  assert.equal(P.baseLevel({[id]:'5'},id),0);
+  assert.equal(P.baseLevel({[id]:NaN},id),0);
+  assert.equal(P.baseCostNext({[id]:max+9},id),Infinity);
+ }
+ assert.equal(P.baseValue(null,'life'),0);
+ assert.equal(P.baseCostNext({},'typo'),Infinity);
+ assert.equal(P.baseValue({life:3},'typo'),0);
+ assert.equal(P.VERSION,1);
+});
