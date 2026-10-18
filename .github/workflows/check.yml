@@ -20,6 +20,8 @@ jobs:
           node --check assets/character-flat.js
           node --check assets/character-trace.js
           node --check assets/character-ready.js
+          node --check assets/character-knight.js
+          node --test tests/character-knight.test.js
           node --test tests/character-ready.test.js
           node --test tests/character-trace.test.js
           node --test tests/character-flat.test.js
@@ -72,7 +74,7 @@ jobs:
           build = 'v0.9.3-2'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'game.js'
+              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')
