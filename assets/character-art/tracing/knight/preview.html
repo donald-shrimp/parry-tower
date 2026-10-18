@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>錆びた騎士 — SVG Rig Preview</title>
+<style>body{margin:0;background:#141b29;color:#f4f4f4;font:16px system-ui,sans-serif}
+main{max-width:900px;margin:12px auto;padding:0 12px}
+canvas{display:block;width:100%;background:#e5e6e9;border-radius:12px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{background:#34465f;border:1px solid #7f90a7;border-radius:8px;color:white;padding:10px 14px;cursor:pointer}
+button[aria-pressed=true]{background:#af6347}
+small{color:#c1cada}</style></head><body>
+<main><h1>錆びた騎士：可動テスト（Draft PR #28）</h1>
+<p>原画からトレースした静止SVGをマスク分割して動かします。赤い十字は既存ゲームの接触位置（reach=110, y=-58）です。</p>
+<nav id="poses">
+<button data-pose="idle" aria-pressed="true">待機</button>
+<button data-pose="windup">予備</button>
+<button data-pose="strike">振り下ろし</button>
+<button data-pose="impact">接触</button>
+<button data-pose="recover">戻り</button>
+<button data-pose="play">連続再生</button>
+</nav>
+<canvas id="board" width="900" height="540"></canvas>
+<p id="status">SVG 読み込み中…</p>
+<small>レビュー用のみ。実際の判定・タイミング・Web Audio・主人公の描画は変更しません。モーション未採用。</small></main>
+<script src="../../../character-knight.js"></script>
+<script>
+(()=>{'use strict';
+ const art=window.ParryKnightTrace,board=document.getElementById('board'),
+ ctx=board.getContext('2d'),msg=document.getElementById('status');
+ let pose='idle',started=performance.now();
+ const still={idle:[0,0],windup:[1,0],strike:[0,.5],impact:[0,1],recover:[0,.3]};
+ const clamp=x=>Math.max(0,Math.min(1,x));
+ document.getElementById('poses').addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-pose]');if(!btn)return;
+  pose=btn.dataset.pose;started=performance.now();
+  for(const b of document.querySelectorAll('button[data-pose]'))b.setAttribute('aria-pressed',String(b===btn));
+ });
+ function draw(ts){
+  ctx.clearRect(0,0,board.width,board.height);
+  ctx.fillStyle='#e5e6e9';ctx.fillRect(0,0,board.width,board.height);
+  const origin=[555,490],scale=1.9;
+  ctx.strokeStyle='#8e949e';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,origin[1]);ctx.lineTo(board.width,origin[1]);ctx.stroke();
+  const target=[origin[0]-110*scale,origin[1]-58*scale];
+  ctx.strokeStyle='#dd4238';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(target[0]-9,target[1]);ctx.lineTo(target[0]+9,target[1]);
+  ctx.moveTo(target[0],target[1]-9);ctx.lineTo(target[0],target[1]+9);ctx.stroke();
+  let charge=0,action=0;
+  if(pose==='play'){
+   const t=(ts-started)%2300;
+   if(t<650){charge=clamp(t/650);}
+   else if(t<1030){action=clamp((t-650)/380);}
+   else if(t<1200){action=1;}
+   else {action=clamp(1-(t-1200)/1100);}
+  }else [charge,action]=still[pose]||[0,0];
+  ctx.save();ctx.translate(...origin);ctx.scale(-scale,scale);
+  art.drawEnemy(ctx,{e:{kind:'knight'},m:{reach:110},charge,action,p:action,recoil:0,rec:0,now:ts});
+  ctx.restore();
+  requestAnimationFrame(draw);
+ }
+ art.preload().then(ok=>{msg.textContent=ok?'ロード完了：ポーズ切替・連続再生ができます。':'SVGのロード失敗。従来描画へフォールバックします。';});
+ requestAnimationFrame(draw);
+})();
+</script></body></html>
