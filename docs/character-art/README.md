@@ -35,7 +35,7 @@
 
 ## 次の対象：錆びた騎士 `knight`
 
-<Link>でなく普通のURLリンクとして直接辿れる：**[騎士の個別指示書](./prompts/knight.md)** / **[騎士のSVG下絵用完成プロンプト](./prompts/knight-svg-base.md)**。
+次のキャラ用の指示書：**[騎士の個別指示書](./prompts/knight.md)** / **[騎士のSVG下絵用完成プロンプト](./prompts/knight-svg-base.md)**。
 
 **別チャットで画像生成を依頼する文**：
 > この [README](./README.md) と [PIPELINE](./PIPELINE.md)、[POSE_GUIDE](./POSE_GUIDE.md)、[knight-svg-base](./prompts/knight-svg-base.md) を読んで。錆びた騎士`knight`の**戦闘待機ポーズのPNGを1枚**生成して見せて。元PNGの採否を伝えるまでは、GitHub登録・トレース・実装に進まないで。

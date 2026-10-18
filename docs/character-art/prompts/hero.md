@@ -39,7 +39,7 @@
 
 **[POSE_GUIDE](../POSE_GUIDE.md) と [FLAT_VECTOR_SPEC](../FLAT_VECTOR_SPEC.md) を最優先し、[hero-svg-base.md](./hero-svg-base.md) の完成プロンプトを使用**。以前の『SDファンタジーイラストをフラットに塗る』作風は不可。幾何学的な図形20〜30個程度で作れる、陰影0・細線装飾0のピクトグラム風にする。1体・1ポーズ・全身・背景なし・安全余白・単純な色面・盾全周と剣先が完全に見えることを優先。設定画シート、三面図、パーツ分解図、色見本は出さない。
 
-**採用ファイル**: `assets/character-art/references/hero/svg-base-approved.png`。人が新しい下絵を承認しない限り、SVG制作には進まない。
+**今後再制作が必要になった場合の保存先**: `assets/character-art/references/hero/svg-base-approved.png`。現行の外観と動作は[READY_POSE](../../../assets/character-art/tracing/hero/READY_POSE.md)に記録。ユーザーから改めて再制作指示があった場合のみ上書きする。
 
 ## SVG制作モード（下絵が採用された後のみ）
 
@@ -49,4 +49,4 @@
 
 ## 現在の判定
 
-2026-10-18の設定画は**意匠として採用済み**。そこから制作した `?art=svg` の主人公は「盾が切れる、全体が微妙」と**不採用・再制作待ち**。ゲーム実装は破棄せず旧比較用に保存するが、完成版として見なさない。前回再生成されたSD騎士もなお装甲の陰影・紋章・布の曲線などが多く、**SVG化用のフラット下絵として未採用**。次の作業は **図形ベースのフラット立ち絵1枚の画像生成と人間の採否判断**。
+2026-10-18に**戦闘待機ポーズ・原画トレースによる外観・反撃の逆回転−360°**がユーザーから正式採用された。採用仕様は`?art=ready`で表示され、正回転`spin=360`と小振り`spin=legacy`は比較用。旧`?art=svg`、`?art=flat`は失敗した試作の履歴。原寸PNGはGitHub未登録のため旧128×120コピーを使用しない。制作メモ：[READY_POSE](../../../assets/character-art/tracing/hero/READY_POSE.md)。**仕様確定はDraft PRのマージを意味しない**。

@@ -1,11 +1,12 @@
-# パーツ分割SVG 制作仕様（採用画像がある場合のみ）
+# SVG／Canvasマスク分割制作仕様（採用画像がある場合のみ）
 
 ## 入力条件
 
 - **[POSE_GUIDE.md](./POSE_GUIDE.md) — 構え・関節・攻撃動作の可否**
 - **[FLAT_VECTOR_SPEC.md](./FLAT_VECTOR_SPEC.md) — 最優先の見た目・図形予算**
 - [STYLE_GUIDE.md](./STYLE_GUIDE.md)
-- [キャラ別の指示](./README.md#基本キャラクター各1ファイル)
+- [キャラ別の指示](./README.md#キャラクター別指示書)
+- [PIPELINE](./PIPELINE.md) / [TRACING_AND_RIGGING](./TRACING_AND_RIGGING.md) — 確定した原画トレースと可動化の方式
 - **ユーザーがSVG下絵として採用した画像**: `assets/character-art/references/<id>/svg-base-approved.png`（原寸PNG）
 - 設定画を使う場合は補助参照 `assets/character-art/references/<id>/concept-approved.png`。従来の `hero/approved.png` も**補助参照のみ**。これらの存在だけではSVG化を始めない。
 - オプションの採用メモ: `assets/character-art/references/<id>/notes.md`
@@ -15,8 +16,9 @@
 
 ## 出力
 
-- パーツ別SVG: `assets/character-art/svg/<id>/<part-name>.svg`
-- 合成用メタデータ: `assets/character-art/svg/<id>/manifest.json`
+- **原画をトレースした静止SVG**: `assets/character-art/tracing/<id>/<id>-static.svg`（名称は個別READMEに記録）
+- **推奨**：同じ静止SVGをCanvasへ読み込み、固定部／腕／武器／防具を**マスク抽出**する。関節の親子構造とpivotを記録
+- **選択肢**：分割SVG `assets/character-art/svg/<id>/<part-name>.svg` と `manifest.json` を使う場合も、idle合成が元静止SVGと一致すること
 - 参考画像を上書きしない。差分は同じDraft PR #28に入れる。
 - **必要なパーツ**: body、head、upper-arm（左右）、forearm（左右）、hand（左右）、leg（左右）、weapon、shield、cape／robe。存在しないもの（スライムの脚、亡霊の盾など）は省略し、代わりにキャラ固有のパーツ（core、tentacle、rune、gear）を記録する。
 - 外観のパーツ分割と関節軸が衝突する場合、関節を覆う接合用の小パーツを追加する。
@@ -55,7 +57,7 @@
 - 静的な `<svg>`、`<path>`、`<g>`、`<circle>` 等で構成。外部CSS、外部画像、外部フォント、`<script>`、`<foreignObject>`、イベントハンドラ、外部参照は使わない。
 - 全パーツに明示的 `viewBox` と安定した基準位置。ピボット座標はグループ全体で共有できるよう明記する。
 - ベクターパスを単純化し、**極端に細い線、数百個の小図形、巨大なフィルターブラー**を避ける。手機や低解像度での表示を最優先。
-- **フラット版の必須条件**: 明確で一定幅の輪郭、ベース塗り4色以内＋必要ならアクセント1色、**影・グラデーション・金属反射・装飾ゼロ**。主要図形20〜30個程度を目指し、40図形を大幅に超える場合は素材を作り直す理由を説明する。
+- **フラット版の必須条件**: はっきりした輪郭と単純な色面、過剰なノイズやグラデーションを含まないこと。**トレース後のSVGパス数を無理に制限せず、ユーザー採用原画の色と外形を維持する**。
 - 必ず生成したSVGを実際にレンダリング・確認し、空白、パーツずれ、欠け、背景混入がないことを確かめる。
 - 生成画像のノイズや歪んだ手指は忠実に再現せず、整形してよい。ただし重要な記号・装備・配色は参照画像の採用意図を残す。
 
@@ -90,6 +92,6 @@
 - 描画以外のテストと既存CIが通る
 - 盾・剣・マントが各ポーズで欠けず、腕の支点が自然であることを確認
 - **必須の採用PNGが存在し、ユーザーによるSVG下絵承認が確認できること**
-- SVGのデータや画像をゲームに入れても **デフォルトでは旧描画**、`?art=prototype` 等の試験モードのみ新描画
+- 未マージのモンスターは**独立した`?art=<id>-trace`などの試験モードでのみ有効化**。主人公は`?art=ready`内で逆回転−360°が正式仕様（`main`には未反映）
 
 マージ判断はユーザーが行う。画像生成・SVG制作担当は勝手に本番反映しない。

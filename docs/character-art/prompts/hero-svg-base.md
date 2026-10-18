@@ -1,5 +1,7 @@
 # 主人公（hero）— 幾何学的フラット立ち絵プロンプト v3
 
+**現在の主人公はデザイン・可動・逆回転−360°を採用済み。このプロンプトは再生成の指示があった場合のみ使用する。**
+
 **画像生成担当は [POSE_GUIDE](../POSE_GUIDE.md)、[FLAT_VECTOR_SPEC](../FLAT_VECTOR_SPEC.md) と [SVG_BASE_GUIDE](../SVG_BASE_GUIDE.md) を必ず読んでから実行する。**
 
 ## 画像生成用の完成プロンプト（ここを最優先で画像にする）
