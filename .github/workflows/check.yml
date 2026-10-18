@@ -19,6 +19,7 @@ jobs:
           node --check assets/character-svg.js
           node --check assets/character-flat.js
           node --test tests/character-flat.test.js
+          node --test tests/character-static-trace.test.js
           node --test tests/character-art.test.js
       - name: Validate reference image and SVG layers
         shell: python
