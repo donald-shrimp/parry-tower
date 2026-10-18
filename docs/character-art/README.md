@@ -45,9 +45,9 @@
 
 ## 参照画像の所在・受け渡し
 
-- **採用前**: チャット内で画像を提案・比較する。GitHubには保存しない。
+- **採用前**: チャット内で画像を提案・比較する。GitHubには保存しない。**主人公(hero)は1案採用済み**。
 - **採用後**: 人が `assets/character-art/references/<キャラID>/approved.png` をアップロード。必要に応じて同じフォルダに `notes.md` で「どの点を採用したか」を記録。
 - 選別・画像のアップロード手順: [参照画像README](../../assets/character-art/references/README.md)
 - SVGの出力先・パーツ名は [SVG_SPEC.md](./SVG_SPEC.md) に記載。
 
-**注意:** このGitHubディレクトリにあるのは *指示書* です。実際の採用画像がまだ存在しない場合、画像生成を済ませたことにはなりません。
+**現在の進捗（2026-10-18）:** 主人公の採用画像を軽量化した切り出しコピーは [`references/hero/approved.png`](../../assets/character-art/references/hero/approved.png) に登録済み（128×120px）。元の設定画は1536×1024pxで、GitHub上のコピーは高解像度原本ではありません。主人公の分割SVGは [`svg/hero`](../../assets/character-art/svg/hero/README.md) に試作実装済み。**実機での見た目の採否はまだ判断していない**。他キャラは引き続き未登録です。

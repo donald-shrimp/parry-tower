@@ -18,6 +18,26 @@ jobs:
           node --check assets/character-art.js
           node --check assets/character-svg.js
           node --test tests/character-art.test.js
+      - name: Validate reference image and SVG layers
+        shell: python
+        run: |
+          import json
+          import struct
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          root = Path('assets/character-art/svg/hero')
+          manifest = json.loads((root / 'manifest.json').read_text('utf-8'))
+          assert manifest['id'] == 'hero'
+          assert len(manifest['parts']) == 12
+          for spec in manifest['parts']:
+              doc = ET.parse(root / spec['file']).getroot()
+              assert doc.tag == '{http://www.w3.org/2000/svg}svg'
+              assert doc.attrib['width'] == '200' and doc.attrib['height'] == '165'
+              assert doc.attrib['viewBox'] == '-100 -150 200 165'
+          png = Path('assets/character-art/references/hero/approved.png').read_bytes()
+          assert png.startswith(b'\\x89PNG\\r\\n\\x1a\\n')
+          assert struct.unpack('>II', png[16:24]) == (128, 120)
+          print('Hero SVG layers and reference PNG valid')
       - name: Check dedicated enemies and developer launcher syntax
         run: |
           node --check assets/enemy-motions.js

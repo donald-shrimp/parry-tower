@@ -80,6 +80,10 @@ test('SVG hero has articulated files and an explicit reference manifest',()=>{
  assert.equal(manifest.id,'hero');
  assert.equal(manifest.reference,'assets/character-art/references/hero/approved.png');
  assert.equal(manifest.parts.length,12);
+ const png=fs.readFileSync(manifest.reference);
+ assert.equal(png.subarray(1,4).toString(),'PNG');
+ assert.equal(png.readUInt32BE(16),128);
+ assert.equal(png.readUInt32BE(20),120);
  const roleNames=new Set(manifest.parts.map(x=>x.id));
  for(const id of ['cape','body','head','leg-back','leg-front','weapon','shield'])assert.ok(roleNames.has(id));
  for(const item of manifest.parts){
