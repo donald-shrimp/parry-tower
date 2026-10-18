@@ -68,6 +68,14 @@ function makeHarness(seed={},devMode=false){
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
  const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
+  // Test-only recording of what is actually drawn in the canvas at each phase.
+  const phaseDrawLabels=[];
+  const originalTextDraw=textDraw;
+  textDraw=function(...args){
+   if(game.enemy?.finalBoss&&['phase','combat'].includes(game.mode))
+    phaseDrawLabels.push({mode:game.mode,label:String(args[0]),y:args[2]});
+   return originalTextDraw(...args);
+  };
   const rawDamageEnemy=damageEnemy;
   damageEnemy=function(n,color,label){
    const before=game.enemy?.hp||0;
@@ -76,6 +84,8 @@ function makeHarness(seed={},devMode=false){
    return outcome;
   };
   window.__parryBloodTest={
+   phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
+   clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
    hits:()=>hitLog.map(h=>({...h})),
    resetHits:()=>{hitLog.length=0},
    rewardPool:()=>choosePool().map(skill=>skill.id),
@@ -234,8 +244,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-2"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-2"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.0-3"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.0-3"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -928,7 +938,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-2"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.0-3"/);
   assert.match(html,/v0\.9\.0/);
  }
  const g=makeHarness({},true);
@@ -1247,7 +1257,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-2"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-3"'),asset);
   assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1596,11 +1606,25 @@ test('80F summit boss enters second musical phrase only after completed strike',
  assert.equal(g.state().phaseStage,'countin');
  const countStart=g.state().phaseCountStartAt,beat=g.state().beat*1000;
  assert.ok(countStart>g.now);
+ // The count-in presents only the movement title, never a full-screen instruction HUD.
+ g.bloodTest().setCombo(18);
+ g.bloodTest().clearPhaseDrawLabels();
+ g.frame(countStart+2*beat+10);
+ const labels=g.bloodTest().phaseDrawLabels();
+ assert.ok(labels.some(x=>x.mode==='phase'&&x.label==='第二楽章'));
+ assert.ok(!labels.some(x=>/ゴゴ|リズムを取れ|READY|COMBO|^[1-4]$/.test(x.label)),
+  'the transition is a quiet title with musical beats, not a numbered cover or combo overlay');
  g.frame(countStart+3*beat+10);
  assert.equal(g.state().mode,'phase','all four count-in beats are safe');
  g.parry();assert.equal(g.state().enemyHp,before,'count-in is never a combat attack');
+ g.bloodTest().clearPhaseDrawLabels();
  g.frame(countStart+4*beat+1);
  assert.equal(g.state().mode,'combat','the bar finished before combat restarts');
+ const resumeLabels=g.bloodTest().phaseDrawLabels();
+ assert.ok(resumeLabels.some(x=>x.mode==='combat'&&x.label==='×18 COMBO'),
+  'combo HUD is visible again after the transition');
+ assert.ok(!resumeLabels.some(x=>x.label.includes('第二楽章')),
+  'the movement title disappears on return and cannot overlap the combo HUD');
  assert.equal(g.state().phaseStage,null);
  assert.equal(g.state().attackBeat,8);
  assert.ok(g.state().attackAt-g.now>=3.9*beat,'fresh telegraph allows a full four beats after count-in');

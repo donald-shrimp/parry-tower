@@ -586,8 +586,10 @@ function updateFinalPhase(now){
  else{game.attackAt=now+game.attackSpan;game.telegraphStart=now;}
  game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;
  game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;
- game.nextFloorHint='第二楽章 — 終刻の輪舞';
- game.nextFloorHintAt=now;
+ // The movement title was already shown over the count-in; do not show it again
+ // at the normal combo/HUD height when combat resumes.
+ game.nextFloorHint='';
+ game.nextFloorHintAt=-99999;
  setMode('combat');
 }
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
@@ -1288,39 +1290,46 @@ function combatPoseTime(now){
 }
 
 function drawFinalPhase(now){
- const rumble=game.phaseStage==='rumble';
- ctx.save();
- ctx.fillStyle=rumble?'#14071caa':'#120c29a3';
- ctx.fillRect(0,0,w,h);
+ // Keep the fighting arena and the boss visible throughout the entire transition:
+ // FX -> "第二楽章" over the four audible beats -> uninterrupted combat.
  const cx=w*.70,cy=h*.45;
- if(rumble){
+ ctx.save();
+ if(game.phaseStage==='rumble'){
   const progress=clamp((now-game.phaseStartedAt)/FINAL_PHASE_RUMBLE_MS,0,1);
-  // A swelling shockwave and layered rumble frame the boss, with no timing UI.
+  const glow=ctx.createRadialGradient(cx,cy,4,cx,cy,Math.max(w,h)*.60);
+  glow.addColorStop(0,'#cf80e34a');glow.addColorStop(1,'#a25bbc00');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+  // Swelling waves and flickering fragments convey the rumble without text.
   for(let k=0;k<3;k++){
    ctx.beginPath();ctx.arc(cx,cy,(24+progress*100+k*34)*Math.min(w/550,h/470),0,Math.PI*2);
-   ctx.strokeStyle=k===0?'#e9b9fd8c':'#b478d35e';
+   ctx.strokeStyle=k===0?'#e9b9fd9c':'#b478d35e';
    ctx.lineWidth=3+k;ctx.stroke();
   }
-  const pulse=Math.sin(now*.075)*4;
-  textDraw('ゴゴゴゴゴ……',w*.5,h*.16+pulse,Math.min(32,w*.075),'#efd5fa');
-  textDraw('終刻の王、覚醒',w*.5,h*.27,Math.min(23,w*.056),'#f0c6ff');
-  textDraw('第二楽章',w*.5,h*.72,Math.min(36,w*.083),'#ffe2fd');
- }else{
+  for(let k=0;k<9;k++){
+   const a=k*2.39996+now*.0006;
+   const radius=24+progress*70+(k%3)*18;
+   round(cx+Math.cos(a)*radius,cy+Math.sin(a)*radius,2+(k%3),'#ecd0ffad');
+  }
+ }else if(game.phaseStage==='countin'){
+  // The 4 clicks are audible; no numeric HUD, prompts, or full-screen cover.
   const startAt=score.active?scoreToPerf(score.origin):game.phaseCountStartAt;
-  const step=Math.floor((now-startAt)/(score.beat*1000));
-  const count=clamp(step+1,0,FINAL_PHASE_COUNT_BEATS);
-  textDraw('第二楽章',w*.5,h*.21,Math.min(34,w*.08),'#ffe0f8');
-  textDraw('リズムを取れ',w*.5,h*.32,Math.min(20,w*.05),'#dfc2f6');
-  textDraw(count>0?String(count):'READY',w*.5,h*.54,Math.min(62,w*.15),'#fff2cb');
-  for(let k=0;k<FINAL_PHASE_COUNT_BEATS;k++)
-   round(w*.5+(k-1.5)*30,h*.67,6,k<count?'#ffcf8c':'#776087');
+  const beatPosition=(now-startAt)/(score.beat*1000);
+  const beatFraction=((beatPosition%1)+1)%1;
+  const pulse=beatPosition>=0?Math.max(0,1-beatFraction*2):0;
+  const titleSize=Math.min(38,w*.087)+2*pulse;
+  ctx.shadowColor='#e3b3ff';ctx.shadowBlur=10+12*pulse;
+  textDraw('第二楽章',w*.5,h*.35,titleSize,'#fff0ff');
+  ctx.shadowBlur=0;
+  // A quiet pulse around the boss is a musical accent, not a blocking overlay.
+  ctx.beginPath();ctx.arc(cx,cy,24+10*pulse,0,Math.PI*2);
+  ctx.strokeStyle='#d8b2fa88';ctx.lineWidth=2+pulse;ctx.stroke();
  }
  ctx.restore();
 }
 function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0)ctx.translate(rand(-shake,shake),rand(-shake,shake));drawBackground(now);
  if(game.mode==='combat'&&!game.practice){ctx.save();ctx.globalAlpha=.035;ctx.fillStyle=P.zoneForFloor(game.floor).accent;ctx.fillRect(0,0,w,h*.72);ctx.restore()}
  const poseTime=combatPoseTime(now);enemy(poseTime);hero(poseTime);ctx.restore();drawClashFX(now);
- const boss=game.enemy?.boss;if(game.mode==='combat'){if(now-game.nextFloorHintAt<1300){const alpha=clamp(1-(now-game.nextFloorHintAt-500)/800,0,1);ctx.globalAlpha=alpha;textDraw(game.nextFloorHint,w*.5,h*.14,Math.min(30,w*.075),boss?'#ffe0a2':'#cfdff5');ctx.globalAlpha=1}
+ const boss=game.enemy?.boss;if(game.mode==='combat'){if(game.nextFloorHint&&now-game.nextFloorHintAt<1300){const alpha=clamp(1-(now-game.nextFloorHintAt-500)/800,0,1);ctx.globalAlpha=alpha;textDraw(game.nextFloorHint,w*.5,h*.14,Math.min(30,w*.075),boss?'#ffe0a2':'#cfdff5');ctx.globalAlpha=1}
  if(game.combo>1){textDraw('×'+game.combo+' COMBO',w*.5,h*.12,Math.min(19,w*.045),'#d4f5ed')}
  
  }
@@ -1418,5 +1427,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.0-2',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.id,practice:!!game.practice,encounterKey:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.0-3',window.__parryV05);requestAnimationFrame(frame);
 })();

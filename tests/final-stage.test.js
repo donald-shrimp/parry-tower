@@ -105,3 +105,16 @@ test('only the 80F Endking has 35% extra HP; the 75F foe and other 80F enemies a
  assert.equal(E.baseStats(e,80,true).maxHp,E.baseStats(oldProfile,80,true).maxHp,
   'practice stats remain unscaled');
 });
+
+test('interlude canvas is effect-only, then a single title over 4 beats, never a full-screen prompt',()=>{
+ const js=fs.readFileSync('assets/game.js','utf8');
+ const visual=js.split('function drawFinalPhase(now){')[1]?.split('function drawScreen(now){')[0];
+ assert.ok(visual,'visual transition renderer exists');
+ assert.doesNotMatch(visual,/ゴゴゴゴ|リズムを取れ|count>0\?String\(count\)|textDraw\(count/);
+ assert.doesNotMatch(visual,/ctx\.fillStyle=rumble\?|ctx\.fillStyle='#120c29/);
+ assert.match(visual,/if\(game\.phaseStage==='rumble'\)/);
+ assert.match(visual,/else if\(game\.phaseStage==='countin'\)/);
+ assert.equal((visual.match(/textDraw\('/g)||[]).length,1,'only the second-movement title is rendered');
+ assert.match(visual,/textDraw\('第二楽章',w\*\.5,h\*\.35/);
+ assert.match(js,/game\.nextFloorHint='';\s*game\.nextFloorHintAt=-99999;/);
+});
