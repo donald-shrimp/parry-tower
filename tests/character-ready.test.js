@@ -85,5 +85,29 @@ test('360 spin is opt-in and preview offers normal and slow comparison',()=>{
  assert.match(preview,/data-id="attack"/);
  assert.match(preview,/data-id="spin"/);
  assert.match(preview,/data-id="slowSpin"/);
- assert.match(preview,/duration=mode==='slowSpin'\?960:240/);
+ assert.match(preview,/duration=slowSpin\?960:240/);
+});
+
+test('reverse full turn exactly mirrors forward shoulder and elbow without changing duration',()=>{
+ const {armAngles}=require('../assets/character-ready.js');
+ const eps=1e-10;
+ for(const action of [0,.001,.1,.25,.5,.75,.9,.999,1]){
+  const forward=armAngles(action,true);
+  const reverse=armAngles(action,true,true);
+  assert.ok(Math.abs(reverse.shoulder+forward.shoulder)<eps,'shoulder is mirrored at '+action);
+  assert.ok(Math.abs(reverse.elbow+forward.elbow)<eps,'elbow is mirrored at '+action);
+  assert.deepEqual(armAngles(action,false,true),armAngles(action,false,false),'legacy unchanged');
+ }
+ assert.ok(armAngles(.5,true,true).shoulder<0,'reverse progresses negative');
+ assert.ok(Math.abs(armAngles(.5,true,true).shoulder+Math.PI)<eps,'reverse at midpoint is -180 degrees');
+});
+test('reverse direction is only enabled by opt-in query or preview pose override',()=>{
+ const src=fs.readFileSync('assets/character-ready.js','utf8');
+ assert.match(src,/spin=-360/);
+ assert.match(src,/pose\.reverseSpin===true/);
+ assert.match(src,/REVERSE_SPIN_ENABLED/);
+ const preview=fs.readFileSync('assets/character-art/tracing/hero/ready-preview.html','utf8');
+ assert.match(preview,/data-id="reverseSpin"/);
+ assert.match(preview,/data-id="slowReverseSpin"/);
+ assert.match(preview,/reverseSpin=mode==='reverseSpin'/);
 });
