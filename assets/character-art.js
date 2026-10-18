@@ -101,8 +101,204 @@
   ctx.restore();
   return true;
  }
+
+ // All enemy poses are in the same local coordinate system as game.js:
+ // feet y=0, body center ~(-70), and attack tip (reach,-58) at impact.
+ function drawSlime(ctx,d){
+  const {now=0,charge=0,p=0,recoil=0}=d,reach=d.m?.reach||49;
+  const leap=smooth(p),squash=charge*.25,crestX=reach-11*(1-leap),crestY=-58+28*charge+8*(1-leap);
+  const wobble=Math.sin(now/240)*1.5;
+  ctx.save();ctx.translate(0,wobble*(1-leap));
+  // An irregular, semitransparent-looking blob with a sweeping forward snout.
+  const top=-84+30*charge-5*leap,back=-40-10*charge-13*leap;
+  ctx.beginPath();ctx.moveTo(back,0);
+  ctx.bezierCurveTo(back-18,-21,-40,-62+20*charge,-16,top);
+  ctx.bezierCurveTo(3,top-18,crestX-22,top-14,crestX,crestY);
+  ctx.bezierCurveTo(crestX+5,crestY+25,42+15*leap,-15,44,0);
+  ctx.closePath();ctx.fillStyle='#338a87';ctx.fill();ctx.strokeStyle=INK;ctx.lineWidth=3;ctx.stroke();
+  poly(ctx,[[-34,-23],[-27,top+13],[-4,top+5],[17,-48],[31,-14],[-5,-4]],'#5cc2b2',null);
+  poly(ctx,[[-29,-21],[-17,-48],[-6,-51],[-17,-18]],'#a2ead2',null);
+  line(ctx,[[-23,top+16],[-7,top+7],[10,top+10]],'#e3ffec',4);
+  // Faceted nucleus is visible from across the arena.
+  poly(ctx,[[-10,-48],[0,-58],[15,-47],[7,-31],[-5,-30]],'#256e78',null);
+  poly(ctx,[[0,-53],[12,-46],[5,-35]],'#80f5dd',null);
+  dot(ctx,-12+7*leap,-48+19*squash,6.5,'#f7f3dc');
+  dot(ctx,14+7*leap,-48+19*squash,6.5,'#f7f3dc');
+  dot(ctx,-10+7*leap,-47+19*squash,2.9,'#203948');
+  dot(ctx,16+7*leap,-47+19*squash,2.9,'#203948');
+  line(ctx,[[0,-24],[10,-23]],'#2a6b69',2.5);
+  // The striking protrusion terminates at the legacy slime contact coordinate.
+  poly(ctx,[[crestX-13,crestY+11],[crestX,crestY],[crestX-8,crestY-10]],'#b6fff0',null);
+  if(recoil>0){ctx.save();ctx.globalAlpha=.22*recoil;ellipse(ctx,-2,-32,39+recoil*9,26,'#effff1');ctx.restore();}
+  ctx.restore();return true;
+ }
+ function drawRogue(ctx,d,dual){
+  const {e,now=0,charge=0,p=0,action=p,rec=0,recoil=0}=d;
+  const crouch=charge*(dual?14:19),drive=smooth(action);
+  ctx.save();
+  poly(ctx,[[-24,-82+crouch],[-42,-58+crouch],[-43,-14],[-29,0],[-5,-15],[26,0],[21,-61+crouch]],'#402a42');
+  poly(ctx,[[-32,-62+crouch],[-40,-24],[-26,-10],[-15,-42]],dual?'#943b50':'#564362',null);
+  poly(ctx,[[-24,-43],[0,-42],[-7,0],[-27,0]],'#545a72');
+  poly(ctx,[[6,-41],[22,-39],[30,0],[10,0]],'#797e98');
+  poly(ctx,[[-32,-5],[-6,-5],[-5,2],[-33,2]],'#25263d');
+  poly(ctx,[[8,-5],[29,-5],[31,2],[8,2]],'#25263d');
+  poly(ctx,[[-28,-87+crouch],[-12,-94+crouch],[19,-86+crouch],[27,-51+crouch],[-20,-43+crouch]],dual?'#772e48':'#5d5674');
+  poly(ctx,[[-17,-86+crouch],[3,-91+crouch],[8,-51+crouch],[-12,-49+crouch]],dual?'#bb5861':'#9492ab');
+  poly(ctx,[[9,-85+crouch],[20,-77+crouch],[23,-54+crouch],[9,-51+crouch]],'#b6a3ae',null);
+  poly(ctx,[[-20,-111+crouch],[-3,-125+crouch],[17,-110+crouch],[19,-89+crouch],[-18,-89+crouch]],'#332b43');
+  poly(ctx,[[-18,-109+crouch],[-3,-123+crouch],[-7,-93+crouch],[-19,-93+crouch]],'#70637e');
+  line(ctx,[[-11,-99+crouch],[12,-99+crouch]],dual?'#ff9c9e':'#f0aed9',3.5);
+  line(ctx,[[-11,-93+crouch],[12,-93+crouch]],'#d5bdce',1.5);
+  const handed=Math.max(0,(Number(e.index)||0)-(rec>0?1:0))%2;
+  const tipX=dual?mix(35,d.m?.reach||110,drive):50+((d.m?.reach||110)-50)*action;
+  const tipY=dual?mix(handed?-38:-102,-58,drive):-68+10*action-recoil*20;
+  const fistX=dual?22+18*drive:22+41*action-recoil*22;
+  const fistY=dual?-57-3*charge:-53+7*charge-5*action-recoil*6;
+  line(ctx,[[12,-56+crouch],[fistX,fistY]],dual?'#d5afb3':'#aba1b8',10);
+  dot(ctx,fistX,fistY,5,'#d5bbc2');
+  line(ctx,[[fistX,fistY],[tipX,tipY]],'#45425e',9);
+  line(ctx,[[fistX,fistY],[tipX,tipY]],dual?'#ffd4d8':'#f0eaf8',5);
+  line(ctx,[[fistX,fistY],[tipX,tipY]],'#fffefd',1.5);
+  line(ctx,[[fistX-6,fistY-8],[fistX+6,fistY+8]],'#b98b85',5);
+  if(dual){
+   line(ctx,[[-18,-54+crouch],[-13+7*charge,-62-4*charge]],'#a97788',8);
+   line(ctx,[[-13+7*charge,-62-4*charge],[-43+24*charge,-121+16*charge]],'#ecd3d4',5.5);
+  }
+  if(action>.15&&action<.9){
+   ctx.save();ctx.globalAlpha=.22;
+   line(ctx,[[tipX-21,tipY+13],[tipX,tipY+4]],dual?'#ff8898':'#d8b5ff',10);ctx.restore();
+  }
+  ctx.restore();return true;
+ }
+ function drawWraith(ctx,d,cantor){
+  const {now=0,charge=0,p=0,action=p,recoil=0}=d;
+  const hover=Math.sin(now/320)*3,lift=charge*(cantor?10:14),drive=smooth(action);
+  ctx.save();ctx.translate(0,hover*(1-action));
+  // Robe has three separated floating tails, rather than conventional legs.
+  poly(ctx,[[-36,-79+lift],[-23,-106-lift],[14,-108-lift],[36,-76+lift],[42,-22],[22,-2],[8,-21],[-9,1],[-38,-16]],cantor?'#61518a':'#434b89');
+  poly(ctx,[[-37,-58],[-45,-15],[-26,-4],[-17,-36]],cantor?'#8271b8':'#626dae',null);
+  poly(ctx,[[16,-54],[35,-32],[45,-11],[30,0],[14,-34]],'#4b507e',null);
+  poly(ctx,[[-22,-99-lift],[0,-126-lift],[23,-98-lift],[14,-69],[-17,-69]],cantor?'#302f56':'#252d5b');
+  poly(ctx,[[-11,-104-lift],[0,-119-lift],[9,-103-lift],[6,-88-lift],[-7,-88-lift]],cantor?'#594979':'#465583');
+  line(ctx,[[-12,-88-lift],[13,-88-lift]],'#c7def4',2);
+  dot(ctx,-8,-94-lift,3.3,'#87ecff');dot(ctx,9,-94-lift,3.3,'#87ecff');
+  if(cantor){
+   rune(ctx,-25,-81-lift,'#c5a7f9');
+   rune(ctx,-16,-62-lift,'#a3edff');
+   // The cantor projects a luminous palm and scripted shockwave.
+   const hand=[25+12*drive,-62-29*charge+8*drive],tx=mix(38,d.m?.reach||108,drive),ty=mix(-103,-58,drive);
+   line(ctx,[[10,-59],hand],'#af9ed8',9);
+   line(ctx,[hand,[tx-9*recoil,ty-5*recoil]],'#c8edfb',7);
+   dot(ctx,tx-9*recoil,ty-5*recoil,5,'#e2f9ff');
+   if(charge>.1)for(let i=0;i<3;i++){const a=now/640+i*Math.PI*2/3;dot(ctx,19+Math.cos(a)*25,-73+Math.sin(a)*19,2.5,'#c8b8f8');}
+  }else{
+   const handX=22+69*action-recoil*11,handY=-38-19*charge-19*action+recoil*13;
+   const tipX=32+((d.m?.reach||108)-32)*action-recoil*14,tipY=-89+31*action+recoil*15;
+   line(ctx,[[18,-62-lift],[handX,handY]],'#7b85bc',11);
+   line(ctx,[[handX,handY],[tipX,tipY]],'#c0def5',8);
+   for(const off of [-7,0,7])line(ctx,[[tipX-8,tipY+off*.3],[tipX,tipY+off]],'#e2f6ff',2.5);
+  }
+  ctx.restore();return true;
+ }
+ function drawGuardian(ctx,d){
+  const {e,charge=0,p=0,rec=0,recoil=0,now=0}=d;
+  const lean=charge*8+p*10,flame=Math.sin(now/260)*2;
+  ctx.save();
+  poly(ctx,[[-20,-91],[-44,-77],[-51+flame,-23],[-34,-5],[-13,-20],[34,-3],[30,-66]],'#543b46');
+  poly(ctx,[[-37,-67],[-46+flame,-18],[-28,-13],[-19,-53]],'#905c51',null);
+  poly(ctx,[[-26,-44],[-6,-42],[-11,0],[-33,0]],'#675d70');
+  poly(ctx,[[7,-42],[28,-39],[36,0],[10,0]],'#8a7480');
+  poly(ctx,[[-34,-5],[-9,-4],[-8,3],[-36,3]],'#322c3d');
+  poly(ctx,[[11,-4],[35,-4],[40,3],[9,3]],'#322c3d');
+  poly(ctx,[[-34,-99-lean],[-17,-110-lean],[23,-103-lean],[37,-60-lean],[20,-38],[-26,-40],[-37,-71]],'#745f63');
+  poly(ctx,[[-30,-96-lean],[-37,-80-lean],[-29,-58],[-9,-75]],'#cb9d85');
+  poly(ctx,[[21,-96-lean],[37,-81-lean],[39,-56],[24,-67]],'#b58c79');
+  poly(ctx,[[-19,-100-lean],[5,-105-lean],[15,-64-lean],[-7,-49],[-22,-56]],'#b29f98');
+  poly(ctx,[[8,-102-lean],[23,-94-lean],[26,-59],[11,-49],[1,-54]],'#8b7276',null);
+  poly(ctx,[[-23,-113-lean],[0,-126-lean],[25,-113-lean],[23,-86-lean],[-19,-85-lean]],'#b5a6a1');
+  poly(ctx,[[-22,-114-lean],[-7,-123-lean],[0,-96-lean],[-20,-96-lean]],'#e6ccaf');
+  poly(ctx,[[-22,-108-lean],[-39,-139-lean],[-25,-131-lean],[-9,-111-lean]],'#daaf83');
+  poly(ctx,[[20,-108-lean],[39,-136-lean],[29,-111-lean]],'#daaf83');
+  line(ctx,[[-11,-98-lean],[13,-98-lean]],'#fce1a3',4);
+  poly(ctx,[[-4,-73-lean],[4,-82-lean],[12,-73-lean],[4,-64-lean]],'#c88c6a',null);
+  dot(ctx,4,-73-lean,4.5,'#ffdb98');
+  // Matches base guardian: hand(22,-58), blade length 108 -> tip x=130,y=-58 at impact.
+  const angle=p>0?mix(-2.16,0,smooth(p*p)):(charge>0?mix(-.92,-2.16,charge):-.92);
+  const a=mix(angle,0,rec)-recoil*.32;
+  const hand=[22,-58],tip=[22+108*Math.cos(a),-58+108*Math.sin(a)];
+  line(ctx,[[11,-70-lean],[15,-61]],'#d4b392',13);
+  dot(ctx,15,-61,6,'#eed7b6');
+  if(p>.1&&p<1){ctx.save();ctx.globalAlpha=.27;line(ctx,[hand,tip],'#ffb67e',17);ctx.restore();}
+  line(ctx,[hand,tip],'#675062',13);
+  line(ctx,[hand,tip],'#ffdfa9',10);
+  line(ctx,[hand,tip],'#fff5d9',2.5);
+  ctx.save();ctx.translate(...hand);ctx.rotate(a);
+  poly(ctx,[[-1,-14],[7,-12],[7,12],[-1,14]],'#ebc48c');
+  line(ctx,[[0,0],[-18,0]],'#98717b',6);ctx.restore();
+  ctx.restore();return true;
+ }
+ function drawSentinel(ctx,d){
+  const {charge=0,action=0,recoil=0}=d,drive=smooth(action),lean=9*charge+7*drive,reach=d.m?.reach||110;
+  ctx.save();
+  poly(ctx,[[-34,-53],[-52,-30],[-44,0],[-19,0],[-8,-38]],'#465269');
+  poly(ctx,[[2,-40],[20,-37],[38,0],[8,0]],'#64758c');
+  poly(ctx,[[-34,-104-lean],[-19,-112-lean],[26,-107-lean],[34,-58],[-22,-47]],'#3d586e');
+  poly(ctx,[[-25,-104-lean],[-3,-109-lean],[12,-75],[-13,-62]],'#819eb2');
+  poly(ctx,[[8,-104-lean],[26,-96-lean],[26,-66],[9,-64]],'#a8bbc3');
+  poly(ctx,[[-28,-125-lean],[2,-136-lean],[32,-123-lean],[28,-98-lean],[-27,-98-lean]],'#a1b3c5');
+  poly(ctx,[[-26,-126-lean],[-7,-136-lean],[2,-106-lean],[-26,-106-lean]],'#d8dbd5');
+  line(ctx,[[-13,-113-lean],[17,-113-lean]],'#f5d79c',4);
+  // Massive independent tower shield and brass boss.
+  ctx.save();ctx.translate(40-10*drive-6*recoil,-65+5*drive);ctx.rotate(-.18*charge+.12*drive-.16*recoil);
+  poly(ctx,[[-24,-44],[24,-42],[27,27],[1,43],[-25,25]],'#b8b4a9');
+  poly(ctx,[[-18,-36],[18,-35],[20,23],[1,34],[-19,20]],'#284455');
+  poly(ctx,[[-17,-35],[0,-37],[0,33],[-19,20]],'#466778',null);
+  line(ctx,[[0,-28],[0,24]],'#e6d5ab',4);
+  line(ctx,[[-15,-21],[16,-21]],'#e6d5ab',4);
+  dot(ctx,0,-9,5,'#f5e0b9');ctx.restore();
+  const hand=[19,-80-28*charge+8*drive],tip=[mix(34,reach,drive)-8*recoil,mix(-142,-58,drive)-8*recoil];
+  line(ctx,[[1,-70],hand],'#94a8b9',13);
+  line(ctx,[hand,tip],'#45576e',12);line(ctx,[hand,tip],'#f2e2bf',9);line(ctx,[hand,tip],'#fffcef',2);
+  line(ctx,[[hand[0]-13,hand[1]+3],[hand[0]+13,hand[1]-5]],'#e0be83',6);
+  ctx.restore();return true;
+ }
+ function drawClockwork(ctx,d){
+  const {now=0,charge=0,action=0,recoil=0}=d,drive=smooth(action),lean=6*charge,reach=d.m?.reach||110;
+  ctx.save();
+  poly(ctx,[[-25,-48],[-38,-33],[-35,0],[-11,0],[3,-40]],'#5f5661');
+  poly(ctx,[[7,-41],[23,-35],[36,0],[9,0]],'#806f70');
+  poly(ctx,[[-37,-100-lean],[-12,-109-lean],[28,-96-lean],[35,-49],[-30,-47]],'#79675f');
+  poly(ctx,[[-30,-96-lean],[17,-95-lean],[16,-57],[-23,-59]],'#b59b79');
+  poly(ctx,[[8,-92-lean],[27,-91-lean],[29,-53],[8,-53]],'#a68169',null);
+  poly(ctx,[[-22,-121-lean],[5,-131-lean],[29,-115-lean],[24,-94-lean],[-21,-94-lean]],'#c7ab86');
+  poly(ctx,[[-22,-121-lean],[3,-130-lean],[7,-102-lean],[-18,-101-lean]],'#dfc79e');
+  line(ctx,[[-10,-107-lean],[20,-107-lean]],'#89ebe2',3.5);
+  for(const [gx,gy,r,dir] of [[-9,-73,15,1],[15,-66,10,-1]]){
+   ctx.save();ctx.translate(gx,gy);ctx.rotate(now*.0025*dir+charge);
+   ctx.beginPath();ctx.arc(0,0,r-4,0,Math.PI*2);ctx.strokeStyle='#efd3a5';ctx.lineWidth=3;ctx.stroke();
+   for(let i=0;i<8;i++){const a=i*Math.PI/4;line(ctx,[[Math.cos(a)*(r-5),Math.sin(a)*(r-5)],[Math.cos(a)*(r+2),Math.sin(a)*(r+2)]],'#e9c88f',3.5);}
+   dot(ctx,0,0,4,'#405c6d');ctx.restore();
+  }
+  const hand=[30,-60-18*charge],tip=[mix(38,reach,drive)-6*recoil,mix(-98,-58,drive)-6*recoil];
+  line(ctx,[[14,-59],hand],'#d2b89a',14);
+  line(ctx,[hand,tip],'#5d5e64',14);
+  line(ctx,[hand,tip],'#d7bea0',10);line(ctx,[hand,tip],'#f8edda',3);
+  dot(ctx,hand[0],hand[1],6,'#4e6670');
+  const pistonX=mix(42,reach-11,drive);
+  line(ctx,[[pistonX-13,-68],[pistonX,-68]],'#91e9df',4);
+  ctx.restore();return true;
+ }
+
  function drawEnemy(ctx,data){
-  if(!ctx||!data||data.e?.id!=='knight')return false;
+  if(!ctx||!data||!data.e)return false;
+  const sprite=data.e.sprite||data.e.id,kind=data.e.kind;
+  if(sprite==='sentinel')return drawSentinel(ctx,data);
+  if(sprite==='clockwork')return drawClockwork(ctx,data);
+  if(kind==='slime')return drawSlime(ctx,data);
+  if(kind==='rogue')return drawRogue(ctx,data,sprite==='duelist');
+  if(kind==='wraith')return drawWraith(ctx,data,sprite==='cantor');
+  if(kind==='guardian')return drawGuardian(ctx,data);
+  if(kind!=='knight')return false;
   const {now=0,charge=0,p=0,rec=0,recoil=0}=data;
   const lean=charge*8+p*10,bob=Math.sin(now/510)*.8;
   ctx.save();
