@@ -8,10 +8,10 @@ button{margin:4px;padding:8px 16px;border:1px solid #7891bd;border-radius:9px;ba
 small{color:#b6c6dd}
 </style></head><body>
 <h1>主人公：剣と盾を構えたトレースSVG</h1>
-<p>肩と肘を使う反撃、胸前で構える盾を別々に確認できるページ。これは描画だけのプレビューで、ゲームの判定は動かさない。</p>
-<div><button data-id="idle">待機</button><button data-id="guard">盾を上げる</button><button data-id="attack">従来の反撃</button><button data-id="spin">正回転360°（実戦速度）</button><button data-id="slowSpin">正回転360°（スロー）</button><button data-id="reverseSpin">逆回転360°（実戦速度）</button><button data-id="slowReverseSpin">逆回転360°（スロー）</button><button data-id="just">ジャスト</button></div>
+<p>採用した標準動作は<b>逆回転360°</b>。正回転360°・従来の小振りと比較できます。描画のみの試作で、戦闘判定は変更しません。</p>
+<div><button data-id="idle">待機</button><button data-id="guard">盾を上げる</button><button data-id="attack">従来の小振り（比較）</button><button data-id="spin">正回転360°（実戦速度）</button><button data-id="slowSpin">正回転360°（スロー）</button><button data-id="reverseSpin">採用仕様：逆回転360°（実戦速度）</button><button data-id="slowReverseSpin">逆回転360°（スロー）</button><button data-id="just">ジャスト</button></div>
 <canvas width="720" height="360" id="stage"></canvas>
-<p><small>実戦は <code>dev.html?floor=2&amp;enemy=knight&amp;art=ready&amp;spin=-360</code> で逆回転。<code>spin=360</code>で正回転、<code>spin</code>を外すと従来モーション。スロー再生はこのページのみ。Draft・未マージ。</small></p>
+<p><small>実戦は <code>dev.html?floor=2&amp;enemy=knight&amp;art=ready</code> が採用仕様（逆回転360°）。<code>spin=-360</code>も同義、<code>spin=360</code>は正回転、<code>spin=legacy</code>は従来の小振り。スロー再生はこのページのみ。Draft・未マージ。</small></p>
 <script src="../../../../assets/character-ready.js?v=v0.9.3-2"></script>
 <script>
 'use strict';

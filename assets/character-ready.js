@@ -7,10 +7,11 @@
 })(typeof window!=='undefined'?window:globalThis,function(root){
  'use strict';
  const SIZE=[420,336];
- // Optional comparisons: spin=360 (current direction), spin=-360 (reverse).
- // Neither changes the original ?art=ready motion or the game's combat clock.
- const SPIN360_ENABLED=/(?:^|[?&])spin=360(?:&|$)/.test(root?.location?.search||'');
- const REVERSE_SPIN_ENABLED=/(?:^|[?&])spin=-360(?:&|$)/.test(root?.location?.search||'');
+ // Accepted hero animation: reverse 360-degree sweep is the default for ?art=ready.
+ // Forward 360 and original short stroke remain available only for visual comparison.
+ // The renderer does not change combat clocks, damage, audio or inputs.
+ const requestedSpin=/(?:^|[?&])spin=(360|-360|legacy)(?:&|$)/.exec(root?.location?.search||'')?.[1];
+ const SPIN_MODE=requestedSpin==='360'?'forward':requestedSpin==='legacy'?'legacy':'reverse';
  const parts={
   shield:[[327,121],[380,148],[388,171],[389,215],[374,253],[356,274],[335,277],[306,247],[277,211],[271,164],[298,142]],
   upperarm:[[179,136],[200,138],[218,153],[222,174],[205,193],[185,183],[174,167]],
@@ -86,9 +87,9 @@
   // One full revolution in either direction. Arm and gripped sword remain linked.
   // Explicit pose flags let the preview compare every version without reloading.
   const fullSpin=pose.spin360===true||
-   (pose.spin360!==false&&(SPIN360_ENABLED||REVERSE_SPIN_ENABLED));
+   (pose.spin360!==false&&SPIN_MODE!=='legacy');
   const reverseSpin=pose.reverseSpin===true||
-   (pose.reverseSpin!==false&&REVERSE_SPIN_ENABLED);
+   (pose.reverseSpin!==false&&SPIN_MODE==='reverse');
   const {shoulder,elbow}=armAngles(action,fullSpin,reverseSpin);
   ctx.save();
   // Local coordinate game feet=(0,0). Full PNG/SVG traced pixel space is preserved.

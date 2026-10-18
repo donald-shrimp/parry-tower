@@ -111,3 +111,34 @@ test('reverse direction is only enabled by opt-in query or preview pose override
  assert.match(preview,/data-id="slowReverseSpin"/);
  assert.match(preview,/reverseSpin=mode==='reverseSpin'/);
 });
+
+test('accepted reverse 360 sweep is the default for art=ready; alternatives remain opt-in',async()=>{
+ const source=fs.readFileSync('assets/character-ready.js','utf8');
+ const sample=async(search)=>{
+  const calls=[];
+  const makeCtx=()=>new Proxy({},{
+   get:(obj,key)=>key in obj?obj[key]:((...args)=>calls.push({key,args})),
+   set:(obj,key,val)=>{obj[key]=val;return true;}
+  });
+  class Img{set src(_path){queueMicrotask(()=>this.onload?.());}}
+  const w={Image:Img,URL,console,location:{search},document:{
+   currentScript:{src:'https://example.test/assets/character-ready.js'},
+   createElement:()=>({getContext:()=>makeCtx()})
+  }};
+  vm.runInNewContext(source,{window:w,URL,console});
+  assert.equal(await w.ParryHeroReady.preload(),true);
+  calls.length=0;
+  assert.equal(w.ParryHeroReady.drawHero(makeCtx(),{action:.5,lift:0,now:120}),true);
+  return calls.filter(x=>x.key==='rotate').map(x=>x.args[0]);
+ };
+ const canonical=await sample('?art=ready');
+ const reverse=await sample('?art=ready&spin=-360');
+ const forward=await sample('?art=ready&spin=360');
+ const legacy=await sample('?art=ready&spin=legacy');
+ assert.equal(canonical.length,3);
+ const near=(a,b)=>Math.abs(a-b)<1e-9;
+ assert.ok(near(canonical[0],-Math.PI),'default must turn counterclockwise 180 degrees at midpoint');
+ assert.ok(near(reverse[0],canonical[0]),'explicit reverse matches default');
+ assert.ok(near(forward[0],Math.PI),'forward preview is still accessible');
+ assert.ok(near(legacy[0],.24),'legacy short stroke is preserved');
+});
