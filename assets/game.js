@@ -6,6 +6,8 @@ const VARIANT_MOTIONS=window.ParryEnemyMotions;
 const CHARACTER_ART=window.ParryCharacterArt;
 const CHARACTER_SVG=window.ParryCharacterSvg;
 const CHARACTER_FLAT=window.ParryHeroFlat;
+const CHARACTER_TRACE=window.ParryHeroTrace;
+const CHARACTER_TRACE_ENABLED=/(?:^|[?&])art=trace(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_FLAT_ENABLED=/(?:^|[?&])art=flat(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_SVG_ENABLED=/(?:^|[?&])art=svg(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_ART_ENABLED=/(?:^|[?&])art=prototype(?:&|$)/.test(window.location?.search||'');
@@ -1200,6 +1202,7 @@ function hero(now){
  const age=now-(game.lastDeflectAt||-99999),push=(age>=0&&age<160?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:.45);
  ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
  ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
+ if(CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
  if(CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
  if(CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
  if(CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}

@@ -48,3 +48,11 @@ python scripts/trace-character-png.py /path/to/a_clean_minimalist_vector_flat_ca
 4. 96px/128pxの表示でも顔、剣、盾を区別できるか
 
 **承認されるまでゲームへの反映はしない**。次に進む場合は静止SVGを基準にパーツ化し、隠れた部分を補い、関節ピボットを明示してから動かす。これは以前の失敗を防ぐための必須ゲート。
+
+## 動く試作（`?art=trace`）
+
+- [モーション確認専用ページ](./animate-preview.html)：待機・ガード・反撃・ジャストをボタンで確認
+- 実際のゲーム：`http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=trace`
+- `assets/character-trace.js` が**同じ `hero-static.svg` 1点**を一度だけロードし、Canvasで身体・盾・剣を切り抜いて描画。元絵を再生成しない。盾が二重に残らないよう固定背景から盾領域を除去。
+- 3部位の回転・移動は**見た目のみ**。ゲームの攻撃時刻、パリィ受付、盾の判定、恒久強化、保存データ、Web Audioは変更しない。
+- 注意：ゲーム組込みは新しい比較モードだけ。手・肘と盾の位置合わせ、ダメージや高DPI時の視覚QAは採用前に必要。
