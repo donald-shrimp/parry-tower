@@ -83,18 +83,18 @@ test('SVG hero has articulated files and an explicit reference manifest',()=>{
  const roleNames=new Set(manifest.parts.map(x=>x.id));
  for(const id of ['cape','body','head','leg-back','leg-front','weapon','shield'])assert.ok(roleNames.has(id));
  for(const item of manifest.parts){
-  assert.match(item.file,/^[a-z][a-z0-9-]*\\.svg$/);
+  assert.match(item.file,/^[a-z][a-z0-9-]*\.svg$/);
   assert.ok(fs.existsSync('assets/character-art/svg/hero/'+item.file));
   const data=fs.readFileSync('assets/character-art/svg/hero/'+item.file,'utf8');
   assert.match(data,/viewBox="-100 -150 200 165"/);
   assert.match(data,/<path /);
-  assert.doesNotMatch(data,/<(?:script|foreignObject|image)\\b/);
+  assert.doesNotMatch(data,/<(?:script|foreignObject|image)\b/);
  }
 });
 test('SVG hero is opt-in; the original and Canvas pilots remain untouched',()=>{
  const src=fs.readFileSync('assets/game.js','utf8');
  assert.match(src,/art=svg/);
- assert.match(src,/CHARACTER_SVG_ENABLED&&CHARACTER_SVG\\?\\.drawHero/);
+ assert.match(src,/CHARACTER_SVG_ENABLED&&CHARACTER_SVG\?\.drawHero/);
  for(const p of ['index.html','dev.html']){
   const html=fs.readFileSync(p,'utf8');
   assert.ok(html.indexOf('assets/character-svg.js')>html.indexOf('assets/character-art.js'));
