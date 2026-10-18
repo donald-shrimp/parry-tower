@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "id": "hero",
+  "status": "experiment",
+  "reference": "assets/character-art/references/hero/approved.png",
+  "coordinateSystem": "game-local",
+  "viewBox": [
+    -100,
+    -150,
+    200,
+    165
+  ],
+  "feetY": 0,
+  "parts": [
+    {
+      "id": "cape",
+      "file": "cape.svg",
+      "z": 0,
+      "transform": "cape",
+      "pivot": [
+        -17,
+        -84
+      ]
+    },
+    {
+      "id": "leg-back",
+      "file": "leg-back.svg",
+      "z": 1,
+      "transform": "body",
+      "pivot": [
+        -14,
+        -41
+      ]
+    },
+    {
+      "id": "leg-front",
+      "file": "leg-front.svg",
+      "z": 2,
+      "transform": "body",
+      "pivot": [
+        11,
+        -41
+      ]
+    },
+    {
+      "id": "upper-arm-weapon",
+      "file": "upper-arm-weapon.svg",
+      "z": 3,
+      "transform": "body",
+      "pivot": [
+        -22,
+        -88
+      ]
+    },
+    {
+      "id": "body",
+      "file": "body.svg",
+      "z": 4,
+      "transform": "body",
+      "pivot": [
+        0,
+        -71
+      ]
+    },
+    {
+      "id": "belt",
+      "file": "belt.svg",
+      "z": 5,
+      "transform": "body",
+      "pivot": [
+        0,
+        -50
+      ]
+    },
+    {
+      "id": "forearm-weapon",
+      "file": "forearm-weapon.svg",
+      "z": 6,
+      "transform": "body",
+      "pivot": [
+        -17,
+        -68
+      ]
+    },
+    {
+      "id": "head",
+      "file": "head.svg",
+      "z": 7,
+      "transform": "head",
+      "pivot": [
+        0,
+        -100
+      ]
+    },
+    {
+      "id": "upper-arm-shield",
+      "file": "upper-arm-shield.svg",
+      "z": 8,
+      "transform": "shieldArm",
+      "pivot": [
+        23,
+        -83
+      ]
+    },
+    {
+      "id": "forearm-shield",
+      "file": "forearm-shield.svg",
+      "z": 9,
+      "transform": "shieldArm",
+      "pivot": [
+        35,
+        -65
+      ]
+    },
+    {
+      "id": "weapon",
+      "file": "weapon.svg",
+      "z": 10,
+      "transform": "weapon",
+      "pivot": [
+        12,
+        -65
+      ]
+    },
+    {
+      "id": "shield",
+      "file": "shield.svg",
+      "z": 11,
+      "transform": "shield",
+      "pivot": [
+        21,
+        -48
+      ]
+    }
+  ]
+}
