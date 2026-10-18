@@ -24,17 +24,42 @@ test('hero pilot is a pure drawing module and keeps save/restore balanced',()=>{
  assert.equal(calls.filter(x=>x.method==='save').length,calls.filter(x=>x.method==='restore').length);
  assert.equal(pose.lift,1);
 });
-test('enemy pilot changes only the original knight, not the other enemies',()=>{
+test('all major enemies use the visual pilot without altering pose data',()=>{
+ const cases=[
+  ['slime','slime'],['gem_slime','slime'],['knight','knight'],['void_knight','knight'],
+  ['sentinel','knight'],['molten_sentinel','knight'],['clockwork','knight'],
+  ['orbital_clockwork','knight'],['rogue','rogue'],['duelist','rogue'],
+  ['silver_duelist','rogue'],['wraith','wraith'],['cantor','wraith'],
+  ['star_cantor','wraith'],['guardian','guardian'],['endking','guardian']
+ ];
+ for(const [id,kind] of cases){
+  const {ctx,calls}=context();
+  const sprites={void_knight:'knight',molten_sentinel:'sentinel',
+   orbital_clockwork:'clockwork',silver_duelist:'duelist',star_cantor:'cantor',endking:'guardian'};
+  const e=Object.freeze({id,kind,...(sprites[id]?{sprite:sprites[id]}:{}),index:1});
+  const pose=Object.freeze({e,m:{reach:kind==='slime'?49:kind==='guardian'?130:110},now:14500,charge:.4,
+   p:.8,action:.8,rec:0,recoil:.2});
+  assert.equal(art.drawEnemy(ctx,pose),true,id+' missing prototype');
+  assert.ok(calls.some(x=>x.method==='fill'),id+' missing layered shapes');
+  assert.equal(calls.filter(x=>x.method==='save').length,calls.filter(x=>x.method==='restore').length,id+' canvas context leaked');
+  assert.equal(pose.p,.8);
+  assert.equal(e.index,1);
+ }
+});
+test('unsupported enemy falls back without touching canvas state',()=>{
  const {ctx,calls}=context();
- assert.equal(art.drawEnemy(ctx,{e:{id:'slime',kind:'slime'}}),false);
- assert.equal(calls.length,0,'non-target sprites must use their existing renderer');
- const enemy=Object.freeze({id:'knight',kind:'knight'});
- const pose=Object.freeze({e:enemy,now:14500,charge:.4,p:.8,rec:0,recoil:.2});
- assert.equal(art.drawEnemy(ctx,pose),true);
- assert.ok(calls.filter(x=>x.method==='stroke').length>=8);
- assert.equal(calls.filter(x=>x.method==='save').length,calls.filter(x=>x.method==='restore').length);
- assert.equal(pose.p,.8);
- assert.equal(art.drawEnemy(ctx,{e:{id:'void_knight',kind:'knight'}}),false,'palette variants remain legacy');
+ assert.equal(art.drawEnemy(ctx,{e:{id:'unknown',kind:'mystery'}}),false);
+ assert.equal(art.drawEnemy(ctx,{e:null}),false);
+ assert.equal(calls.length,0);
+});
+test('hero and enemy animation supports impact, wind-up, and recoil keyframes',()=>{
+ for(const p of [0,.1,.5,1]){
+  for(const charge of [0,1]){
+   const {ctx,calls}=context();
+   assert.equal(art.drawEnemy(ctx,{e:{id:'duelist',kind:'rogue',index:3},m:{reach:110},now:3000,charge,p,action:p,rec:p?0:1,recoil:.8}),true);
+   assert.equal(calls.filter(x=>x.method==='save').length,calls.filter(x=>x.method==='restore').length);
+  }
+ }
 });
 test('prototype is opt-in on both HTML entrypoints and optional when module is absent',()=>{
  const game=fs.readFileSync('assets/game.js','utf8');
