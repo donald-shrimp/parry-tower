@@ -145,7 +145,7 @@ function makeHarness(seed={},devMode=false){
   setBurn:burn=>{game.enemy.burn=burn},
   setEnemyAttack:attack=>{game.enemy.atk=attack},
   setBaseAttack:attack=>{game.baseAtk=attack},
-  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,combo:game.combo,charge:game.charge,
+  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,baseAtk:game.baseAtk,combo:game.combo,charge:game.charge,
    guards:game.guards,charge:game.charge,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
  };})();`);
  vm.runInNewContext(debugSource,context,{filename:'game.js'});
@@ -1931,6 +1931,7 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  assert.equal(g.state().shield,96,'12 ward levels give +96 initial shield');
  assert.equal(g.state().souls,expected);
  const d=g.bloodTest();
+ assert.equal(d.info().baseAtk,46,'five original +3 and three new +2 levels give 25+21 attack');
  d.setEnemyHp(100000);d.setCombo(0);
  resolveBloodParry(g,20);
  assert.ok(g.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
