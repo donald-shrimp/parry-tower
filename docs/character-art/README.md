@@ -33,6 +33,18 @@
 
 **重要：−360°は主人公に限る。** 敵の攻撃には一律適用しない。敵は`assets/game.js`と`assets/enemy-motions.js`の**攻撃方向・届く座標・予備動作・タイミング**からモーションを設計する。
 
+## 錆びた騎士 `knight` — A/B採用、C試作、D目視レビュー待ち
+
+2026-10-18にユーザーが**赤い古布・単色の錆面・片手剣と盾**を備えた戦闘待機PNGを採用。その原寸画像からトレースした静止SVGも確認済みとして**フェーズA/Bは承認**され、可動化を依頼された。
+
+- 静止SVG: [knight-static.svg](../../assets/character-art/tracing/knight/knight-static.svg)
+- マスク分割と関節モーション: [character-knight.js](../../assets/character-knight.js)
+- [モーション確認ページ](../../assets/character-art/tracing/knight/preview.html) / [rig manifest](../../assets/character-art/tracing/knight/knight-manifest.json)
+- 独立ゲーム試験: `dev.html?floor=2&enemy=knight&art=knight-trace`
+- 原画1254×1254 PNGは**会話成果物にあり、GitHubには未登録**（バイナリ転送未実施）。トレースSVGのみGitHub登録済み。詳細は[knight制作記録](../../assets/character-art/tracing/knight/README.md)を参照。
+- ゲームの既存の戦闘判定・時計・接触距離は変更していない。主人公の`?art=ready`と反撃−360°も変更なし。
+- **フェーズDは人間の動作採用待ち**。プレビューは自動テスト合格と別に実機目視が必要。Draft PR #28を維持し、自動マージしない。
+
 ## 次の対象：錆びた騎士 `knight`
 
 次のキャラ用の指示書：**[騎士の個別指示書](./prompts/knight.md)** / **[騎士のSVG下絵用完成プロンプト](./prompts/knight-svg-base.md)**。
