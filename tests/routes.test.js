@@ -30,3 +30,9 @@ test('run tower coins reward normal enemies 6, elite/rare 12, bosses 10, selecte
  assert.equal(RT.towerCoins(null),0);
  assert.equal(RT.towerCoins({boss:true},true),14);
 });
+
+test('trial route hints at unknown elites without changing existing rewards or branching',()=>{
+ assert.match(RT.ROOMS.trial.risk,/正体不明/);
+ assert.equal(RT.towerCoins({elite:true,preview:true},true),14);
+ assert.deepEqual(RT.options(4).map(x=>x.id),['rest','merchant','trial']);
+});

@@ -102,6 +102,17 @@
     6:['void_knight','last_assassin'],7:['last_assassin','void_knight'],
     8:['void_knight','last_assassin']}}
  ];
+ // Two-zone-ahead blood-trial guests: only signature regulars, never bosses or rares.
+ // No future zone exists at 61–80F, so the late-game trial stays an ordinary elite fight.
+ const FORESHADOW_IDS=Object.freeze({
+  2:['cantor'],
+  3:['clockwork'],
+  4:['ember_slime','molten_sentinel'],
+  5:['frost_wraith','silver_duelist'],
+  6:['star_cantor','orbital_clockwork'],
+  7:['void_knight','last_assassin']
+ });
+ const FORESHADOW_RATE=.5;
  // The eight-zone ascent ends at 80F; endless play cycles back to the first zone.
  const zoneForFloor=f=>ZONES[Math.floor((((Math.max(1,Math.floor(f))-1)%(ZONES.length*10))+(ZONES.length*10))%(ZONES.length*10)/10)];
  const positionInZone=f=>((Math.max(1,Math.floor(f))-1)%10)+1;
@@ -123,6 +134,18 @@
   const chosen=pool[Math.floor(rng()*pool.length)%pool.length];
   const elite=floor>=8&&rng()<0.12;
   return buildEnemy(byId[chosen],elite);
+ }
+ // At 4F/8F, sometimes reveal the silhouette and rhythm from *two zones ahead*.
+ // This is an ephemeral masked opponent; the original template and codex stay untouched.
+ function foreshadowTrialForFloor(f,rng=Math.random){
+  if(!Number.isSafeInteger(f)||f<1||f>60||![4,8].includes(positionInZone(f)))return null;
+  const futureZone=Math.floor((f-1)/10)+2;
+  const pool=FORESHADOW_IDS[futureZone];
+  if(!pool||rng()>=FORESHADOW_RATE)return null;
+  const idx=Math.min(pool.length-1,Math.max(0,Math.floor(rng()*pool.length)));
+  const normal=byId[pool[idx]];
+  if(!normal||normal.boss||normal.rare)return null;
+  return {...buildEnemy(normal,true),preview:true,name:'？？？',displayName:'？？？'};
  }
  function findByKey(key){
   if(typeof key!=='string')return null;
@@ -182,17 +205,19 @@
   return b;
  }
  function recordEncounter(book,enc,floor){
+  if(!enc||enc.preview)return false; // Hidden guest never unlocks a future enemy.
   const key=enemyKey(enc),previous=book.seen[key];
   book.seen[key]={encounters:Math.min(999999,(previous?.encounters||0)+1),
    firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
   return !previous;
  }
  function recordDefeat(book,enc,floor){
+  if(!enc||enc.preview)return false; // Nor does defeating its disguise reveal the codex.
   const key=enemyKey(enc),previous=book.defeated[key];
   if(!book.seen[key])recordEncounter(book,enc,floor);
   book.defeated[key]={wins:Math.min(999999,(previous?.wins||0)+1),firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
   return !previous;
  }
  return Object.freeze({monsters,bosses,rares,all,ZONES,byId,zoneForFloor,positionInZone,
-  encounterForFloor,enemyKey,buildEnemy,findByKey,codexEntries,baseStats,emptyBook,normalizeBook,recordEncounter,recordDefeat});
+  encounterForFloor,foreshadowTrialForFloor,FORESHADOW_RATE,enemyKey,buildEnemy,findByKey,codexEntries,baseStats,emptyBook,normalizeBook,recordEncounter,recordDefeat});
 });

@@ -149,3 +149,51 @@ test('floor/elite/rare multipliers compose in existing order and standard enemie
   }
  }
 });
+
+test('blood trials sometimes tease signature enemies from exactly two zones ahead',()=>{
+ const samples=[
+  [4,'cantor'],[8,'cantor'],[14,'clockwork'],[18,'clockwork'],
+  [24,'ember_slime'],[34,'frost_wraith'],
+  [44,'star_cantor'],[54,'void_knight']
+ ];
+ for(const [f,id] of samples){
+  const enemy=P.foreshadowTrialForFloor(f,()=>0);
+  assert.equal(enemy.id,id,'future guest at '+f);
+  assert.equal(enemy.displayName,'？？？');
+  assert.equal(enemy.name,'？？？');
+  assert.equal(enemy.preview,true);
+  assert.equal(enemy.elite,true);
+  assert.equal(enemy.boss,false);assert.equal(enemy.rare,false);
+  assert.equal(enemy.bookKey,id+':elite','underlying combat identity is not re-keyed');
+  assert.deepEqual(enemy.rhythm,P.byId[id].rhythm);
+  assert.deepEqual(P.baseStats(enemy,f),P.baseStats(P.buildEnemy(P.byId[id],true),f),
+   'future guest uses current-floor scaling only');
+ }
+ for(const [f,id] of [[24,'molten_sentinel'],[34,'silver_duelist'],
+  [44,'orbital_clockwork'],[54,'last_assassin']]){
+  let count=0;
+  assert.equal(P.foreshadowTrialForFloor(f,()=>++count===1?.1:.99).id,id);
+ }
+ assert.equal(P.FORESHADOW_RATE,.5);
+ assert.equal(P.foreshadowTrialForFloor(4,()=>.5),null);
+});
+test('foreshadow guest is absent from late stages, bosses, normal encounters and future-cycle rooms',()=>{
+ for(const f of [0,1,3,5,9,10,12,19,55,59,60,64,68,74,78,84,88,104,108])
+  assert.equal(P.foreshadowTrialForFloor(f,()=>0),null,'must not preview at floor '+f);
+ for(const bad of [NaN,Infinity,2.5,'4',null,-1])
+  assert.equal(P.foreshadowTrialForFloor(bad,()=>0),null);
+});
+test('masked trial appearances never write bestiary records, including defeat or practice unlocks',()=>{
+ const book=P.emptyBook(),preview=P.foreshadowTrialForFloor(24,()=>0);
+ assert.equal(P.recordEncounter(book,preview,24),false);
+ assert.equal(P.recordDefeat(book,preview,24),false);
+ assert.equal(Object.keys(book.seen).length,0);
+ assert.equal(Object.keys(book.defeated).length,0);
+ assert.equal(P.codexEntries().length,50,'guest is not a new book entry');
+ assert.equal(P.byId.ember_slime.name,'灼熱スライム','source name stays intact');
+ assert.equal(P.findByKey('ember_slime:elite').preview,undefined);
+ const reveal=P.encounterForFloor(41,()=>.99);
+ assert.equal(reveal.id,'ember_slime');
+ assert.equal(P.recordEncounter(book,reveal,41),true,'real encounter triggers first discovery');
+ assert.equal(book.seen[reveal.bookKey].firstFloor,41);
+});
