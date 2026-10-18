@@ -97,3 +97,8 @@
 - [今回の静止SVG](../../assets/character-art/tracing/hero/hero-static.svg)
 
 静止画を元絵と比較して**ユーザーが承認した後**にだけ、可動パーツの分割へ進む。
+
+
+## 主人公の構え直し：新トレース動作モード
+
+元画像が「両方の装備を構えた待機姿勢」の採用版となったので、[制作経緯・ゲーム試作](../../assets/character-art/tracing/hero/READY_POSE.md)を追加した。**`?art=ready`** のみ反映。旧 `?art=trace` は比較用に保持。
