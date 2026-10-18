@@ -11,7 +11,7 @@ test('art preview supports only the first hero and sentinel experiment',()=>{
  assert.equal(art.drawEnemy('molten_sentinel' /* uses sprite: sentinel in game */,{},{}),false);
 });
 
-test('sentinel's decorative blade keeps the existing shield-contact geometry',()=>{
+test("sentinel blade keeps the existing shield-contact geometry",()=>{
  for(const reach of [80,110,148]){
   const point=art.sentinelAttackPoint(reach,1);
   const old=legacy.attackPoint('sentinel',reach,1,0);
