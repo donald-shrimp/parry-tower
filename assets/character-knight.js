@@ -10,8 +10,8 @@
  const SOURCE='character-art/tracing/knight/knight-static.svg';
  const MASKS=Object.freeze({
   sword:[
-   [15,14],[44,14],[297,208],[295,242],[270,269],[282,302],[286,337],
-   [259,376],[221,388],[190,368],[168,325],[166,278],[202,246]
+   [0,0],[84,0],[323,205],[305,259],[294,304],[304,342],
+   [269,396],[204,399],[160,343],[153,270]
   ],
   swordUpper:[[282,246],[336,241],[356,278],[345,355],[313,390],[274,366],[268,338],[268,287]],
   shield:[[587,301],[627,316],[663,331],[693,350],[704,418],[705,490],[699,558],
@@ -102,14 +102,19 @@
   // game.js has already mirrored the enemy. Local negative X restores art-facing left.
   // Image tip at impact: approx (reach=110, y=-58), with foot baseline y=739.
   ctx.scale(-.20,.20);ctx.translate(-454,-739);
-  ctx.drawImage(layers.body,0,0,SIZE,SIZE);
-  // Fill only newly exposed pivot backs; these are hidden behind intact pieces at idle.
+  // Only newly exposed joint surfaces are filled. They sit BEHIND intact body pixels
+  // to avoid the white cutout gaps seen in early animation prototypes.
   if(Math.abs(a.swordShoulder)>0.001||Math.abs(a.swordElbow)>0.001){
+   ctx.fillStyle='#34292f';
+   polygon(ctx,[[212,249],[293,242],[349,294],[339,371],[267,401],[208,366]]);
    joint(ctx,PIVOTS.swordShoulder,27);joint(ctx,PIVOTS.swordElbow,22);
   }
   if(Math.abs(a.shieldShoulder)>0.001||Math.abs(a.shieldElbow)>0.001){
+   ctx.fillStyle='#34292f';
+   polygon(ctx,[[446,246],[517,251],[579,301],[596,410],[535,454],[470,409]]);
    joint(ctx,PIVOTS.shieldShoulder,31);joint(ctx,PIVOTS.shieldElbow,21);
   }
+  ctx.drawImage(layers.body,0,0,SIZE,SIZE);
   // Shoulder -> elbow -> the gripped sword (never rotate the blade alone).
   ctx.save();turn(ctx,PIVOTS.swordShoulder,a.swordShoulder);
   ctx.drawImage(layers.swordUpper,0,0,SIZE,SIZE);
