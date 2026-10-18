@@ -71,3 +71,14 @@
 2026-10-18、**設定画は採用済み**。一方、設定画から作ったSVG実装はユーザーから**「全体的に微妙、盾が切れる」**と不採用評価を受け、**要再制作・現在のSVGは旧比較用のみ**。現行の `?art=svg` も完成品ではない。新しい `hero/svg-base-approved.png` は**未登録**で、SVG担当は再制作に進まないこと。
 
 [制作フロー・承認ゲート](./WORKFLOW.md) / [共通美術スタイル](./STYLE_GUIDE.md) / [SVG制作仕様](./SVG_SPEC.md)
+
+## フラットなSVG主人公の比較試作（採否未確定）
+
+2026-10-18の会話中に作成した手描きSVGを[assets/character-art/svg/hero-flat.svg](../../assets/character-art/svg/hero-flat.svg)として保存した。**これは「原寸の採用画像の再トレース」でも最終採用版でもない、候補を試すための実験**。候補PNGの正式登録や旧SVGの上書きはまだ行わない。
+
+- **新・フラットSVG試作**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=flat`
+- **従来Canvas試作**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=prototype`
+- **以前の不採用SVG**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight&art=svg`
+- **現行既定表示**: `http://127.0.0.1:8000/dev.html?floor=2&enemy=knight`
+
+フラットSVGは7グループのパーツを独立描画し、盾・剣・頭・マントが簡単に動く。元の攻撃時計・命中判定・データに変更はない。**ユーザーがゲーム画面で可視範囲と動きを目視確認するまでは採用しない**。詳細は [フラット試作の説明](../../assets/character-art/svg/HERO_FLAT_EXPERIMENT.md)。

@@ -17,6 +17,8 @@ jobs:
           node --check assets/game.js
           node --check assets/character-art.js
           node --check assets/character-svg.js
+          node --check assets/character-flat.js
+          node --test tests/character-flat.test.js
           node --test tests/character-art.test.js
       - name: Validate reference image and SVG layers
         shell: python
@@ -65,7 +67,7 @@ jobs:
           build = 'v0.9.3-2'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'game.js'
+              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')
