@@ -725,7 +725,7 @@ test('guard reflection and burn damage do not grant blood healing; successful pa
  resolveBloodParry(g);
  assert.ok(g.state().hp>15,'the next successful parry can heal');
 });
-test('real Blood Rhythm uses the current 100+ combo with no hidden cap, and resets on guard',()=>{
+test('real Blood Rhythm uses full high combos and guard only decays (not clears) that bonus',()=>{
  const g=makeHarness();g.press('startBtn');
  const d=g.bloodTest();
  d.setSkill('blood',1);d.setSkill('fury',1);
@@ -739,13 +739,13 @@ test('real Blood Rhythm uses the current 100+ combo with no hidden cap, and rese
  assert.equal(g.state().hp,10+expected);
  d.setHp(250);d.setEnemyAttack(20);
  resolveBloodParry(g,-40);
- assert.equal(d.info().combo,0,'guard breaks the combo and Blood Rhythm bonus');
+ assert.equal(d.info().combo,80,'101 combo loses 21 on guard but does not reset');
  const hpAfterGuard=g.state().hp;
  const beforeAgain=d.info().enemyHp;
  resolveBloodParry(g);
  const direct=beforeAgain-d.info().enemyHp;
- assert.equal(d.info().combo,1);
- assert.equal(g.state().hp,hpAfterGuard+d.bloodHealAmount(direct,1,1,true,500));
+ assert.equal(d.info().combo,81);
+ assert.equal(g.state().hp,hpAfterGuard+d.bloodHealAmount(direct,1,81,true,500));
 });
 test('blood lifesteal is disabled in immortal practice mode',()=>{
  const seed={'parryTowerBestiary_v1':JSON.stringify({version:2,seen:{'slime:normal':{encounters:1,firstFloor:1}},defeated:{}})};
@@ -1826,8 +1826,10 @@ test('held defense is reset on release, cancel, blur, pause, cinematic and new f
  g.cancel();assert.equal(g.state().guardHeld,false);
  g.hold();g.hide();assert.equal(g.state().guardHeld,false);
  g.hold();g.blur();assert.equal(g.state().guardHeld,false);
- g.hold();g.press('pauseBtn');assert.equal(g.state().guardHeld,false);
- g.press('resumeBtn');assert.equal(g.state().mode,'combat');assert.equal(g.state().guardHeld,false);
+ g.hold();g.press('pauseBtn');
+ assert.equal(g.state().mode,'pause','pause control suspends combat');
+ assert.equal(g.state().guardHeld,false);
+ g.keyDown('Escape');assert.equal(g.state().mode,'combat');assert.equal(g.state().guardHeld,false);
  g.keyDown();assert.equal(g.state().guardHeld,true);
  g.keyUp();assert.equal(g.state().guardHeld,false);
  g.keyDown();g.keyDown();g.keyUp();assert.equal(g.state().guardHeld,false,'repeated keydown cannot latch guard');
