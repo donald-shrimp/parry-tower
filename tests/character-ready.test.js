@@ -77,7 +77,7 @@ test('360-degree shoulder sweep completes one turn, eases smoothly and preserves
 });
 test('360 spin is opt-in and preview offers normal and slow comparison',()=>{
  const src=fs.readFileSync('assets/character-ready.js','utf8');
- assert.match(src,/spin=360/);
+ assert.ok(src.includes('spin=(360|-360|legacy)'));
  assert.match(src,/pose\.spin360===true/);
  assert.match(src,/ctx\.translate\(211,166\);ctx\.rotate\(shoulder\)/);
  assert.match(src,/ctx\.translate\(179,166\);ctx\.rotate\(elbow\)/);
@@ -103,9 +103,9 @@ test('reverse full turn exactly mirrors forward shoulder and elbow without chang
 });
 test('reverse direction is only enabled by opt-in query or preview pose override',()=>{
  const src=fs.readFileSync('assets/character-ready.js','utf8');
- assert.match(src,/spin=-360/);
+ assert.ok(src.includes('spin=(360|-360|legacy)'));
  assert.match(src,/pose\.reverseSpin===true/);
- assert.match(src,/REVERSE_SPIN_ENABLED/);
+ assert.match(src,/SPIN_MODE==='reverse'/);
  const preview=fs.readFileSync('assets/character-art/tracing/hero/ready-preview.html','utf8');
  assert.match(preview,/data-id="reverseSpin"/);
  assert.match(preview,/data-id="slowReverseSpin"/);
