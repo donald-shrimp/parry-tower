@@ -1247,7 +1247,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-1"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.0-2"'),asset);
   assert.match(html,/v0\.9\.0/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1583,12 +1583,27 @@ test('80F summit boss enters second musical phrase only after completed strike',
  g.bloodTest().setBaseAttack(1);
  assert.equal(g.state().bossPhase,1,'the already-telegraphed strike is not altered by HP updates');
  resolveBloodParry(g,20);
- assert.equal(g.state().mode,'combat');
+ assert.equal(g.state().mode,'phase','half HP enters invulnerable cinematic between strikes');
  assert.equal(g.state().bossPhase,2);
+ assert.equal(g.state().phaseStage,'rumble');
  assert.deepEqual(Array.from(g.state().enemyRhythm),P.byId.endking.phaseRhythm);
- assert.ok(g.state().attackSpan>0);
- assert.equal(g.state().attackSpan,1.5*g.state().beat*1000);
- assert.equal(g.state().attackBeat,5.5,'previous first four-beat lead is retained');
+ assert.equal(g.state().attackAt,Infinity,'the old attack is disabled during cinematic');
+ const before=g.state().enemyHp,started=g.now;
+ g.parry();assert.equal(g.state().enemyHp,before,'parry input is inert during interlude');
+ g.frame(started+1499);
+ assert.equal(g.state().phaseStage,'rumble');
+ g.frame(started+1500);
+ assert.equal(g.state().phaseStage,'countin');
+ const countStart=g.state().phaseCountStartAt,beat=g.state().beat*1000;
+ assert.ok(countStart>g.now);
+ g.frame(countStart+3*beat+10);
+ assert.equal(g.state().mode,'phase','all four count-in beats are safe');
+ g.parry();assert.equal(g.state().enemyHp,before,'count-in is never a combat attack');
+ g.frame(countStart+4*beat+1);
+ assert.equal(g.state().mode,'combat','the bar finished before combat restarts');
+ assert.equal(g.state().phaseStage,null);
+ assert.equal(g.state().attackBeat,8);
+ assert.ok(g.state().attackAt-g.now>=3.9*beat,'fresh telegraph allows a full four beats after count-in');
  assert.equal(g.storage.size,0,'developer run never modifies persistent storage');
 });
 test('80F defeat is immediately recorded as summit completion and the game can continue to 81F',()=>{
@@ -1614,4 +1629,32 @@ test('80F defeat is immediately recorded as summit completion and the game can c
  assert.equal(g.state().floor,81);
  assert.equal(g.state().enemy,'slime','endless floor loops to the original first sector');
  assert.equal(g.state().mode,'combat');
+});
+
+test('interlude recovers safely after tab throttling and never resumes on an expired hit',()=>{
+ const g=makeHarness({},true);
+ g.dev().launch(80,'endking:elite');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+60);
+ g.bloodTest().setBaseAttack(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'phase');
+ g.frame(g.now+1500);
+ const start=g.state().phaseCountStartAt,beat=g.state().beat*1000;
+ g.frame(start+9*beat);
+ assert.equal(g.state().mode,'phase','missed count-in is rescheduled, not skipped');
+ assert.equal(g.state().phaseStage,'countin');
+ assert.ok(g.state().phaseCountStartAt>start);
+});
+test('second movement transition does not change normal bosses, premature thresholds or other enemies',()=>{
+ const g=makeHarness({},true);
+ g.dev().launch(75,'endking:normal');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.7)+30);
+ g.bloodTest().setBaseAttack(1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'combat','above half health remains ordinary combat');
+ assert.equal(g.state().bossPhase,1);
+ g.dev().launch(80,'star_warden:normal');
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+30);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'combat','non-final bosses never transition');
 });

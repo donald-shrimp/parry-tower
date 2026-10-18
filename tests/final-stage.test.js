@@ -76,12 +76,32 @@ test('61F high-floor difficulty grows slower than the old exponential, without c
  assert.ok(h80.atk<h60.atk*1.4,'soft attack ramp');
  assert.ok(h80.maxHp>h60.maxHp,'still increases at 80F');
 });
-test('new backgrounds are cosmetic, and the boss changes score without resetting its shared clock',()=>{
+test('new backgrounds are cosmetic, and the finale count-in restarts its shared Web Audio clock safely',()=>{
  const js=fs.readFileSync('assets/game.js','utf8');
  assert.match(js,/scene==='astral'/);
  assert.match(js,/scene==='void'/);
  assert.match(js,/e\.phase===1&&e\.phaseRhythm&&e\.hp>0/);
  assert.match(js,/e\.rhythm=\[\.\.\.e\.phaseRhythm\];e\.index=0/);
  assert.match(js,/game\.attackBeat\+=beats;game\.attackSpan=beats\*score\.beat\*1000;syncAttackClock\(\)/);
+ assert.match(js,/game\.mode==='phase'/);
+ assert.match(js,/for\(let i=0;i<FINAL_PHASE_COUNT_BEATS;i\+\+\)/);
+ assert.match(js,/scoreTone\(i===0\?784:523/);
+ assert.match(js,/game\.attackBeat=FINAL_PHASE_COUNT_BEATS\*2/);
  assert.match(js,/game\.finalClear=!game\.practice&&game\.floor===80&&defeated\.id==='endking'/);
+});
+
+test('only the 80F Endking has 35% extra HP; the 75F foe and other 80F enemies are unchanged',()=>{
+ const e=E.encounterForFloor(80);
+ const normal=E.encounterForFloor(75);
+ const oldProfile={...e,finalBoss:false};
+ const baseline=E.baseStats(oldProfile,80),enhanced=E.baseStats(e,80);
+ assert.equal(e.id,'endking');assert.equal(e.elite,true);
+ assert.ok(enhanced.maxHp>=Math.floor(baseline.maxHp*1.349));
+ assert.ok(enhanced.maxHp<=Math.ceil(baseline.maxHp*1.351));
+ assert.equal(enhanced.atk,baseline.atk);
+ assert.equal(E.baseStats(normal,75).maxHp,E.baseStats({...normal,finalBoss:false},75).maxHp);
+ assert.equal(E.baseStats(E.buildEnemy(E.byId.star_warden),80).maxHp,
+  E.baseStats({...E.buildEnemy(E.byId.star_warden),finalBoss:false},80).maxHp);
+ assert.equal(E.baseStats(e,80,true).maxHp,E.baseStats(oldProfile,80,true).maxHp,
+  'practice stats remain unscaled');
 });

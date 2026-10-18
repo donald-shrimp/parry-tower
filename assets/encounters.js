@@ -153,7 +153,7 @@
   // would erase most of the intended damage reduction on early floors.
   const baseHp=Math.max(1,Math.round(49*hpGrowth*hpScale));
   const baseAtk=Math.max(13,Math.round(14*atkGrowth*atkScale));
-  const hpMultiplier=enc.hpMultiplier??1;
+  const hpMultiplier=(enc.hpMultiplier??1)*(enc.finalBoss&&actualFloor===80&&!arena?1.35:1);
   const atkMultiplier=enc.atkMultiplier??1;
   return {maxHp:Math.max(1,Math.round(baseHp*hpMultiplier)),
    atk:Math.max(1,Math.round(baseAtk*atkMultiplier))};
