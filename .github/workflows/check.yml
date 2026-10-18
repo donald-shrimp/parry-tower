@@ -15,11 +15,12 @@ jobs:
           node --check assets/relics.js
           node --check assets/progression.js
           node --check assets/game.js
+          node --check assets/character-art.js
       - name: Check dedicated enemies and developer launcher syntax
         run: |
           node --check assets/enemy-motions.js
           node --check assets/dev-tools.js
-          node --test tests/enemy-motions.test.js
+          node --test tests/enemy-motions.test.js tests/character-art.test.js
       - name: Check encounter data and gameplay invariants
         run: |
           node --check assets/encounters.js
@@ -40,7 +41,7 @@ jobs:
           html = Path('index.html').read_text(encoding='utf-8')
           build = 'v0.9.3-2'
           paths = [
-              'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
+              'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js', 'character-art.js',
               'progression.js', 'relics.js', 'routes.js', 'events.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
@@ -57,4 +58,9 @@ jobs:
           assert f'./assets/dev-tools.css?v={build}' in dev
           assert Path('assets/dev-tools.js').is_file()
           assert Path('assets/dev-tools.css').is_file()
-          print('Static Pages layout OK')
+          import xml.etree.ElementTree as ET
+          for svg_name in ['hero-body.svg', 'sentinel-body.svg']:
+              svg = Path('assets/characters') / svg_name
+              assert svg.is_file(), svg
+              assert ET.parse(svg).getroot().tag == '{http://www.w3.org/2000/svg}svg'
+          print('Static Pages layout and character SVGs OK')
