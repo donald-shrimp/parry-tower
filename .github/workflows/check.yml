@@ -15,6 +15,8 @@ jobs:
           node --check assets/relics.js
           node --check assets/progression.js
           node --check assets/game.js
+          node --check assets/character-art.js
+          node --test tests/character-art.test.js
       - name: Check dedicated enemies and developer launcher syntax
         run: |
           node --check assets/enemy-motions.js
@@ -41,7 +43,7 @@ jobs:
           build = 'v0.9.3-2'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'relics.js', 'routes.js', 'events.js', 'game.js'
+              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')
