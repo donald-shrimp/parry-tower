@@ -8,6 +8,7 @@
  'use strict';
  const SIZE=760;
  const SOURCE='character-art/tracing/knight/knight-static.svg';
+ const scriptUrl=root?.document?.currentScript?.src;
  const MASKS=Object.freeze({
   sword:[
    [0,0],[84,0],[323,205],[305,259],[294,304],[304,342],
@@ -30,7 +31,7 @@
  const clamp=n=>Math.max(0,Math.min(1,Number(n)||0));
  const smooth=n=>{const t=clamp(n);return t*t*(3-2*t)};
  function sourceUrl(){
-  const script=root?.document?.currentScript?.src||'';
+  const script=scriptUrl||'';
   return new URL(SOURCE,script||'https://invalid.local/assets/character-knight.js').href;
  }
  function canvas(){
@@ -97,7 +98,7 @@
  }
  function drawEnemy(ctx,pose){
   if(status!=='ready'||!layers||!ctx||!pose||pose.e?.kind!=='knight')return false;
-  const a=angles(pose.charge,pose.action);
+  const a=pose.joints||angles(pose.charge,pose.action);
   ctx.save();
   // game.js has already mirrored the enemy. Local negative X restores art-facing left.
   // Image tip at impact: approx (reach=110, y=-58), with foot baseline y=739.

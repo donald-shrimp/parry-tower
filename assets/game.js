@@ -2,13 +2,22 @@
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
-// Unmerged art pilots: ?art=prototype for Canvas, ?art=svg for reference-led SVG hero. Visual only.
+// Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
 const CHARACTER_ART=window.ParryCharacterArt;
 const CHARACTER_SVG=window.ParryCharacterSvg;
 const CHARACTER_FLAT=window.ParryHeroFlat;
 const CHARACTER_TRACE=window.ParryHeroTrace;
 const CHARACTER_READY=window.ParryHeroReady;
 const CHARACTER_KNIGHT=window.ParryKnightTrace;
+const COMBAT_ART=window.ParryCombatArt;
+const KNIGHT_PUPPET=window.ParryKnightPuppet;
+const ILLUSTRATED_ENABLED=!/(?:^|[?&])art=/.test(window.location?.search||'')||/(?:^|[?&])art=illustrated(?:&|$)/.test(window.location?.search||'');
+if(ILLUSTRATED_ENABLED)document.documentElement.dataset.parryArt='illustrated';
+const CHARACTER_RIG=window.ParryCharacterRig;
+const CHARACTER_RIG_ENABLED=/(?:^|[?&])art=rework(?:&|$)/.test(window.location?.search||'');
+const COMBAT_ART_ENABLED=/(?:^|[?&])art=impact(?:&|$)/.test(window.location?.search||'');
+if(COMBAT_ART_ENABLED)document.documentElement.dataset.parryArt='impact';
+if(CHARACTER_RIG_ENABLED)document.documentElement.dataset.parryArt='rework';
 const CHARACTER_KNIGHT_ENABLED=/(?:^|[?&])art=knight-trace(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_READY_ENABLED=/(?:^|[?&])art=ready(?:&|$)/.test(window.location?.search||'');
 const CHARACTER_TRACE_ENABLED=/(?:^|[?&])art=trace(?:&|$)/.test(window.location?.search||'');
@@ -639,6 +648,7 @@ function spawnEnemy(t){
  const stats=P.baseStats(archetype,floor,game.practice);
  const maxHp=game.practice?999999:stats.maxHp;
  game.enemy={...archetype,name:archetype.displayName,maxHp,hp:maxHp,atk:stats.atk,burn:0,index:0,phase:1};
+ if(ILLUSTRATED_ENABLED)KNIGHT_PUPPET?.preload(game.enemy);
  game.phaseStage=null;game.phaseStartedAt=0;game.phaseCountStartAt=0;
  if(archetype.boss&&!game.practice)game.shield+=PR.value(permanent,'bossWard');
  startScore(game.enemy);
@@ -1204,6 +1214,13 @@ function hero(now){
  const action=clamp(1-(now-(game.lastHitAt||-99999))/240,0,1);
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const age=now-(game.lastDeflectAt||-99999),push=(age>=0&&age<160?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:.45);
+ if(ILLUSTRATED_ENABLED&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,
+   attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:game.lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind,
+   pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
+ if(CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,
+  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
+ if(COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,
+  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
  ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
  ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
  if(CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
@@ -1228,6 +1245,15 @@ function hero(now){
 function enemy(now){
  const e=game.enemy;if(!e)return;
  const m=motionFor(e),d=game.attackAt-now,span=game.attackSpan||1900;
+ if(ILLUSTRATED_ENABLED&&KNIGHT_PUPPET?.drawEnemy(ctx,{e,m,now,width:w,height:h,
+   attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
+   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
+ if(CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
+  attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
+ if(COMBAT_ART_ENABLED&&COMBAT_ART?.drawEnemy(ctx,{e,m,now,width:w,height:h,
+  attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
  const prepare=Math.min(m.prepare,Math.max(m.swing+120,span-130));
@@ -1376,10 +1402,25 @@ function enemy(now){
 
 }
 
+function clashPosition(){
+ if(ILLUSTRATED_ENABLED&&KNIGHT_PUPPET?.readyFor(game.enemy)){
+  const l=KNIGHT_PUPPET.layout(w,h,game.enemy,motionFor(game.enemy));
+  return {x:l.hitX,y:l.hitY,scale:l.base};
+ }
+ if(CHARACTER_RIG_ENABLED&&CHARACTER_RIG&&typeof window.Path2D==='function'){
+  const l=CHARACTER_RIG.layout(w,h,game.enemy,motionFor(game.enemy));
+  return {x:l.hitX,y:l.hitY,scale:l.base};
+ }
+ if(COMBAT_ART_ENABLED&&COMBAT_ART?.readyFor(game.enemy)){
+  const l=COMBAT_ART.layout(w,h,game.enemy,motionFor(game.enemy));
+  return {x:l.hitX,y:l.hitY,scale:l.base};
+ }
+ const scale=Math.min(w/550,h/470)*1.23;
+ return {x:w*.28+39*scale,y:h*.80-58*scale,scale};
+}
 function triggerClashFX(kind,at,enemyKind){
  clashFX={kind,at,enemyKind,combo:game.combo+(kind==='just'||kind==='parry'?1:0)};
- const scale=Math.min(w/550,h/470)*1.23;
- const x=w*.28+39*scale,y=h*.80-58*scale;
+ const {x,y}=clashPosition();
  if(kind==='just')puff(x,y,'#b2f5ff',27,1.65);
  else if(kind==='parry')puff(x,y,'#9fcbff',15,1.05);
  else if(kind==='miss')puff(x,y,'#db718b',9,.55);
@@ -1388,8 +1429,7 @@ function drawClashFX(now){
  if(!clashFX)return;
  const age=now-clashFX.at;if(age<0||age>255)return;
  const just=clashFX.kind==='just',normal=clashFX.kind==='parry',miss=clashFX.kind==='miss';
- const base=Math.min(w/550,h/470)*1.23;
- const x=w*.28+39*base,y=h*.80-58*base;
+ const {x,y,scale:base}=clashPosition();
  const energy=just?Math.min(1.55,1+(clashFX.combo||0)*.018):1;
  const color=just?'#b8f6ff':normal?'#96cdff':miss?'#cf667f':'#d5bb8b';
  // If the next windup has begun, fade away instead of masking a readable attack.
@@ -1602,5 +1642,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.3-2',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills]}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.3-3',window.__parryV05);requestAnimationFrame(frame);
 })();

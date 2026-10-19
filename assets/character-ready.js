@@ -90,7 +90,7 @@
    (pose.spin360!==false&&SPIN_MODE!=='legacy');
   const reverseSpin=pose.reverseSpin===true||
    (pose.reverseSpin!==false&&SPIN_MODE==='reverse');
-  const {shoulder,elbow}=armAngles(action,fullSpin,reverseSpin);
+  const {shoulder,elbow}=pose.joints||armAngles(action,fullSpin,reverseSpin);
   ctx.save();
   // Local coordinate game feet=(0,0). Full PNG/SVG traced pixel space is preserved.
   ctx.scale(.34,.34);

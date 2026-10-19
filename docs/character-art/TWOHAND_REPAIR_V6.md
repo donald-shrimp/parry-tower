@@ -1,0 +1,51 @@
+# 両手持ち原画の修整 v6
+
+ユーザーの指摘：モーションの方向性はよいが、特に守護者の腕が破綻。立ち絵そのものから直す。
+
+## 実行範囲
+
+1. 守護者・監督官・司祭・監視者の元絵と可動時の腕を確認。
+2. キャラクターの意匠を保ち、二本の腕が追えて一本の柄を自然に握る原画へ修整。高い構えでは刃を前上へ向け、接触まで180度近く腕の絵が裏返る原因を減らす。
+3. 新原画の実際の肩・肘・手首・刃先に合わせてマスクと支点を作り直す。v5の溜め・斬撃・反動・復帰の意図とゲーム時計は保持。
+4. 原画の拡大、部品、接触、動作途中、結果別、狭幅を目視確認し、接続・ゲーム互換も検証。
+
+実装・検証完了。見た目の最終採否はユーザーレビュー待ち。旧PNGとGUI保存値は保持。
+
+## 発見と採用した方法
+
+原画の腕が読みにくいことに加え、構えの絵の剣と両手を一つの剛体で回し、前腕をIKで追わせる方式にも原因があった。接続点が一致しても、描かれた手首や鎧の向きが反転・過度に曲がる。v5の検証はこの絵としての破綻を保証できていなかった。
+
+構えを4枚再作画した後、関節だけの回転ではまだ不十分なことを目視で確認し、**打ち込み専用の原画も4枚**作成した。両手持ち4体は構え/打ち込みの上半身を切り替え、両腕・剣・胸の作画を一体で保持する。攻撃の終盤で短い面状軌跡とともに打ち込みへ入り、38ms保持後は受け方に応じて上半身が反動を受け、構えへ戻る。元の後退/接近とゲーム時計は維持。元PNGの脚は固定し、上半身の切替に足を巻き込まない。
+
+これは腕を滑らかに変形させる方式から、主要姿勢を描き分ける方式への変更。スローでは2姿勢の切替が分かる。腕の向きを無理に補間するより作画の形を優先した修整案であり、最終的な動きの好みはユーザーが確認する。
+
+## 保存した原画（全て1445×1088 RGBA）
+
+| キャラ | 構え | 打ち込み |
+| --- | --- | --- |
+| 鐘楼の守護者 | [guardian-ready-guard-v6.png](../../assets/character-art/rework/guardian/guardian-ready-guard-v6.png) | [guardian-contact-v6.png](../../assets/character-art/rework/guardian/guardian-contact-v6.png) |
+| 鉄血の監督官 | [ironwarden-ready-guard-v6.png](../../assets/character-art/rework/ironwarden/ironwarden-ready-guard-v6.png) | [ironwarden-contact-v6.png](../../assets/character-art/rework/ironwarden/ironwarden-contact-v6.png) |
+| 弔鐘の司祭 | [dirgekeeper-ready-low-v6.png](../../assets/character-art/rework/dirgekeeper/dirgekeeper-ready-low-v6.png) | [dirgekeeper-contact-v6.png](../../assets/character-art/rework/dirgekeeper/dirgekeeper-contact-v6.png) |
+| 時の監視者 | [timewarden-ready-guard-v6.png](../../assets/character-art/rework/timewarden/timewarden-ready-guard-v6.png) | [timewarden-contact-v6.png](../../assets/character-art/rework/timewarden/timewarden-contact-v6.png) |
+
+全て **built-in imagegen**。最初の守護者案は兜重複のため不採用。最初の打ち込み4枚は剣先が低すぎる振り抜き姿勢だったため不採用。最終採用8枚の全プロンプト/生成元/不採用理由は [TWOHAND_V6_PROMPTS.json](./TWOHAND_V6_PROMPTS.json)、各素材フォルダの `GENERATION-v6.md` にSHA-256を記録。生成物をコピーし、旧PNGは上書きしていない。Pythonは画面/資料のQA画像と座標・透過の分析だけに用い、制作画像の修整には用いていない。
+
+## 実装とGUI
+
+- `character-enemy-data.js`：8画像、原画ごとの肩/肘/手首、実画素上の刃先、腰合わせの支点、切替用のマスク。
+- `character-enemy-puppet.js`：追加画像の読込/失敗時フォールバック、独立した画像のマスク、主要姿勢の切替、接触位置の解法。旧方式は参考比較用に保持。
+- `character-edit.js`：ユーザーが「元の動きを止める」を使っても、非表示の姿勢が重複表示されない。
+- 工房：専用作画を選ぶと1500msとその原画のマスク画面へ。構え/接触それぞれに移動・回転・輪郭・時間ごとの追加調整が可能。保存スキーマv1、保存ファイルの `characters: {}` とupdatedAtは変更なし。
+- 番兵・片手剣・主人公のv5モーションと原画は変更していない。
+
+## 検証
+
+- **271テスト成功**。全26種×4受け方で状態・音声・保存の互換、接触時刻、38ms保持、固定脚、頭/胸の余白、斬り上げ/振り下ろし方向を確認。
+- 旧「常に同じ切り抜きの骨を追う」検証を、新方式に合う「表示中の原画に描かれた関節と手首が同じ変換で保持される」検証へ変更。数学的な接続だけで作画の自然さを保証するとは扱わない。
+- 実PNGの透過、刃先/肘/手首が可視画素にあること、接触時に旧腕を重複表示しないこと、追加画像欠損時の一体フォールバック、編集の置換モードでも切替の可視性を守ることを追加検証。
+- PC：4体×10姿勢=40枚、4結果×2時点×4体=32枚。原画/動作中の肩/肘/握り/鎧の向きを拡大確認。
+- 360×800 iframe（内容幅345px）：4体×6姿勢=24枚、横スクロールなし。顔・胴・手首・接触を確認。従来どおり、後ろの布や足先の端は見切れを許容。
+- GUIで専用絵を選び1500msへ移動すること、切り抜きに専用原画が表示されることを確認。PCレビュー/工房/今回の狭幅レビューにconsole警告・エラーなし。
+- JS25ファイル構文、4入口79参照、`git diff --check` 成功。証跡 `test-results/twohand-v6/`。元画像・保存JSONは保持。未コミット・未push・main/公開変更なし。
+
+レビュー：<http://127.0.0.1:8002/art-preview.html?enemy=guardian&time=1500&compare=source#stages>。左が構えの原画、右が動作中の専用作画。敵選択で4体を確認でき、再生/0.25倍/部品/原画リンクも利用可能。

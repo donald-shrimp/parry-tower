@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="color-scheme" content="dark"><title>キャラクター工房 · パリィの塔</title>
+ <link rel="stylesheet" href="./assets/art-studio.css">
+</head>
+<body>
+ <header class="app-header">
+  <a class="brand" href="./art-preview.html"><span class="brand-mark">✦</span><span>キャラクター工房<small>パリィの塔 / ART STUDIO</small></span></a>
+  <div class="save-state"><span id="draftDot" class="dot"></span><span id="draftStatus">読み込み中…</span></div>
+  <div class="header-actions"><button id="undo" disabled title="Ctrl + Z">↶ 元に戻す</button><button id="redo" disabled title="Ctrl + Shift + Z">↷ やり直す</button><a id="gameLink" class="button quiet" href="./dev.html?enemy=sentinel&amp;floor=2&amp;art=illustrated" target="_blank" rel="noopener">実戦で確認 ↗</a><button id="saveProject" class="primary" disabled>保存してゲームに反映</button></div>
+ </header>
+ <div class="guide"><b>はじめての調整</b><span><i>1</i> 左でキャラと部品を選ぶ</span><span><i>2</i> 絵をドラッグして直す</span><span><i>3</i> 再生で確かめて保存</span><button id="helpToggle" aria-expanded="false">使い方</button></div>
+ <main class="workspace">
+  <aside class="layers-panel panel" aria-label="キャラクターと部品">
+   <label class="label" for="characterSelect">キャラクター</label><select id="characterSelect" disabled></select>
+   <p id="sharedNote" class="muted"></p>
+   <button id="selectWhole" class="whole-button active">▣ 画像全体の位置・大きさ</button>
+   <div class="group-shortcuts" id="groupShortcuts">
+    <span class="label">まとめて動かす</span>
+    <button id="selectArms">両腕＋剣</button>
+    <button id="selectSwordArm">剣側の腕＋剣</button>
+    <button id="clearGroup" class="quiet">選択を解除</button>
+    <p class="muted small">部品のチェックを付けると、好きな組合せでも選べます。</p>
+   </div>
+   <div class="panel-heading"><h2>部品・重なり順</h2><span>上ほど手前</span></div>
+   <div id="layers" class="layer-list"></div>
+   <div class="layer-order"><button id="layerForward" disabled>↑ 手前へ</button><button id="layerBackward" disabled>↓ 奥へ</button></div>
+   <div class="file-actions"><button id="exportProject">調整ファイルを書き出す</button><button id="importProject">調整ファイルを読み込む</button><input id="importFile" type="file" accept=".json,application/json" hidden></div>
+   <p class="muted small">下書きはこのブラウザに自動保存。ファイルに書き出せば、後から続きを編集できます。</p>
+  </aside>
+  <section class="stage-panel" aria-label="画像とモーションの編集">
+   <div class="stage-toolbar"><div class="segmented" aria-label="編集するもの"><button id="editPosition" class="active" aria-pressed="true">位置と動き</button><button id="editMask" aria-pressed="false">切り抜き</button></div><select id="viewMode" aria-label="プレビューの配置"><option value="solo">一人で編集</option><option value="battle">実戦の配置</option></select><label class="inline-check"><input id="ghost" type="checkbox">変更前の位置</label><label class="zoom-label">表示倍率<select id="zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.5">150%</option><option value="2">200%</option></select></label><button id="fitView" title="表示を中央へ戻す">全体を見る</button></div>
+   <div class="canvas-wrap" id="canvasWrap"><canvas id="editorCanvas" tabindex="0" aria-label="編集キャンバス。部品をクリックして選び、ドラッグで移動できます。矢印キーでも移動できます。"></canvas><div class="canvas-label"><span id="canvasTitle">原画を読み込み中</span><span id="canvasMode">画像全体</span></div><div id="canvasHint" class="canvas-hint">絵をドラッグして、表示位置を調整</div><div id="loading" class="loading">原画とモーションを読み込んでいます…</div></div>
+   <div class="timeline">
+    <div class="timeline-top"><button id="play" class="play-button" disabled>▶ 再生</button><label class="speed-label">速さ<select id="speed"><option value="1">1倍</option><option value="0.5">0.5倍</option><option value="0.25" selected>0.25倍</option></select></label><label class="time-input">時点 <input id="timeNumber" type="number" min="0" max="3000" step="1" value="0"> ms</label><button id="addKey" disabled>＋ このポーズを記録</button></div>
+    <div class="timeline-track"><input id="timeRange" type="range" min="0" max="3000" step="1" value="0" aria-label="モーションの時点"><div id="keyMarkers" class="key-markers" aria-label="記録したポーズ"></div></div>
+    <div class="timeline-bottom"><div id="phaseButtons" class="phase-buttons"></div><span id="keyHint">部品を選ぶと、時点ごとの動きを編集できます</span></div>
+   </div>
+  </section>
+  <aside class="inspector panel" aria-label="選んだ画像の調整">
+   <div class="panel-heading"><h2 id="selectionTitle">画像全体</h2><span id="selectionBadge" class="badge">基本設定</span></div>
+   <p id="selectionHelp" class="muted">キャラクター全体の表示位置と大きさを調整します。</p>
+    <div id="transformTools" class="segmented tools" hidden><button id="toolMove" class="active" aria-pressed="true">移動</button><button id="toolPivot" aria-pressed="false">回転中心</button><button id="toolRotate" aria-pressed="false">回転</button></div>
+    <section id="groupControls" class="group-controls" hidden>
+     <p id="groupSummary" class="muted small"></p>
+     <label class="label" for="groupScope">変更する範囲</label>
+     <select id="groupScope"><option value="middle">中割りだけ</option><option value="key">この時点のポーズ</option><option value="all">動作全体</option></select>
+     <div class="field-grid">
+      <label>まとめて左右<input id="groupX" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label>
+      <label>まとめて上下<input id="groupY" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label>
+      <label>まとめて回転<input id="groupRotation" type="number" min="-4320" max="4320" step="1" value="0"><span>°</span></label>
+     </div>
+     <p class="muted small">選んだ部品を一緒に移動・回転します。黄色い点が共通の回転中心です。「回転中心」で点を動かせます。</p>
+    </section>
+   <section id="middleScopeControls" class="inspector-section" hidden>
+    <h3>中割りだけを直す</h3>
+    <p class="muted small">調整した腕と剣の位置・角度を、中割りの間だけ反映します。数値と記録済みのポーズは残ります。</p>
+    <button id="scopeMiddle" class="primary">今の調整を中割りだけに適用</button>
+    <p id="middleScopeStatus" class="muted small" aria-live="polite"></p>
+    <button id="scopeAll" class="subtle" hidden>動作全体への適用に戻す</button>
+   </section>
+   <section id="swordBlurControls" class="inspector-section" hidden>
+    <h3>剣の残像</h3>
+    <label class="label" for="swordBlurRange">残像が追いつく時間</label>
+    <input id="swordBlurRange" type="range" min="40" max="400" step="10" value="200" aria-describedby="swordBlurHelp">
+    <label class="time-input">時間 <input id="swordBlurDuration" type="number" min="40" max="400" step="10" value="200"> ms</label>
+    <p id="swordBlurHelp" class="muted small">短いほど速く追いつきます。まずは80〜120 msを試してみてください。</p>
+    <div class="layer-order"><button id="swordBlurFast">速め · 80 ms</button><button id="swordBlurDefault">標準 · 200 ms</button></div>
+   </section>
+   <div id="positionControls">
+    <div id="keyEditRow" class="key-edit-row" hidden><label><input id="keyMode" type="checkbox">この時点のポーズを編集</label><p id="keyEditHelp" class="muted small">オフなら、動作全体の位置を調整します。</p></div>
+    <div class="field-grid" id="transformFields">
+     <label>左右の位置<input id="valueX" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label>
+     <label>上下の位置<input id="valueY" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label>
+     <label id="rotationField">回転角度<input id="valueRotation" type="number" min="-4320" max="4320" step="1" value="0"><span>°</span></label>
+     <label>横の大きさ<input id="valueScaleX" type="number" min="5" max="800" step="1" value="100"><span>%</span></label>
+     <label id="scaleYField">縦の大きさ<input id="valueScaleY" type="number" min="5" max="800" step="1" value="100"><span>%</span></label>
+     <label id="opacityField">不透明度<input id="valueOpacity" type="number" min="0" max="100" step="1" value="100"><span>%</span></label>
+    </div>
+    <fieldset id="pivotFields" hidden><legend>回転の中心</legend><div class="field-grid"><label>左右<input id="valuePivotX" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label><label>上下<input id="valuePivotY" type="number" min="-4000" max="4000" step="1" value="0"><span>px</span></label></div><p class="muted small">黄色い点をドラッグしても変更できます。</p></fieldset>
+    <section id="motionControls" class="inspector-section" hidden><h3>動き方</h3><label class="label" for="motionPreset">動きを追加する</label><select id="motionPreset"><option value="">選んでください</option><option value="swing">大きく振る</option><option value="spin">ぐるっと一回転</option><option value="sway">ゆっくり揺らす</option><option value="reset">追加した動きを消す</option></select><label class="inline-check stopped"><input id="replaceMotion" type="checkbox">元の動きを止め、自分のポーズだけ使う</label><label class="label" for="easing">次のポーズまでの動き</label><select id="easing"><option value="smooth">なめらかに動く</option><option value="linear">同じ速さで動く</option><option value="hold">次の時点まで止める</option></select><button id="deleteKey" class="subtle" disabled>この時点のポーズを削除</button></section>
+   </div>
+   <section id="maskControls" hidden><h3>切り抜く範囲</h3><p class="muted">原画の点をドラッグして、部品に含める範囲を調整します。</p><label class="label" for="maskRegion">編集する範囲</label><select id="maskRegion"></select><button id="redrawMask">輪郭を描き直す</button><button id="addMaskRegion">別の範囲を追加</button><div class="mask-finish" id="maskFinish" hidden><p>輪郭に沿って3点以上クリック</p><button id="finishMask" class="primary">輪郭を確定する</button><button id="cancelMask">やめる</button></div><button id="removeMaskRegion" class="subtle">この範囲を削除</button><p id="maskNote" class="muted small"></p></section>
+   <button id="resetSelection" class="reset-button">この画像の調整をリセット</button>
+  </aside>
+ </main>
+ <footer class="status-bar"><span id="status" role="status" aria-live="polite">準備中…</span><span>ドラッグで移動 · 矢印で微調整 · Ctrl + Z で戻す</span></footer>
+ <dialog id="helpDialog"><h2>大枠から、気になるところだけ直す</h2><ol><li>左上でキャラクターを選びます。色違いも同じ原画の調整を共有します。</li><li>「画像全体」で表示位置を、部品を選ぶと腕や剣だけの位置を直せます。左の一覧は上が手前です。</li><li>動かしたい時点へ時間を合わせ、「この時点のポーズを編集」をオン。位置や角度を変えると、その時点のポーズを記録します。</li><li>肩ごと回す場合は、肩鎧の部品を選びます。「回転中心」で黄色い点を動かすと、回る中心を変更できます。</li><li>「切り抜き」では原画の輪郭を調整できます。点を動かすか、「輪郭を描き直す」で囲み直します。</li><li>「保存してゲームに反映」を押し、「実戦で確認」で見え方を確かめます。調整ファイルを渡せば、Codexも続きを修整できます。</li></ol><p>下書きは自動保存されます。調整ファイルの書き出しでバックアップできます。元の原画はそのまま残ります。</p><button id="closeHelp" class="primary">編集を始める</button></dialog>
+ <script src="./assets/encounters.js" defer></script><script src="./assets/character-art.js" defer></script><script src="./assets/character-ready.js" defer></script><script src="./assets/character-knight.js" defer></script><script src="./assets/combat-art.js" defer></script><script src="./assets/character-edit.js" defer></script><script src="./assets/character-hero-puppet.js" defer></script><script src="./assets/character-enemy-data.js" defer></script><script src="./assets/character-enemy-puppet.js" defer></script><script src="./assets/character-knight-puppet.js" defer></script><script src="./assets/art-studio.js" defer></script>
+</body>
+</html>

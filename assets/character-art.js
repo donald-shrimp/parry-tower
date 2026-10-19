@@ -104,13 +104,34 @@
 
  // All enemy poses are in the same local coordinate system as game.js:
  // feet y=0, body center ~(-70), and attack tip (reach,-58) at impact.
+ function attackTip(d){
+  const e=d.e,id=e.sprite||e.id,c=d.charge||0,p=d.p||0,a=d.action??p,r=d.recoil||0;
+  const drive=smooth(a),y=d.impactY??-58;
+  const reach=d.m?.reach||(e.kind==='slime'?49:e.kind==='guardian'?130:e.kind==='wraith'?108:110);
+  if(id==='sentinel')return {x:mix(34,reach,drive)-8*r,y:mix(-142,y,drive)-8*r};
+  if(id==='clockwork')return {x:mix(38,reach,drive)-6*r,y:mix(-98,y,drive)-6*r};
+  if(e.kind==='slime'){
+   const leap=smooth(p);return {x:reach-11*(1-leap),y:y+28*c+8*(1-leap)};
+  }
+  if(e.kind==='rogue'){
+   const handed=Math.max(0,(Number(e.index)||0)-((d.rec||0)>0?1:0))%2;
+   return id==='duelist'?{x:mix(35,reach,drive),y:mix(handed?-38:-102,y,drive)}
+    :{x:50+(reach-50)*a,y:-68+(y+68)*a-r*20};
+  }
+  if(e.kind==='wraith')return id==='cantor'
+   ?{x:mix(38,reach,drive)-9*r,y:mix(-103,y,drive)-5*r}
+   :{x:32+(reach-32)*a-r*14,y:-89+(y+89)*a+r*15};
+  const angle=p>0?mix(-2.16,0,d.weighted?p:smooth(p*p)):(c>0?mix(-.92,-2.16,c):-.92);
+  const bladeAngle=mix(angle,0,d.rec||0)-r*(e.kind==='guardian'?.32:.53);
+  return {x:22+(e.kind==='guardian'?108:88)*Math.cos(bladeAngle),y:y+(e.kind==='guardian'?108:88)*Math.sin(bladeAngle),angle:bladeAngle};
+ }
  function drawSlime(ctx,d){
   const {now=0,charge=0,p=0,recoil=0}=d,reach=d.m?.reach||49;
-  const leap=smooth(p),squash=charge*.25,crestX=reach-11*(1-leap),crestY=-58+28*charge+8*(1-leap);
+  const tip=attackTip(d),leap=smooth(p),squash=charge*(d.weighted?.34:.25),crestX=tip.x,crestY=tip.y;
   const wobble=Math.sin(now/240)*1.5;
   ctx.save();ctx.translate(0,wobble*(1-leap));
   // An irregular, semitransparent-looking blob with a sweeping forward snout.
-  const top=-84+30*charge-5*leap,back=-40-10*charge-13*leap;
+  const top=-84+(d.weighted?43:30)*charge-5*leap,back=-40-(d.weighted?17:10)*charge-13*leap;
   ctx.beginPath();ctx.moveTo(back,0);
   ctx.bezierCurveTo(back-18,-21,-40,-62+20*charge,-16,top);
   ctx.bezierCurveTo(3,top-18,crestX-22,top-14,crestX,crestY);
@@ -134,7 +155,7 @@
  }
  function drawRogue(ctx,d,dual){
   const {e,now=0,charge=0,p=0,action=p,rec=0,recoil=0}=d;
-  const crouch=charge*(dual?14:19),drive=smooth(action);
+  const crouch=charge*(d.weighted?(dual?20:28):(dual?14:19)),drive=smooth(action);
   ctx.save();
   poly(ctx,[[-24,-82+crouch],[-42,-58+crouch],[-43,-14],[-29,0],[-5,-15],[26,0],[21,-61+crouch]],'#402a42');
   poly(ctx,[[-32,-62+crouch],[-40,-24],[-26,-10],[-15,-42]],dual?'#943b50':'#564362',null);
@@ -150,19 +171,21 @@
   line(ctx,[[-11,-99+crouch],[12,-99+crouch]],dual?'#ff9c9e':'#f0aed9',3.5);
   line(ctx,[[-11,-93+crouch],[12,-93+crouch]],'#d5bdce',1.5);
   const handed=Math.max(0,(Number(e.index)||0)-(rec>0?1:0))%2;
-  const tipX=dual?mix(35,d.m?.reach||110,drive):50+((d.m?.reach||110)-50)*action;
-  const tipY=dual?mix(handed?-38:-102,-58,drive):-68+10*action-recoil*20;
+  const tip=attackTip(d),tipX=tip.x,tipY=tip.y;
   const fistX=dual?22+18*drive:22+41*action-recoil*22;
   const fistY=dual?-57-3*charge:-53+7*charge-5*action-recoil*6;
-  line(ctx,[[12,-56+crouch],[fistX,fistY]],dual?'#d5afb3':'#aba1b8',10);
+  // A visible elbow transfers the crouch into the thrust; the blade stays gripped.
+  const arm=d.weighted?[[12,-56+crouch],[19+14*drive,-37+crouch*.45],[fistX,fistY]]:[[12,-56+crouch],[fistX,fistY]];
+  if(d.weighted)line(ctx,arm,INK,14);line(ctx,arm,dual?'#d5afb3':'#aba1b8',10);
   dot(ctx,fistX,fistY,5,'#d5bbc2');
   line(ctx,[[fistX,fistY],[tipX,tipY]],'#45425e',9);
   line(ctx,[[fistX,fistY],[tipX,tipY]],dual?'#ffd4d8':'#f0eaf8',5);
   line(ctx,[[fistX,fistY],[tipX,tipY]],'#fffefd',1.5);
   line(ctx,[[fistX-6,fistY-8],[fistX+6,fistY+8]],'#b98b85',5);
   if(dual){
-   line(ctx,[[-18,-54+crouch],[-13+7*charge,-62-4*charge]],'#a97788',8);
-   line(ctx,[[-13+7*charge,-62-4*charge],[-43+24*charge,-121+16*charge]],'#ecd3d4',5.5);
+   const secondY=d.weighted&&handed?24*drive:0;
+   line(ctx,[[-18,-54+crouch],[-13+7*charge,-62-4*charge+secondY]],'#a97788',8);
+   line(ctx,[[-13+7*charge,-62-4*charge+secondY],[-43+24*charge,-121+16*charge+secondY]],'#ecd3d4',5.5);
   }
   if(action>.15&&action<.9){
    ctx.save();ctx.globalAlpha=.22;
@@ -172,7 +195,7 @@
  }
  function drawWraith(ctx,d,cantor){
   const {now=0,charge=0,p=0,action=p,recoil=0}=d;
-  const hover=Math.sin(now/320)*3,lift=charge*(cantor?10:14),drive=smooth(action);
+  const hover=Math.sin(now/320)*3,lift=charge*(d.weighted?(cantor?15:21):(cantor?10:14)),drive=smooth(action);
   ctx.save();ctx.translate(0,hover*(1-action));
   // Robe has three separated floating tails, rather than conventional legs.
   poly(ctx,[[-36,-79+lift],[-23,-106-lift],[14,-108-lift],[36,-76+lift],[42,-22],[22,-2],[8,-21],[-9,1],[-38,-16]],cantor?'#61518a':'#434b89');
@@ -186,14 +209,14 @@
    rune(ctx,-25,-81-lift,'#c5a7f9');
    rune(ctx,-16,-62-lift,'#a3edff');
    // The cantor projects a luminous palm and scripted shockwave.
-   const hand=[25+12*drive,-62-29*charge+8*drive],tx=mix(38,d.m?.reach||108,drive),ty=mix(-103,-58,drive);
+   const hand=[25+12*drive,-62-29*charge+8*drive],tip=attackTip(d),tx=tip.x,ty=tip.y;
    line(ctx,[[10,-59],hand],'#af9ed8',9);
-   line(ctx,[hand,[tx-9*recoil,ty-5*recoil]],'#c8edfb',7);
-   dot(ctx,tx-9*recoil,ty-5*recoil,5,'#e2f9ff');
+   line(ctx,[hand,[tx,ty]],'#c8edfb',7);
+   dot(ctx,tx,ty,5,'#e2f9ff');
    if(charge>.1)for(let i=0;i<3;i++){const a=now/640+i*Math.PI*2/3;dot(ctx,19+Math.cos(a)*25,-73+Math.sin(a)*19,2.5,'#c8b8f8');}
   }else{
    const handX=22+69*action-recoil*11,handY=-38-19*charge-19*action+recoil*13;
-   const tipX=32+((d.m?.reach||108)-32)*action-recoil*14,tipY=-89+31*action+recoil*15;
+   const tip=attackTip(d),tipX=tip.x,tipY=tip.y;
    line(ctx,[[18,-62-lift],[handX,handY]],'#7b85bc',11);
    line(ctx,[[handX,handY],[tipX,tipY]],'#c0def5',8);
    for(const off of [-7,0,7])line(ctx,[[tipX-8,tipY+off*.3],[tipX,tipY+off]],'#e2f6ff',2.5);
@@ -202,7 +225,7 @@
  }
  function drawGuardian(ctx,d){
   const {e,charge=0,p=0,rec=0,recoil=0,now=0}=d;
-  const lean=charge*8+p*10,flame=Math.sin(now/260)*2;
+  const lean=d.weighted?charge*14-Math.max(p,rec)*8:charge*8+p*10,flame=Math.sin(now/260)*2;
   ctx.save();
   poly(ctx,[[-20,-91],[-44,-77],[-51+flame,-23],[-34,-5],[-13,-20],[34,-3],[30,-66]],'#543b46');
   poly(ctx,[[-37,-67],[-46+flame,-18],[-28,-13],[-19,-53]],'#905c51',null);
@@ -223,10 +246,10 @@
   poly(ctx,[[-4,-73-lean],[4,-82-lean],[12,-73-lean],[4,-64-lean]],'#c88c6a',null);
   dot(ctx,4,-73-lean,4.5,'#ffdb98');
   // Matches base guardian: hand(22,-58), blade length 108 -> tip x=130,y=-58 at impact.
-  const angle=p>0?mix(-2.16,0,smooth(p*p)):(charge>0?mix(-.92,-2.16,charge):-.92);
-  const a=mix(angle,0,rec)-recoil*.32;
-  const hand=[22,-58],tip=[22+108*Math.cos(a),-58+108*Math.sin(a)];
-  line(ctx,[[11,-70-lean],[15,-61]],'#d4b392',13);
+  const point=attackTip(d),a=point.angle;
+  const hand=[22,d.impactY??-58],tip=[point.x,point.y];
+  const arm=d.weighted?[[11,-70-lean],[5-9*charge,-42-lean*.3],hand]:[[11,-70-lean],[15,-61]];
+  if(d.weighted)line(ctx,arm,INK,17);line(ctx,arm,'#d4b392',13);
   dot(ctx,15,-61,6,'#eed7b6');
   if(p>.1&&p<1){ctx.save();ctx.globalAlpha=.27;line(ctx,[hand,tip],'#ffb67e',17);ctx.restore();}
   line(ctx,[hand,tip],'#675062',13);
@@ -256,7 +279,7 @@
   line(ctx,[[0,-28],[0,24]],'#e6d5ab',4);
   line(ctx,[[-15,-21],[16,-21]],'#e6d5ab',4);
   dot(ctx,0,-9,5,'#f5e0b9');ctx.restore();
-  const hand=[19,-80-28*charge+8*drive],tip=[mix(34,reach,drive)-8*recoil,mix(-142,-58,drive)-8*recoil];
+  const point=attackTip(d),hand=[19,-80-28*charge+8*drive],tip=[point.x,point.y];
   line(ctx,[[1,-70],hand],'#94a8b9',13);
   line(ctx,[hand,tip],'#45576e',12);line(ctx,[hand,tip],'#f2e2bf',9);line(ctx,[hand,tip],'#fffcef',2);
   line(ctx,[[hand[0]-13,hand[1]+3],[hand[0]+13,hand[1]-5]],'#e0be83',6);
@@ -279,11 +302,19 @@
    for(let i=0;i<8;i++){const a=i*Math.PI/4;line(ctx,[[Math.cos(a)*(r-5),Math.sin(a)*(r-5)],[Math.cos(a)*(r+2),Math.sin(a)*(r+2)]],'#e9c88f',3.5);}
    dot(ctx,0,0,4,'#405c6d');ctx.restore();
   }
-  const hand=[30,-60-18*charge],tip=[mix(38,reach,drive)-6*recoil,mix(-98,-58,drive)-6*recoil];
+  const point=attackTip(d),hand=[30,-60-18*charge],tip=[point.x,point.y];
   line(ctx,[[14,-59],hand],'#d2b89a',14);
   line(ctx,[hand,tip],'#5d5e64',14);
   line(ctx,[hand,tip],'#d7bea0',10);line(ctx,[hand,tip],'#f8edda',3);
   dot(ctx,hand[0],hand[1],6,'#4e6670');
+  if(d.weighted){
+   dot(ctx,14,-59,8,'#344553');dot(ctx,14,-59,4,'#c6b28f');
+   // Steam is tied to the same release pose, so pausing freezes it too.
+   if(drive>.08&&drive<.95)for(let i=0;i<3;i++){
+    ctx.save();ctx.globalAlpha=.22*(1-drive);
+    ellipse(ctx,-30-i*9*drive,-79-i*10*drive,4+6*drive,3+4*drive,'#cfdfdc');ctx.restore();
+   }
+  }
   const pistonX=mix(42,reach-11,drive);
   line(ctx,[[pistonX-13,-68],[pistonX,-68]],'#91e9df',4);
   ctx.restore();return true;
@@ -348,5 +379,5 @@
   ctx.restore();
   return true;
  }
- return Object.freeze({drawHero,drawEnemy});
+ return Object.freeze({drawHero,drawEnemy,attackTip});
 });

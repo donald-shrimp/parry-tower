@@ -3,9 +3,9 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
 
-function makeHarness(seed={},devMode=false){
+function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal'){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[];
+ const audioEvents=[],artDrawCounts={hero:0,enemy:0};
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -31,7 +31,7 @@ function makeHarness(seed={},devMode=false){
  }
  for(const id of ids)node(id);
  const noop=()=>{};
- const ctx=new Proxy({},{
+ const ctx=new Proxy({globalAlpha:1},{
   get(target,k){
    if(k==='createLinearGradient'||k==='createRadialGradient')return ()=>({addColorStop:noop});
    if(k==='measureText')return ()=>({width:36});
@@ -63,7 +63,7 @@ function makeHarness(seed={},devMode=false){
  };
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
-  createElement(tag){return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
+  createElement(tag){if(tag==='canvas')return {getContext:()=>ctx};return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
   getElementById(id){if(!el.has(id))throw new Error('Unknown DOM id: '+id);return el.get(id)},
   addEventListener:(type,listener)=>{documentListeners[type]=listener},querySelectorAll:()=>[],hidden:false
  };
@@ -73,6 +73,22 @@ function makeHarness(seed={},devMode=false){
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console,Math:math
  };
+ if(artMode){
+  context.URL=URL;
+  window.location={search:artMode==='adopted'?'':'?art='+(artMode==='missing'?'impact':artMode==='missing-illustrated'?'illustrated':artMode)};window.document=document;window.URL=URL;window.localStorage=context.localStorage;
+  // Synchronous raster stand-ins exercise the real compositors in this VM.
+  window.Image=class {set src(_){this.onload?.();}};
+  if(['impact','illustrated','adopted'].includes(artMode))for(const name of [...(artMode==='adopted'?['palette-candidates','character-style']:[]),'character-art','character-ready','character-knight','combat-art',...(['illustrated','adopted'].includes(artMode)?['character-edit','character-hero-puppet','character-enemy-data','character-enemy-puppet','character-knight-puppet']:[])]){
+   document.currentScript={src:'http://localhost/assets/'+name+'.js'};
+   vm.runInNewContext(fs.readFileSync('assets/'+name+'.js','utf8'),context,{filename:name+'.js'});
+  }
+  document.currentScript=null;
+  if(['illustrated','adopted'].includes(artMode)){
+   const original=window.ParryKnightPuppet;
+   window.ParryKnightPuppet={...original,drawHero(...args){const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
+    drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
+  }
+ }
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
@@ -150,10 +166,14 @@ function makeHarness(seed={},devMode=false){
  };})();`);
  vm.runInNewContext(debugSource,context,{filename:'game.js'});
  if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
-  window,document,location:{search:'?floor=21&enemy=cantor%3Anormal'},URLSearchParams,console
+  window,document,location:{search:devSearch},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
+  readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);},
+  illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
+  artDrawCounts:()=>({...artDrawCounts}),
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
@@ -197,6 +217,59 @@ test('bestiary UI has no obsolete arena actions and practice buttons stay within
  assert.match(css,/\.codex-practice\{[^}]*width:100%/);
  assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
 });
+for(const variant of ['impact','illustrated','studio-edits','adopted'])test(variant+' art preserves score timing, damage, guard, progression and inputs across the roster',async()=>{
+ const artMode=variant==='studio-edits'?'illustrated':variant;
+ const edit=require('../assets/character-edit'),specs=require('../assets/character-enemy-data');
+ const edited={...edit.empty(),updatedAt:100,characters:Object.fromEntries(['hero','knight',...Object.keys(specs)].map(id=>[id,{placement:{x:30,y:-10,scale:1.1},layers:{body:{...edit.defaults(),rotation:12,opacity:.8,keys:[{time:0,x:0},{time:1500,x:35},{time:3000,x:0}]}},order:['body']}]))};
+ const seed=variant==='studio-edits'?{[edit.ACTIVE_KEY]:JSON.stringify(edited)}:{};
+ const plain=value=>JSON.parse(JSON.stringify(value));
+ const ids=['illustrated','adopted'].includes(artMode)?P.all.map(e=>e.id):['knight','slime','rogue','wraith','sentinel','duelist','cantor','clockwork','guardian','void_knight','endking'];
+ for(const id of ids){
+  const old=makeHarness(seed,true),improved=makeHarness(seed,true,artMode);
+  await improved.readyArt();
+  assert.deepEqual(improved.artStatus(),{hero:true,knight:true});
+  if(['illustrated','adopted'].includes(artMode))assert.deepEqual(improved.illustratedStatus(),{hero:true,knight:true});
+  for(const g of [old,improved]){
+   g.frame(10001); // Real pages paint the title before a dev launch chooses an enemy.
+   g.random(.5);assert.equal(g.dev().launch(5,id+(P.byId[id].rare?':rare':':normal')),true);
+   g.bloodTest().setEnemyHp(100000);
+  }
+  await improved.readyArt(P.byId[id]);
+  for(const kind of ['just','guard','miss','parry']){
+   for(const g of [old,improved]){
+    const due=g.state().attackAt;
+    g.frame(due-280);g.frame(due-160);
+    if(kind==='just'||kind==='parry'){g.clock(due-(kind==='just'?100:80));g.parry();}
+    else if(kind==='guard'){g.clock(due-150);g.hold();}
+    g.frame(due+1);g.release();g.frame(due+110);
+   }
+   assert.deepEqual(plain(improved.state()),plain(old.state()),id+' / '+kind);
+   assert.deepEqual(improved.audioEvents(),old.audioEvents(),id+' audio schedule changed');
+   assert.deepEqual([...improved.storage],[...old.storage],id+' storage changed');
+  }
+  if(['illustrated','adopted'].includes(artMode))for(const count of Object.values(improved.artDrawCounts()))assert.ok(count>=10,id+' must render the real illustrated mode');
+ }
+});
+
+for(const mode of ['missing','missing-illustrated'])test(mode+' module still plays and stores exactly the same result as the default renderer',()=>{
+ const old=makeHarness(),fallback=makeHarness({},false,mode);
+ for(const g of [old,fallback]){
+  g.random(.5);g.press('startBtn');
+  for(let i=0;i<6&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+ }
+ assert.equal(fallback.state().mode,'gameover');
+ assert.deepEqual(JSON.parse(JSON.stringify(fallback.state())),JSON.parse(JSON.stringify(old.state())));
+ assert.deepEqual([...fallback.storage],[...old.storage]);
+});
+
+test('developer review links select the requested regular, rare or elite instead of random floor enemies',()=>{
+ for(const [input,expected] of [['rogue','rogue:normal'],['gem_slime','gem_slime:rare'],['knight:elite','knight:elite'],['cantor:normal','cantor:normal']]){
+  const g=makeHarness({},true,'','?floor=2&enemy='+encodeURIComponent(input));
+  assert.equal(g.el.get('devEnemy').value,expected);
+  g.press('devLaunch');assert.equal(g.state().encounterKey,expected);
+ }
+});
+
 test('title exposes the encyclopedia and only previously encountered enemies become trainable',()=>{
  const g=makeHarness();
  assert.equal(g.state().mode,'title');
@@ -270,8 +343,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-2"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-2"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-3"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-3"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -970,7 +1043,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-2"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-3"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1289,7 +1362,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-2"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-3"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
