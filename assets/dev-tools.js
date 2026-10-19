@@ -45,7 +45,9 @@
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
  if(Number.isFinite(targetFloor)&&targetFloor>=1&&targetFloor<=999)floor.value=String(Math.floor(targetFloor));
- if(params.get('enemy')&&options.some(v=>v.key===params.get('enemy')))enemy.value=params.get('enemy');
+ const requestedEnemy=params.get('enemy');
+ const requestedKey=options.find(v=>v.key===requestedEnemy)?.key||options.find(v=>v.key===requestedEnemy+':normal')?.key||options.find(v=>v.key===requestedEnemy+':rare')?.key;
+ if(requestedKey)enemy.value=requestedKey;
  renderBalance();
  window.__parryDevUI={launch,renderBalance,enemyCount:options.length};
 })();

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>フィルタ塗り分け工房 · パリィの塔</title><link rel="stylesheet" href="./assets/filter-paint.css"></head>
+<body><header><div><p class="eyebrow">PARRY TOWER / COLOR WORKSHOP</p><h1>フィルタ塗り分け工房</h1><p>画像を読み込む → フィルタを作る → 使いたい場所を塗る</p></div><nav aria-label="ファイル"><label class="button">画像を追加<input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden></label><label class="button">編集データを開く<input id="projectFile" type="file" accept="application/json,.json" hidden></label><button id="saveProject">編集データを保存</button><button id="exportPNG" class="primary">PNGを書き出す</button></nav></header>
+<main><aside>
+ <section><h2>1. 画像</h2><select id="images" aria-label="編集中の画像"><option>画像を読み込んでください</option></select><p class="hint">複数画像でフィルタを共有します。塗る範囲は画像ごとに保存。</p><button id="loadKing">終刻の王の続きから始める</button><p id="draftStatus" class="hint" role="status">下書きを確認中…</p></section>
+ <section><div class="section-title"><h2>2. フィルタ</h2><button id="addFilter" aria-label="フィルタを追加">＋ 追加</button></div><div id="filterList" role="group" aria-label="フィルタ一覧"></div>
+  <label>名前<input id="filterName" type="text" maxlength="60"></label>
+  <p class="hint">塗るのは適用範囲だけ。元画像のしわ・陰影・質感を保ち、色味を変えます。</p>
+  <div id="adjustControls"><label>色相 <output id="hueOut"></output><input id="hue" type="range" min="-180" max="180" value="35"></label><label>彩度 <output id="saturationOut"></output><input id="saturation" type="range" min="0" max="250" value="110"></label><label>明るさ <output id="brightnessOut"></output><input id="brightness" type="range" min="0" max="200" value="100"></label><label>コントラスト <output id="contrastOut"></output><input id="contrast" type="range" min="0" max="200" value="100"></label></div>
+  <label>強さ <output id="opacityOut"></output><input id="opacity" type="range" min="0" max="100" value="100"></label>
+  <label class="check"><input id="preserveInk" type="checkbox" checked>黒い輪郭を保つ</label><label class="check"><input id="filterEnabled" type="checkbox" checked>このフィルタを表示</label>
+  <div class="row"><button id="paintAll">画像全体を適用範囲に</button><button id="clearFilter">この範囲指定を消す</button></div><button id="deleteFilter" class="quiet">フィルタを削除</button>
+ </section>
+ <section class="help"><h2>使い方</h2><p>左でフィルタを選び、右の絵を塗ります。間違えたら「戻す」。消しゴムは元の画像へ戻します。</p><p>囲み塗りは点を順にクリックして「囲みを塗る」。Escで取り消し。Spaceを押しながらドラッグすると表示を移動できます。</p><p>PNGは見た目だけの完成画像。「編集データ」なら元画像・フィルタ・塗り分けをまとめて再編集できます。</p><a href="./pixel-compare.html?compare=palette">配色比較へ ↗</a></section>
+</aside><section class="workspace" aria-label="塗り分け編集">
+ <div class="tools" role="toolbar" aria-label="塗り方"><button data-tool="brush" aria-pressed="true">ブラシ B</button><button data-tool="erase" aria-pressed="false">消しゴム E</button><button data-tool="polygon" aria-pressed="false">囲み塗り P</button><button data-tool="pick" aria-pressed="false">塗り分けを選ぶ I</button><button data-tool="pan" aria-pressed="false">移動 H</button><span class="spacer"></span><button id="undo" disabled>戻す</button><button id="redo" disabled>やり直す</button></div>
+ <div class="options"><label>ブラシの太さ <input id="brushSize" type="range" min="1" max="160" value="24"><output id="brushOut">24 px</output></label><button id="finishPolygon" disabled>囲みを塗る</button><button id="cancelPolygon" disabled>囲みを取消</button></div>
+ <div class="view-options"><button id="fit">全体を見る</button><button id="zoomOut" aria-label="縮小">−</button><input id="zoom" aria-label="拡大率" type="range" min="5" max="400" value="100"><output id="zoomOutLabel">100%</output><button id="zoomIn" aria-label="拡大">＋</button><label class="check"><input id="showOriginal" type="checkbox">原画を見る</label><label class="check"><input id="showMask" type="checkbox">塗り分けを表示</label></div>
+ <div id="viewport" tabindex="0" aria-label="画像キャンバス。ブラシでドラッグ、囲み塗りはクリックで指定"><div id="empty"><strong>ここへ画像をドロップ</strong><p>PNG・JPEG・WebPに対応。左のボタンからも追加できます。</p></div><div id="surface" hidden><canvas id="paintCanvas" aria-label="フィルタを塗る画像"></canvas><canvas id="maskCanvas" aria-hidden="true"></canvas><canvas id="guideCanvas" aria-hidden="true"></canvas></div></div>
+ <div class="statusbar"><span id="status" role="status">画像を追加して始めてください。</span><span id="coordinates"></span></div>
+ <p class="footnote">処理はこのブラウザ内で行います。PNG出力は原寸・透明度を保持し、表示用の背景や塗り分け色は入りません。ゲームへの反映は行いません。</p>
+</section></main><script src="./assets/filter-paint-core.js" defer></script><script src="./assets/filter-paint.js" defer></script></body></html>

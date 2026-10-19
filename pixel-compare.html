@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+ <title>立ち絵のドット絵比較 · パリィの塔</title><link rel="stylesheet" href="./assets/pixel-compare.css"></head>
+<body><main>
+ <header><div><p class="eyebrow">PARRY TOWER / PIXEL ART STUDY</p><h1 id="pageTitle">いつもの立ち絵を、ドット絵に。</h1><p id="intro">元の絵とポーズを保って加工した3つの候補。見た目と動きで比べてください。</p></div><span class="status">細かめを本編に採用済み</span></header>
+ <label class="comparison-mode">比較する内容<select id="comparison"><option value="pixel">原画とドット絵</option><option value="palette">色違い12体の現在の配色と提案配色</option></select></label>
+ <section class="toolbar" aria-label="比較する立ち絵">
+  <label>キャラクター<select id="character"></select></label>
+  <label>ポーズ<select id="pose"><option value="ready">構え</option></select></label>
+  <label>ドットの細かさ<select id="style"><option value="original" disabled>原画解像度 · ドット加工なし</option><option value="fine" selected>細かめ · 元の質感を残す</option><option value="balanced">標準 · ドット感と表情</option><option value="retro">レトロ強め · 粗いドット</option></select></label>
+  <label>表示<select id="zoom"><option value="1" selected>全体を見る</option><option value="2">2倍で見る</option><option value="3">3倍で見る</option></select></label>
+ </section>
+ <section class="pair" aria-label="原画とドット絵を比較">
+  <article><h2><span id="beforeTitle">今の立ち絵</span><small id="beforeLabel">原画</small></h2><div class="image-stage"><img id="original" alt="加工前の立ち絵"></div></article>
+  <article><h2><span id="afterTitle">ドット絵の候補</span><small id="variantLabel">標準</small></h2><div class="image-stage"><img id="candidate" class="pixel" alt="加工したドット絵の立ち絵"></div></article>
+ </section>
+ <p id="details" class="note" role="status">候補を読み込み中…</p>
+ <section class="motion">
+  <div class="section-head"><div><h2>動きでも比べる</h2><p>同じ時点のモーションを左右に並べます。主人公は両方の画面に登場します。</p></div><button id="openMotion" type="button">動きの比較を開く</button></div>
+  <div id="motionPanel" hidden>
+   <div class="transport"><button id="play" type="button">再生</button><label>速さ<select id="speed"><option value="1">実戦速度</option><option value="0.25">スロー</option></select></label><label>種別<select id="rank"><option value="normal">通常・レア</option><option value="elite">エリート</option></select></label><label>受け方<select id="result"><option value="just">ジャストパリィ</option><option value="parry">パリィ</option><option value="guard">ガード</option><option value="miss">被弾</option></select></label></div>
+   <label class="timeline">動きの位置 <output id="timeLabel">0.10 s</output><input id="time" aria-label="モーションの時点" type="range" min="0" max="2899" value="100" step="1"></label>
+   <div class="pair motion-pair"><article><h3 id="beforeMotionTitle">今の立ち絵</h3><iframe id="beforeMotion" title="現在のモーション" loading="lazy"></iframe></article><article><h3 id="afterMotionTitle">ドット絵の候補</h3><iframe id="afterMotion" title="候補のモーション" loading="lazy"></iframe></article></div>
+  </div>
+ </section>
+ <section><div class="section-head"><div><h2 id="galleryTitle">全キャラクターを見比べる</h2><p>左が今の立ち絵、右が選択中の候補です。カードを押すと上で大きく確認できます。</p></div></div><div id="gallery" class="gallery"></div></section>
+ <footer><p>画像生成は使っていません。ドット絵は縮小・減色・透明度の整理で加工し、配色候補は布・金属・刃などを分けて事前に加工しています。構えと打ち込みは共通の配色です。細かめと了承済み配色をゲームに採用しました。原画とほかの細かさも比較用に残しています。</p><a href="./filter-paint.html?starter=endking">フィルタ塗り分け工房 ↗</a> · <a href="./pixel-compare.html?compare=palette">色違い12体の配色候補 ↗</a> · <a href="./art-preview.html">動作レビューへ戻る ↗</a></footer>
+</main><script src="./assets/encounters.js" defer></script><script src="./assets/pixel-compare.js" defer></script></body></html>

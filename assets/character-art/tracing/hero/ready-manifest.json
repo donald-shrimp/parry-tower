@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "id": "hero",
+  "mode": "ready",
+  "status": "draft_visual_review",
+  "image": "hero-ready-static.svg",
+  "sourceSha256": "9769ff974caaf9972521833d3b9b1295c8c5de313bcfa129823c4e4cbe681894",
+  "sourcePx": [
+    1402,
+    1122
+  ],
+  "svgSize": [
+    420,
+    336
+  ],
+  "gameLocal": {
+    "scale": 0.34,
+    "origin": [
+      211,
+      320
+    ]
+  },
+  "runtime": "assets/character-ready.js",
+  "note": "Live mask polygons are owned by the JS renderer. This JSON documents joints and hierarchy, and is not loaded by the renderer.",
+  "joints": [
+    {
+      "part": "body",
+      "parent": null,
+      "renderOrder": 0
+    },
+    {
+      "part": "upperarm",
+      "parent": "body",
+      "pivot": [
+        211,
+        166
+      ],
+      "renderOrder": 1
+    },
+    {
+      "part": "forearm",
+      "parent": "upperarm",
+      "pivot": [
+        179,
+        166
+      ],
+      "includes": [
+        "glove",
+        "sword"
+      ],
+      "renderOrder": 2
+    },
+    {
+      "part": "shield",
+      "parent": "body",
+      "pivot": [
+        283,
+        162
+      ],
+      "renderOrder": 3
+    }
+  ]
+}

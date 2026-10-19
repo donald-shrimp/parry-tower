@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="color-scheme" content="dark"><title>パリィの塔 · キャラクター動作比較</title>
+ <link rel="stylesheet" href="./assets/art-preview.css">
+</head>
+<body>
+ <main>
+  <header><div><p class="eyebrow">PARRY TOWER / ILLUSTRATED CHARACTERS</p><h1>間合いと予告で、敵の違いを見せる。</h1><p class="intro">全26種の動作レビュー。原画・部品・スローで、構えから接触と反動まで確認できます。</p></div><a id="playLink" class="play" href="./dev.html?floor=2&amp;enemy=knight&amp;art=illustrated">この敵と戦う ↗</a></header>
+  <section class="controls" aria-label="比較設定">
+   <label>キャラクター<select id="enemySelect"></select></label>
+   <label>種別<select id="rankSelect"><option value="normal">通常</option><option value="elite">エリート・赤黒いオーラ</option></select></label>
+   <button id="prevEnemy" type="button">← 前の敵</button><button id="nextEnemy" type="button">次の敵 →</button>
+   <label>表示案<select id="lookSelect"><option value="illustrated">新原画・全キャラクター</option><option value="impact">以前の原画・拡大案</option><option value="rework">不採用の図形試作（比較用）</option></select></label>
+   <label>画面サイズ<select id="sizeSelect"><option value="desktop">PC</option><option value="mobile">スマホ（端末幅360px）</option></select></label>
+   <label>再生速度<select id="speedSelect"><option value="1">実戦速度</option><option value="0.25">スロー ×0.25</option></select></label>
+   <label>受け方<select id="resultSelect"><option value="just">ジャストパリィ</option><option value="parry">パリィ</option><option value="guard">ガード</option><option value="miss">被弾</option></select></label>
+   <label>比較対象<select id="comparisonSelect"><option value="sword-v4">以前の切り抜き動作 v4（参考）</option><option value="previous">以前のサイズ・動作</option><option value="main">mainの間合い（参考）</option><option value="source">構えの原画</option></select></label>
+   <button id="compareBtn" type="button" aria-pressed="false">比較を並べる</button>
+   <button id="skeletonBtn" type="button" aria-pressed="false">骨格を見る</button>
+   <button id="partsBtn" type="button" aria-expanded="false" aria-controls="partsPanel">部品を見る</button>
+   <a href="./pixel-compare.html">ドット絵候補を比較 ↗</a>
+  </section>
+  <section id="stages" class="stages" aria-label="動作プレビュー">
+   <article class="stage-card old" hidden><div class="stage-heading"><h2 id="comparisonTitle">調整前</h2><span id="comparisonNote">以前の縮尺・短い踏み込み</span></div><canvas id="before" aria-label="比較対象の表示"></canvas></article>
+   <article class="stage-card"><div class="stage-heading"><h2 id="enemyTitle">錆びた騎士 <span class="tag">PREVIEW</span></h2><span id="artSource">原画を読み込み中</span></div><canvas id="after" aria-label="改善後の動作"></canvas></article>
+  </section>
+  <section class="transport" aria-label="モーション再生">
+   <button type="button" id="togglePlay" class="primary">一時停止</button>
+   <div class="scrub"><label for="frameRange">動きの位置 <span id="phaseLabel" aria-live="off">待機</span></label><input id="frameRange" type="range" min="0" max="2900" step="1" value="0"></div>
+   <span id="timeLabel">0.00 s</span>
+  </section>
+  <nav class="poses" aria-label="ポーズを選ぶ">
+   <button id="nextStrike" type="button" hidden>次の剣で接触</button>
+   <button type="button" data-time="100">待機</button><button type="button" data-time="1160">溜め</button><button type="button" data-time="1440">振り</button><button type="button" data-time="1500">接触</button><button type="button" data-time="1590">主人公の反撃</button><button type="button" data-time="1600">腕の伸び</button><button type="button" data-time="1623">弾かれ</button><button type="button" data-time="1780">戻り</button>
+  </nav>
+  <section id="partsPanel" class="parts-panel" hidden><h2 id="partsTitle">元PNGから分けた部品</h2><p id="partsDescription">元の画素と構えを保って分割。肩・肘・攻撃部位をつなぎ、脚の構えは保ちます。</p><p id="poseArtLinks" hidden><a id="readyArtLink">構えの原画を開く</a> · <a id="contactArtLink">打ち込みの原画を開く</a></p><p id="idleMatch" role="status">待機の再合成を原画と照合中…</p><canvas id="partsCanvas" width="1200" height="650" aria-label="選択した敵の元PNGから分離した部品"></canvas></section>
+  <section id="heroPartsPanel" class="parts-panel" hidden><h2>主人公：元PNGから分けた部品</h2><p>奥の青マント・下半身・左腕と盾・胴と兜・右上腕・剣と握り手と前腕。反撃は肘を伸ばす正回転360°。元の240msで一周し、構えへ戻ります。</p><p id="heroIdleMatch" role="status">主人公の原画との一致を照合中…</p><canvas id="heroPartsCanvas" width="1200" height="650" aria-label="主人公の元PNGを分離した6部品"></canvas></section>
+  <section class="pose-sheet" aria-labelledby="poseGalleryTitle"><h2 id="poseGalleryTitle">構えから復帰まで</h2><p>各ポーズを押すと、上の大きな画面で止めて確認できます。再生・スロー・骨格・部品も併用できます。 <a id="previewJump" href="#stages">大きなプレビューへ戻る ↑</a></p><div id="poseGallery" class="pose-gallery"></div></section>
+  <section id="enemyCandidates" class="enemy-candidates" aria-labelledby="candidateTitle"><h2 id="candidateTitle">原画とモーションの一覧</h2><p>14体の原画から、色違いを含む全26種へ展開。「修整版」は今回の指摘を反映した6体です。「動作を見る」で上のプレビューを切り替えます。</p><div id="rosterGallery" class="candidate-grid"></div></section>
+  <footer><p id="loadStatus" role="status">比較用の立ち絵を読み込み中…</p><p>主人公は定位置で受け、敵が後退・接近します。スマホでは攻撃中の剣や布の見切れを許容。「比較を並べる」で調整前・原画を同じ時刻で確認できます。mainの参考表示は元の配置・接近式に以前の試作絵を載せたものです。</p><a href="./art-studio.html">キャラクター工房で位置・部品・動きを調整する ↗</a> · <a id="normalPlayLink" href="./index.html?art=illustrated">通常プレイで確認する ↗</a> · <a href="http://127.0.0.1:8001/dev.html?floor=2&amp;enemy=knight">mainの実戦表示を開く ↗</a></footer>
+ </main>
+ <script src="./assets/encounters.js" defer></script>
+ <script src="./assets/character-art.js" defer></script>
+ <script src="./assets/character-ready.js" defer></script>
+ <script src="./assets/character-knight.js" defer></script>
+ <script src="./assets/combat-art.js" defer></script>
+ <script src="./assets/character-edit.js" defer></script>
+ <script src="./assets/palette-candidates.js" defer></script>
+ <script src="./assets/pixel-art-preview.js" defer></script>
+ <script src="./assets/character-hero-puppet.js" defer></script>
+ <script src="./assets/character-enemy-data.js" defer></script>
+ <script src="./assets/character-enemy-puppet.js" defer></script>
+ <script src="./assets/character-knight-puppet.js" defer></script>
+ <script src="./assets/character-rig.js" defer></script>
+ <script src="./assets/art-preview.js" defer></script>
+</body>
+</html>

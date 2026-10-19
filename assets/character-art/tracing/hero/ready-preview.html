@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主人公：新ポーズSVGのモーション確認</title>
+<style>
+body{background:#11192a;color:#e9ecf6;font:15px/1.6 system-ui,sans-serif;max-width:800px;margin:20px auto;padding:0 16px}
+h1{font-size:1.3rem}canvas{display:block;background:#172034;border:1px solid #687690;border-radius:12px;max-width:100%}
+button{margin:4px;padding:8px 16px;border:1px solid #7891bd;border-radius:9px;background:#25416f;color:white;cursor:pointer}
+small{color:#b6c6dd}
+</style></head><body>
+<h1>主人公：剣と盾を構えたトレースSVG</h1>
+<p>採用した標準動作は<b>逆回転360°</b>。正回転360°・従来の小振りと比較できます。描画のみの試作で、戦闘判定は変更しません。</p>
+<div><button data-id="idle">待機</button><button data-id="guard">盾を上げる</button><button data-id="attack">従来の小振り（比較）</button><button data-id="spin">正回転360°（実戦速度）</button><button data-id="slowSpin">正回転360°（スロー）</button><button data-id="reverseSpin">採用仕様：逆回転360°（実戦速度）</button><button data-id="slowReverseSpin">逆回転360°（スロー）</button><button data-id="just">ジャスト</button></div>
+<canvas width="720" height="360" id="stage"></canvas>
+<p><small>実戦は <code>dev.html?floor=2&amp;enemy=knight&amp;art=ready</code> が採用仕様（逆回転360°）。<code>spin=-360</code>も同義、<code>spin=360</code>は正回転、<code>spin=legacy</code>は従来の小振り。スロー再生はこのページのみ。Draft・未マージ。</small></p>
+<script src="../../../../assets/character-ready.js?v=v0.9.3-2"></script>
+<script>
+'use strict';
+const canvas=document.querySelector('#stage'),ctx=canvas.getContext('2d'),api=window.ParryHeroReady;
+let mode='idle',started=performance.now();
+for(const b of document.querySelectorAll('button'))b.addEventListener('click',()=>{mode=b.dataset.id;started=performance.now()});
+api.preload();
+function frame(now){
+ const {width:w,height:h}=canvas;ctx.clearRect(0,0,w,h);
+ ctx.fillStyle='#253248';ctx.fillRect(0,h*.81,w,h*.19);
+ ctx.fillStyle='#8090a7';ctx.fillRect(0,h*.81,w,3);
+ ctx.save();ctx.translate(w*.31,h*.81+Math.sin(now/390));ctx.scale(1.2,1.2);
+ const t=(now-started),lift=(mode==='guard'||mode==='just')?Math.min(1,t/100):0;
+ const spin360=['spin','slowSpin','reverseSpin','slowReverseSpin'].includes(mode);
+ const reverseSpin=mode==='reverseSpin'||mode==='slowReverseSpin';
+ const attacking=mode==='attack'||spin360;
+ const slowSpin=mode==='slowSpin'||mode==='slowReverseSpin';
+ const duration=slowSpin?960:240;
+ const action=attacking&&t<duration?Math.max(0,1-t/duration):0;
+ api.drawHero(ctx,{now,lift,heldLift:lift,guardHeld:mode==='guard',action,spin360,reverseSpin,push:0,
+  lastStrikeKind:mode==='just'?'just':'',lastImpactAt:mode==='just'?started:-99999});
+ ctx.restore();
+ if(attacking&&t>(slowSpin?1150:430)){mode='idle';}
+ ctx.fillStyle='#8e91a4';ctx.fillRect(w*.78,h*.81-110,46,110);
+ ctx.fillStyle='#e3aa72';ctx.fillRect(w*.76,h*.81-120,77,16);
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

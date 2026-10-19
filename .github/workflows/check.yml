@@ -9,39 +9,47 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check JS syntax
         run: |
-          node --check assets/diagnostics.js
-          node --check assets/routes.js
-          node --check assets/events.js
-          node --check assets/relics.js
-          node --check assets/progression.js
-          node --check assets/game.js
-      - name: Check dedicated enemies and developer launcher syntax
+          for script in assets/*.js scripts/*.js; do node --check "$script"; done
+      - name: Verify gameplay, adopted artwork, tools and asset contracts
+        run: node --test tests/*.test.js
+      - name: Verify deterministic image processing
         run: |
-          node --check assets/enemy-motions.js
-          node --check assets/dev-tools.js
-          node --test tests/enemy-motions.test.js
-      - name: Check encounter data and gameplay invariants
+          python -m pip install Pillow numpy
+          python -m unittest discover -s tests -p 'test_*art.py'
+      - name: Validate reference image and SVG layers
+        shell: python
         run: |
-          node --check assets/encounters.js
-          node --test tests/final-stage.test.js tests/deep-zones.test.js tests/diagnostics.test.js tests/encounters.test.js tests/progression.test.js tests/relics.test.js tests/routes.test.js tests/events.test.js tests/game-smoke.test.js
+          import json
+          import struct
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          root = Path('assets/character-art/svg/hero')
+          manifest = json.loads((root / 'manifest.json').read_text('utf-8'))
+          assert manifest['id'] == 'hero'
+          assert len(manifest['parts']) == 12
+          for spec in manifest['parts']:
+              doc = ET.parse(root / spec['file']).getroot()
+              assert doc.tag == '{http://www.w3.org/2000/svg}svg'
+              assert doc.attrib['width'] == '200' and doc.attrib['height'] == '165'
+              assert doc.attrib['viewBox'] == '-100 -150 200 165'
+          png = Path('assets/character-art/references/hero/approved.png').read_bytes()
+          assert png.startswith(b'\x89PNG\r\n\x1a\n')
+          width, height = struct.unpack('>II', png[16:24])
+          assert 1 <= width <= 8192 and 1 <= height <= 8192
+          print('Hero SVG layers and reference PNG valid')
       - name: Reproduce permanent-upgrade boss balance simulation
         run: |
           node --check scripts/balance-simulation.js
-          node --test tests/balance-simulation.test.js
           node scripts/balance-simulation.js
-      - name: Check concise UI copy and preserve gameplay rules
-        run: node --test tests/ui-copy.test.js
-      - name: Check font license credit and display asset
-        run: node --test tests/font-credits.test.js
       - name: Check Pages entry and asset links
         shell: python
         run: |
           from pathlib import Path
           html = Path('index.html').read_text(encoding='utf-8')
-          build = 'v0.9.3-2'
+          build = 'v0.9.3-3'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'relics.js', 'routes.js', 'events.js', 'game.js'
+              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')

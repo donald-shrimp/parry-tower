@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+ <style>.line{stroke:#03256e;stroke-width:10;stroke-linecap:round;stroke-linejoin:round}.noline{stroke:none}</style>
+ <g id="cape">
+  <path class="line" fill="#0b66f0" d="M258 374 C208 382 152 420 76 466 C46 485 44 558 52 610 C110 578 176 593 127 642 C87 683 66 713 58 751 C104 723 149 691 183 697 C224 703 249 735 276 755 C328 794 410 794 475 758 C494 747 500 716 497 689 C484 565 409 371 258 374 Z"/>
+ </g>
+ <g id="sword">
+  <polygon class="line" fill="#f2f2f2" points="117,847 262,709 420,555 469,603 311,757 185,907 90,910"/>
+  <polygon class="line" fill="#ffd03a" points="412,548 467,599 447,628 393,577"/>
+  <rect class="line" fill="#ffd03a" x="355" y="584" width="72" height="22" rx="10" transform="rotate(45 391 595)"/>
+ </g>
+ <g id="body">
+  <path class="line" fill="#ffffff" d="M455 485 C426 485 396 500 377 522 C359 544 352 575 353 610 L349 698 L410 707 L416 616 C417 594 425 579 445 565 L579 565 C599 579 607 594 608 616 L614 707 L675 698 L671 610 C672 575 665 544 647 522 C628 500 598 485 569 485 Z"/>
+  <path class="line" fill="#0b66f0" d="M458 613 L565 613 L555 792 L466 792 Z"/>
+  <path class="line" fill="#7a533c" d="M394 607 H632 Q646 607 648 621 L648 661 H378 V621 Q380 607 394 607 Z"/>
+  <rect class="line" fill="#ffd03a" x="482" y="603" width="68" height="58" rx="8"/>
+  <rect class="line" fill="#a77b5a" x="498" y="617" width="36" height="30" rx="4"/>
+  <path class="line" fill="#ffffff" d="M417 699 L476 711 L441 835 L387 827 L375 778 Z"/>
+  <path class="line" fill="#ffffff" d="M548 711 L607 699 L649 778 L637 827 L583 835 Z"/>
+  <path class="line" fill="#ffffff" d="M365 830 C382 804 422 797 455 812 C477 822 485 845 486 870 C430 873 383 873 328 870 C329 853 339 840 365 830 Z"/>
+  <path class="line" fill="#ffffff" d="M569 812 C602 797 642 804 659 830 C685 840 695 853 696 870 C641 873 594 873 538 870 C539 845 547 822 569 812 Z"/>
+ </g>
+ <g id="right-arm">
+  <path class="line" fill="#ffffff" d="M644 525 C686 525 719 543 738 577 C752 603 757 629 754 655 L695 639 C695 618 692 605 685 594 C678 582 668 576 650 574 Z"/>
+ </g>
+ <g id="shield">
+  <path class="line" fill="#ffd03a" d="M756 521 L906 577 L883 816 L770 909 L657 816 L634 577 Z"/>
+  <path class="line" fill="#0b66f0" d="M760 560 L880 605 L861 794 L770 869 L679 794 L660 605 Z"/>
+  <path class="line" fill="#ffd03a" d="M770 642 L806 695 L770 748 L734 695 Z"/>
+ </g>
+ <g id="left-arm">
+  <path class="line" fill="#ffffff" d="M389 525 C352 537 326 561 309 591 C294 619 287 647 290 677 L345 658 C347 633 354 619 365 607 C375 596 387 591 402 591 Z"/>
+  <path class="line" fill="#09245f" d="M299 639 C323 631 345 643 349 666 L360 714 C363 732 352 747 337 751 C320 756 306 746 301 731 L286 688 C280 668 283 647 299 639 Z"/>
+ </g>
+ <g id="head">
+  <path class="line" fill="#ffffff" d="M505 226 C563 226 616 247 655 289 C694 330 716 387 716 446 C716 450 715 457 714 462 L659 470 C663 452 665 437 665 423 C665 334 592 261 503 261 C471 261 441 270 415 286 L388 240 C422 218 462 206 505 206 Z"/>
+  <path class="line" fill="#ffffff" d="M462 186 L566 126 L673 230 L670 332 L591 275 L514 289 Z"/>
+  <path class="line" fill="#ffffff" d="M410 312 L450 309 L470 360 L450 425 L405 452 L375 419 L392 371 Z"/>
+  <circle class="line" cx="432" cy="383" r="31" fill="#ffffff"/>
+  <path class="line" fill="#ffffff" d="M491 301 C544 307 595 334 629 374 L644 430 L565 498 L450 476 L467 404 Z"/>
+  <path class="line" fill="#ffffff" d="M460 377 L581 340 L661 411 L630 498 L533 547 L417 515 L438 430 Z"/>
+  <path class="line noline" fill="#03256e" d="M486 425 L517 418 L517 500 L486 493 Z"/>
+  <path class="line noline" fill="#03256e" d="M551 404 L582 397 L578 502 L548 495 Z"/>
+  <path class="line noline" fill="#03256e" d="M617 429 L643 436 L627 500 L601 493 Z"/>
+  <path class="line noline" fill="#03256e" d="M431 434 L466 424 L468 472 L433 462 Z"/>
+  <path class="line" fill="#0b66f0" d="M350 300 C287 345 242 362 176 364 C194 433 269 433 324 389 Z"/>
+  <path class="line" fill="#0b66f0" d="M415 493 C469 469 574 469 627 493 L594 538 C549 533 489 533 448 537 Z"/>
+ </g>
+</svg>

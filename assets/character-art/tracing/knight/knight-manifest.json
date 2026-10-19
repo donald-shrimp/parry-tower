@@ -1,0 +1,101 @@
+{
+  "id": "knight",
+  "status": "prototype",
+  "reference": "assets/character-art/references/knight/svg-base-approved.png",
+  "source": "assets/character-art/tracing/knight/knight-static.svg",
+  "sourceViewBox": [
+    0,
+    0,
+    760,
+    760
+  ],
+  "renderScale": [
+    -0.2,
+    0.2
+  ],
+  "translate": [
+    -454,
+    -739
+  ],
+  "gameLocal": {
+    "feetY": 0,
+    "reach": 110,
+    "impactY": -58
+  },
+  "masksPriority": [
+    "sword",
+    "shield",
+    "head",
+    "swordUpper",
+    "shieldUpper"
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "parent": null,
+      "layer": 0
+    },
+    {
+      "id": "swordUpper",
+      "parent": "body",
+      "layer": 1,
+      "pivot": [
+        268,
+        337
+      ]
+    },
+    {
+      "id": "sword",
+      "parent": "swordUpper",
+      "layer": 2,
+      "pivot": [
+        220,
+        322
+      ],
+      "includes": [
+        "hand",
+        "grip",
+        "blade"
+      ]
+    },
+    {
+      "id": "shieldUpper",
+      "parent": "body",
+      "layer": 3,
+      "pivot": [
+        477,
+        277
+      ]
+    },
+    {
+      "id": "shield",
+      "parent": "shieldUpper",
+      "layer": 4,
+      "pivot": [
+        536,
+        368
+      ],
+      "includes": [
+        "forearm",
+        "shield"
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "layer": 5,
+      "pivot": [
+        386,
+        265
+      ]
+    }
+  ],
+  "motion": {
+    "idle": "0",
+    "windup": "charge 0..1",
+    "strike": "shoulder .17*charge - 1.20*smooth(action)",
+    "impact": "tip approx (110,-58)",
+    "recover": "game's existing rec action reduces 1 to 0"
+  },
+  "note": "Runtime canonical geometry/masks are kept in assets/character-knight.js. Component PNG trial had gaps; not used at runtime. Preview gate D awaits human review."
+}
