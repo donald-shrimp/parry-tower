@@ -397,8 +397,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-11"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-11"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-12"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-12"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1097,7 +1097,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-11"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-12"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1416,7 +1416,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-11"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-12"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2376,7 +2376,7 @@ test('adopted production music survives pause and Dev ordinary launch returns to
 test('bonus tab requires exactly 1000 fragments, unlocks once and persists free on/off switches across reloads',()=>{
  const key='parryTowerPrototype_v1',perm='parryTowerPermanent_v1';
  const poor=makeHarness({[key]:JSON.stringify({coins:999})});poor.press('upgradeOpenBtn');poor.upgradeTab('bonus');
- assert.match(poor.el.get('upgradeList').innerHTML,/1,000/);assert.match(poor.el.get('upgradeList').innerHTML,/disabled/);
+ assert.match(poor.el.get('upgradeList').innerHTML,/>1000 ✧<\/button>/);assert.doesNotMatch(poor.el.get('upgradeList').innerHTML,/で解放/);assert.match(poor.el.get('upgradeList').innerHTML,/disabled/);
  poor.upgradeBuy('bonus-toggle','legacyVisual');poor.upgradeBuy('bonus-buy','__proto__');poor.upgradeBuy('bonus-buy','legacyVisual');
  assert.equal(poor.state().souls,999);assert.equal(poor.state().permanent.unlockedExtras.length,0);
  const rich=makeHarness({[key]:JSON.stringify({coins:3000})});rich.press('upgradeOpenBtn');rich.upgradeTab('bonus');
@@ -2449,11 +2449,11 @@ test('skin shop keeps artwork previews and one purchase or equip button per card
   const skin=PR.SKINS[i],owned=['normal','chick'].includes(skin.id),body=card[2];
   assert.ok(body.includes('data-skin-sample="'+skin.id+'"'),'standing artwork stays visible');
   const buttons=[...body.matchAll(/<button[^>]*data-action="([^"]+)"[^>]*>([^<]+)<\/button>/g)];
-  assert.deepEqual(buttons.map(b=>[b[1],b[2]]),[[owned?'skin-equip':'skin-buy',owned?'装備する':'購入する']]);
+  assert.deepEqual(buttons.map(b=>[b[1],b[2]]),[[owned?'skin-equip':'skin-buy',owned?'装備する':skin.cost+' ✧']]);
   assert.equal(card[1]==='selected',skin.id==='chick','outline follows equipped skin');
   assert.doesNotMatch(body,/<a |プレビュー|効果あり|装備中|skin-ready/);
  }
- assert.match(html,/class="skin-price">50 欠片/);assert.match(html,/600 欠片/);
+ assert.doesNotMatch(html,/skin-price|skin-sale|購入する|欠片<\/strong>/);assert.match(html,/>600 ✧<\/button>/);
  g.upgradeBuy('skin-preview','fundoshi');g.upgradeBuy('bonus-section','invalid');
  assert.equal(g.el.get('upgradeList').innerHTML,html);
  assert.equal(g.state().souls,2345);assert.equal(JSON.stringify(g.state().permanent),initial);assert.deepEqual([...g.storage],saved);
