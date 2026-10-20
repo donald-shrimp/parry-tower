@@ -2,7 +2,7 @@
 
 ## 現在の目的と承認
 
-ユーザーが高音抑制後のジャスト音を「いい感じ。これで実装頼む」と最終了承。試遊で了承された主人公モーション・連打対策・効果音を本編へ採用し、ビルドを **v0.9.3-4** に更新して最終検証済み。採用コミット `1247325` をmainへマージ済み（`c7768ae`）。ユーザーが「本番実装」は公開まで含むと明示したため、mainのpush・Pages反映・公開URL確認まで続行する。今後も同じ意味として扱う（`AGENTS.md` に記録）。現在のブランチはmain。
+ユーザーが高音抑制後のジャスト音を最終了承。主人公モーション・連打対策・効果音を本編へ採用し、**v0.9.3-4を本番公開・実URL確認まで完了**。採用 `1247325`、mainマージ `c7768ae`、公開コミット `157c81c`。ユーザーの「本番実装」は公開・公開後確認まで含む。今後も同じ意味として扱う（`AGENTS.md` に記録）。現在のブランチはmain。
 
 ## 採用内容と正本
 
@@ -18,11 +18,12 @@
 - **Python画像6件成功**、全JS36ファイル構文、CIのSVG/参照PNG/Pagesリンク検証、既存ボスバランスシミュレーション成功。`test-results/shield-adoption/`。
 - 通常本編の新しい保存領域（127.0.0.1:8004）でv0.9.3-4、効果音ロード、戦闘、Space長押しGUARD（14攻撃→5ダメージ）、一時停止を確認。360pxで本文345px、横はみ出しなし。console警告/エラーなし。証跡 `main.png` / `mobile.png`。8004の試験は普段の8002の保存データに影響しない。
 - 高音抑制の解析は `test-results/just-soft/`。0.1〜0.6秒の3〜8kHzエネルギーは抑制前の約12.5%、4〜5kHzは約6%。主観的な音色/音量はユーザーが外部試遊で最終了承済み。添付MP3/解析用WAV/依存ライブラリは公開対象へ入れていない。
+- GitHub CI **39382323360成功**、Pages **39382322207成功**（公開コミット157c81c）。本番のHTML/game.js/combat-sfx.js/hero-puppet/diagnosticsのSHAがGitコミットと一致。公開版ビルドv0.9.3-4、効果音の個別再生、守護者の稽古起動/Spaceガード/一時停止を確認。console警告/エラー、バージョン警告なし。証跡とAPI結果は `test-results/shield-publication/`。
 
 ## 起動・外部確認・次の作業
 
 - 本編 <http://127.0.0.1:8002/>、無敵試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。`node scripts/serve-local.js 8002`。既存工房サーバーやタブは変更していない。
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
-- 公開先 <https://donald-shrimp.github.io/parry-tower/>。origin/mainの更新を確認して通常pushし、CI/Pages成功と公開ビルドv0.9.3-4を確認する。
-- 本編採用とmainマージは完了。次は承認済みの公開と実URL確認。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
+- **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-4>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
+- 本編採用/mainマージ/push/CI/Pages/公開確認は完了。次は本番プレイのフィードバック対応。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
