@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;const bonusArtEvents=[];
+ const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -89,7 +89,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   document.currentScript=null;
   if(['illustrated','adopted'].includes(artMode)){
    const original=window.ParryKnightPuppet;
-   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
+   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};lastHeroSkin=args[1].skin;const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
     drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
   }
  }
@@ -186,7 +186,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
   bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
   artDrawCounts:()=>({...artDrawCounts}),
-  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,
+  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
@@ -2468,4 +2468,33 @@ test('previewing planned skins leaves actual HP, incoming damage, timing and BGM
   for(const h of [g,control]){h.random(.5);h.dev().launch(5,'guardian:normal',true);h.frame(h.state().attackAt+1);}
   assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' must not enable unfinished effects');assert.deepEqual(g.audioEvents(),control.audioEvents());
  }
+});
+
+test('all real Dev skin renderers preserve combat, score, damage and saves across guard, hit and counterattack',async()=>{
+ for(const skin of PR.SKINS){
+  const g=makeHarness({},true,'adopted'),control=makeHarness({},true,'adopted');
+  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.random(.5);}
+  g.dev().launch(5,'guardian:normal',true,skin.id);control.dev().launch(5,'guardian:normal',true);
+  await g.readyArt(P.byId.guardian);await control.readyArt(P.byId.guardian);
+  assert.equal(g.dev().previewSkin(),skin.id);
+  for(const kind of ['just','guard','miss','parry']){
+   for(const h of [g,control]){
+    const due=h.state().attackAt;h.frame(due-280);h.frame(due-160);
+    if(['just','parry'].includes(kind)){h.clock(due-(kind==='just'?100:80));h.parry()}
+    else if(kind==='guard'){h.clock(due-150);h.hold()}
+    h.frame(due+1);h.release();h.frame(due+110);
+   }
+   assert.equal(g.heroSkin(),skin.id);assert.ok(g.artDrawCounts().hero>0);
+   assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' / '+kind);
+   assert.deepEqual(g.audioEvents(),control.audioEvents());assert.deepEqual([...g.storage],[...control.storage]);
+  }
+ }
+});
+
+test('Dev skin URLs populate the selector and the launch button waits for new skin artwork before starting',async()=>{
+ const g=makeHarness({},true,'adopted','?floor=5&enemy=guardian&practice=1&skin=fundoshi');await g.readyArt(P.byId.guardian);
+ assert.equal(g.el.get('devSkin').value,'fundoshi');g.press('devLaunch');
+ assert.equal(g.state().mode,'loading');assert.equal(g.state().scoreActive,false);
+ await g.readyArt(P.byId.guardian);assert.equal(g.state().mode,'combat');g.frame(g.now+1);
+ assert.equal(g.heroSkin(),'fundoshi');assert.ok(g.artDrawCounts().hero>0);assert.equal(g.storage.size,0);
 });

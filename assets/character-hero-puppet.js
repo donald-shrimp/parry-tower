@@ -8,6 +8,8 @@
 })(typeof window!=='undefined'?window:globalThis,function(root){
  'use strict';
  const SOURCE='character-art/rework/hero/hero-ready-candidate.png';
+ const SKIN_SOURCE='character-art/skins/fundoshi/hero-fundoshi-fine-v1.png';
+ const SKIN_IDS=Object.freeze(['normal','chick','fundoshi','spacetime']);
  const scriptUrl=root?.document?.currentScript?.src;
  const WIDTH=1445,HEIGHT=1088,SCALE=.16,ORIGIN=Object.freeze([850,1045]);
  const PIVOTS=Object.freeze(Object.fromEntries(Object.entries({
@@ -44,6 +46,9 @@
  const foreDirection=Math.atan2(P.wrist.y-P.elbow.y,P.wrist.x-P.elbow.x);
  const IDLE_BEND=Math.atan2(Math.sin(foreDirection-upperDirection),Math.cos(foreDirection-upperDirection));
  let image=null,layers=null,status='idle',pending=null,maskStamp='',layerCrops={};
+ let fundoshiImage=null,fundoshiPending=null;
+ const skinLayers=new Map();
+ const skinId=id=>SKIN_IDS.includes(id)?id:'normal';
  const sourceUrl=()=>new URL(root.ParryPixelArt?.source(SOURCE)||SOURCE,scriptUrl||'https://invalid.local/assets/character-hero-puppet.js').href;
  function canvas(w=WIDTH,h=HEIGHT){const c=root.document.createElement('canvas');c.width=w;c.height=h;return c;}
  function polygon(ctx,polys){for(const points of polys){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();}}
@@ -59,7 +64,7 @@
   }
   ctx.putImageData(mask,0,0);return c;
  }
- function prepare(img){
+ function prepare(img,patchCape=true){
   const used=canvas(),uc=used.getContext('2d'),result={},blue=blueMask(img),armHoles=canvas(),ac=armHoles.getContext('2d');
   for(const name of [...PRIORITY,'body']){
    const mask=canvas(),mc=mask.getContext('2d');mc.fillStyle='#fff';
@@ -79,6 +84,7 @@
   }
   // Concealed cape under the raised arm: reuse an adjacent cloth patch from
   // this SAME painting, clipped strictly to the cut arm's original footprint.
+  if(!patchCape)return result;
   const patch=canvas(),pc=patch.getContext('2d');
   pc.drawImage(img,395,480,130,140,550,401,194,112);
   pc.globalCompositeOperation='destination-in';pc.drawImage(armHoles,0,0);
@@ -118,6 +124,67 @@
     catch(error){status='failed';root.console?.warn?.('[hero cutout]',error);resolve(false);}};
    img.onerror=()=>{status='failed';resolve(false);};img.src=sourceUrl();
   });return pending;
+ }
+ function filteredLayers(id){
+  const filter=id==='chick'?'sepia(1) saturate(2.3) brightness(1.12)':'sepia(.85) saturate(2.5) hue-rotate(220deg) brightness(1.18)';
+  return Object.fromEntries(ORDER.map(name=>{
+   const source=layers[name],c=canvas(source.width,source.height),ctx=c.getContext('2d');
+   ctx.drawImage(source,0,0);const pixels=ctx.getImageData?.(0,0,c.width,c.height);
+   if(pixels?.data?.length){
+    const hue=id==='chick'?54/360:277/360,saturation=id==='chick'?.78:.63;
+    for(let i=0;i<pixels.data.length;i+=4){
+     const d=pixels.data;if(!d[i+3])continue;
+     const high=Math.max(d[i],d[i+1],d[i+2]),low=Math.min(d[i],d[i+1],d[i+2]);
+     let l=(high+low)/510;if(l<.08)continue;
+     const blue=d[i+2]>d[i]*1.3&&d[i+2]>d[i+1]*1.05;
+     l=Math.min(.96,blue?l*1.12+.07:l+.025);
+     const a=saturation*Math.min(l,1-l),channel=n=>{const k=(n+hue*12)%12;return Math.round((l-a*Math.max(-1,Math.min(k-3,9-k,1)))*255)};
+     d[i]=channel(0);d[i+1]=channel(8);d[i+2]=channel(4);
+    }ctx.putImageData(pixels,0,0);
+   }else{ctx.clearRect(0,0,c.width,c.height);ctx.filter=filter;ctx.drawImage(source,0,0)}
+   return [name,c];
+  }));
+ }
+ function buildSkin(id){
+  const parts=id==='fundoshi'?prepare(fundoshiImage,false):filteredLayers(id);
+  skinLayers.set(id,parts);return true;
+ }
+ function skinReady(id='normal'){
+  return status==='ready'&&(skinId(id)==='normal'||skinLayers.has(skinId(id)));
+ }
+ async function preloadSkin(id='normal'){
+  id=skinId(id);if(!await preload())return false;syncLayers();
+  if(id==='normal'||skinLayers.has(id))return true;
+  if(id==='fundoshi'&&!fundoshiImage){
+   if(!fundoshiPending)fundoshiPending=new Promise(resolve=>{
+    const img=new root.Image();img.onload=()=>{fundoshiImage=img;resolve(true)};
+    img.onerror=()=>resolve(false);img.src=new URL(SKIN_SOURCE,scriptUrl||'https://invalid.local/assets/character-hero-puppet.js').href;
+   });
+   if(!await fundoshiPending)return false;
+  }
+  syncLayers();if(skinLayers.has(id))return true;
+  try{return buildSkin(id)}catch(error){root.console?.warn?.('[hero skin]',error);return false}
+ }
+ // Pixel-native head ornament. Drawn in the torso's source coordinates, so
+ // the accepted body keys and whole-character edits carry it with the helmet.
+ function drawChick(ctx){
+  ctx.save();ctx.translate(884,151);const pixel=6;
+  const rows=[
+   '....oo.........','...oyyo........','..oyyyyyo......',
+   '.oyyyyyyyo.....','oyhyyyyyyyo....','oyhyyyykyyo....',
+   'oyyyyyyyyoor...','.oyyyyyyyo.....','..oyyyyyyo.....',
+   '...oyyyyo......','....oooo.......','....r..r.......'];
+  const colors={o:'#855413',y:'#ffdc4d',h:'#fff3a2',k:'#1d2630',r:'#f19b32'};
+  rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(colors[v]){ctx.fillStyle=colors[v];ctx.fillRect(x*pixel,y*pixel,pixel,pixel)}}));ctx.restore();
+ }
+ function drawClocks(ctx,now){
+  ctx.save();ctx.lineWidth=1;ctx.strokeStyle='#d7b0ff';
+  for(let i=0;i<3;i++){
+   const x=52+i*12,y=-117+i*14,r=27-i*4;
+   ctx.globalAlpha=.34-i*.08;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+   for(let j=0;j<12;j++){const a=j*Math.PI/6;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*(r-4),y+Math.sin(a)*(r-4));ctx.lineTo(x+Math.cos(a)*(r-1),y+Math.sin(a)*(r-1));ctx.stroke()}
+   const a=now/1300+i*.65;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r*.65,y+Math.sin(a)*r*.65);ctx.lineTo(x,y);ctx.lineTo(x+Math.cos(a/12-1.5)*r*.4,y+Math.sin(a/12-1.5)*r*.4);ctx.stroke();
+  }ctx.restore();
  }
  function armAngles(action=0){
   const a=clamp(action);if(a===0)return {shoulder:0,elbow:0,wrist:0};
@@ -162,16 +229,24 @@
    forearm:{at:q.elbow,pivot:PIVOTS.elbow,angle:q.foreAngle},
    weapon:{at:q.wrist,pivot:PIVOTS.wrist,angle:q.swordAngle}};
  }
- function drawCutout(ctx,q,{debug=false,editTime=q.action>0?q.phase*240:0}={}){
+ function drawCutout(ctx,q,{debug=false,editTime=q.action>0?q.phase*240:0,skin='normal',now=0}={}){
   if(status!=='ready')return false;
-  syncLayers();const edits=root.ParryArtEdits,p=placements(q),rest=edits?placements(pose()):null;
+  syncLayers();skin=skinId(skin);
+  if(skin!=='normal'&&!skinLayers.has(skin)){
+   if(skin!=='fundoshi'||fundoshiImage)buildSkin(skin);else return false;
+  }
+  const activeLayers=skin==='normal'?layers:skinLayers.get(skin);
+  const edits=root.ParryArtEdits,p=placements(q),rest=edits?placements(pose()):null;
   const adjusted=edits?.placements('hero',p,rest,editTime,SCALE)||p;
   edits?.begin(ctx,'hero',SCALE);
+  if(skin==='spacetime')drawClocks(ctx,now);
   for(const name of edits?.orderFor('hero',ORDER)||ORDER){
    const t=adjusted[name];
    if(t.visible===false)continue;
    const [x,y]=layerCrops[name]||CROPS[name];ctx.save();if(root.ParryPixelArt?.enabled)ctx.imageSmoothingEnabled=false;if(t.opacity!==undefined)ctx.globalAlpha*=t.opacity;ctx.translate(t.at.x,t.at.y);ctx.rotate(t.angle);
-   ctx.scale(SCALE*(t.sx||1),SCALE*(t.sy||1));ctx.translate(-t.pivot[0],-t.pivot[1]);ctx.drawImage(layers[name],x,y);ctx.restore();
+   ctx.scale(SCALE*(t.sx||1),SCALE*(t.sy||1));ctx.translate(-t.pivot[0],-t.pivot[1]);ctx.drawImage(activeLayers[name],x,y);
+   if(skin==='chick'&&name==='body')drawChick(ctx);
+   ctx.restore();
   }
   if(debug){
    ctx.save();ctx.strokeStyle='#7affec';ctx.lineWidth=.8;ctx.beginPath();
@@ -179,7 +254,7 @@
   }
   edits?.end(ctx);return true;
  }
- function syncLayers(){const stamp=root.ParryArtEdits?.maskStamp('hero')||'';if(status==='ready'&&maskStamp!==stamp){layers=prepare(image);maskStamp=stamp;}}
+ function syncLayers(){const stamp=root.ParryArtEdits?.maskStamp('hero')||'';if(status==='ready'&&maskStamp!==stamp){layers=prepare(image);skinLayers.clear();maskStamp=stamp;}}
  function editModel(){
   if(status!=='ready')return null;syncLayers();
   const labels={cape:'マント',legs:'下半身',shield:'盾と左腕',body:'胴・兜',upperArm:'剣腕の肩鎧・上腕',forearm:'剣腕の肘から手首',weapon:'剣と握り手・手首'};
@@ -187,7 +262,7 @@
    parts:Object.fromEntries(ORDER.map(key=>[key,{image:layers[key],crop:layerCrops[key]||CROPS[key],mask:MASKS[key]||null,label:labels[key]}]))};
  }
  function drawHero(ctx,data){
-  if(status!=='ready'||!data?.layout)return false;
+  if(status!=='ready'||!data?.layout||!skinReady(data.skin))return false;
   const {layout:l,pose:input={},debug=false}=data,q=pose(input);
   ctx.save();ctx.fillStyle='#030914a8';ctx.beginPath();ctx.ellipse(l.heroX+q.slide*l.heroScale,l.ground+2,56*l.heroScale,5*l.heroScale,0,0,7);ctx.fill();ctx.restore();
   ctx.save();ctx.translate(l.heroX+q.slide*l.heroScale,l.ground);ctx.scale(l.heroScale,l.heroScale);
@@ -207,7 +282,7 @@
     ctx.globalAlpha=.05+i*.025;ctx.lineWidth=2+i*.7;ctx.beginPath();ctx.moveTo(a.tip.x,a.tip.y);ctx.lineTo(b.tip.x,b.tip.y);ctx.stroke();
    }ctx.restore();
   }
-  drawCutout(ctx,q,{debug});
+  drawCutout(ctx,q,{debug,skin:data.skin,now:data.now||input.now||0});
   if((input.guardHeld&&clamp(input.heldLift)>.98)||(input.lastStrikeKind==='just'&&(data.now||0)-(input.lastImpactAt??-99999)<170)){
    const offset=rotate(point(-17,4),q.shieldAngle);
    ctx.save();ctx.strokeStyle='#b4f6ff';ctx.globalAlpha=.4;ctx.lineWidth=1;
@@ -268,6 +343,6 @@
    minY:Math.min(...out.map(p=>p.y)),maxY:Math.max(...out.map(p=>p.y))};
  }
  if(root?.document&&(root.ParryPixelArt?.adopted||/(?:^|[?&])art=illustrated(?:&|$)/.test(root.location?.search||'')))preload();
- return Object.freeze({SOURCE,WIDTH,HEIGHT,SCALE,ORIGIN,PIVOTS,MASKS,CROPS,ORDER,PRIORITY,sourceUrl,preload,status:()=>status,ready:()=>status==='ready',
+ return Object.freeze({SOURCE,SKIN_SOURCE,SKIN_IDS,skinId,preloadSkin,skinReady,WIDTH,HEIGHT,SCALE,ORIGIN,PIVOTS,MASKS,CROPS,ORDER,PRIORITY,sourceUrl,preload,status:()=>status,ready:()=>status==='ready',
   armAngles,armExtension,pose,placements,drawCutout,drawHero,drawReference,compareIdle,drawParts,bounds,editModel});
 });

@@ -261,3 +261,4 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @media(max-width:520px){.skin-grid{grid-template-columns:1fr}.skin-card{padding:12px}.skin-emblem{width:52px;height:52px;font-size:29px}}
 
 .skin-sale{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:7px 0 10px;font-size:10px;color:#adbbd1}.skin-price{font-size:17px;color:#ffe19d}.skin-actions{display:flex;flex-direction:column;gap:6px;margin-top:auto}.skin-card .skin-actions .upgrade-buy{margin-top:0}.skin-card .skin-buy:disabled{border-color:#706143;color:#ffe19d}
+.arena .upgrade-list canvas.skin-art-sample{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:480/300;background:radial-gradient(ellipse at 60% 65%,#26364a,#101923 80%);border-radius:8px;image-rendering:pixelated;cursor:default}.skin-actions a{text-align:center;text-decoration:none}

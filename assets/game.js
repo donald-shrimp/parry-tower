@@ -1,6 +1,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
+let devPreviewSkin='normal';
 const STAGE_MUSIC=window.ParryStageMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 // Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
@@ -73,7 +74,7 @@ const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
 let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.getItem(PERMANENT_KEY)||'{}'),SKILLS)}catch(e){}
 function legacyVisualEnabled(){return PR.extraEnabled(permanent,'legacyVisual')}
-function useIllustratedArt(){return ILLUSTRATED_ENABLED&&!legacyVisualEnabled()}
+function useIllustratedArt(){return (DEV_MODE&&devPreviewSkin!=='normal')||(ILLUSTRATED_ENABLED&&!legacyVisualEnabled())}
 function syncArtMode(){
  document.documentElement.dataset.parryArt=legacyVisualEnabled()?'legacy':ILLUSTRATED_ENABLED?'illustrated':COMBAT_ART_ENABLED?'impact':CHARACTER_RIG_ENABLED?'rework':'legacy';
  if(useIllustratedArt())KNIGHT_PUPPET?.preloadSources?.();
@@ -377,13 +378,14 @@ function bonusNavigation(){
  return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
 }
 function renderSkinPicker(){
+ for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
  const selected=PR.SKINS.find(skin=>skin.id===skinPreview)||PR.SKINS[0];
  return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">スキンは1着ずつ個別購入し、購入済みから1着を装備します。現在は販売準備中で、欠片は消費しません。</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
   const chosen=skin.id===selected.id,normal=skin.id==='normal';
   const price=normal?'無料':Number.isFinite(skin.cost)?skin.cost.toLocaleString('ja-JP')+' 欠片':'価格未定';
   const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong><span>'+(normal?'標準スキン':'個別販売')+'</span></div>';
   const buy=normal?'':'<button type="button" class="upgrade-buy skin-buy" data-action="skin-buy" data-key="'+skin.id+'" disabled aria-label="'+skin.name+' '+price+' 販売準備中">購入（準備中）</button>';
-  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(skin.id==='normal'?'現在の姿':'準備中')+'</span></div><div class="skin-emblem" role="img" aria-label="'+skin.name+'のイメージ">'+skin.icon+'</div><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button></div></article>';
+  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">外見レビュー可</span></div><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button><a class="upgrade-buy" href="./skin-preview.html?skin='+skin.id+'">モーションを見る ↗</a></div></article>';
  }).join('')+'</div>';
 }
 function renderUpgradeScreen(){
@@ -716,7 +718,8 @@ function spawnEnemy(t){
  game.phaseStage=null;game.phaseStartedAt=0;game.phaseCountStartAt=0;
  if(archetype.boss&&!game.practice)game.shield+=PR.value(permanent,'bossWard');
  game.artLoading=false;game.artFallback=false;
- if(useIllustratedArt()&&KNIGHT_PUPPET&&!KNIGHT_PUPPET.readyFor(game.enemy)){
+ const skinReady=!DEV_MODE||!window.ParryHeroPuppet?.skinReady||window.ParryHeroPuppet.skinReady(devPreviewSkin);
+ if(useIllustratedArt()&&KNIGHT_PUPPET&&(!KNIGHT_PUPPET.readyFor(game.enemy)||!skinReady)){
   const run=game,encounter=game.enemy;game.artLoading=true;stopScore();setMode('loading');
   // Resume from a fresh beat origin only after both characters can be drawn.
   // A later completion cannot restart a run the player has left or replaced.
@@ -724,7 +727,8 @@ function spawnEnemy(t){
    if(game!==run||game.enemy!==encounter||game.mode!=='loading')return;
    game.artLoading=false;game.artFallback=!ok;beginEncounter(performance.now());setMode('combat');
   };
-  Promise.resolve().then(()=>KNIGHT_PUPPET.preload(encounter)).then(finish,()=>finish(false));
+  Promise.resolve().then(()=>Promise.all([KNIGHT_PUPPET.preload(encounter),
+   DEV_MODE?window.ParryHeroPuppet?.preloadSkin?.(devPreviewSkin)??true:true])).then(results=>finish(results.every(Boolean)),()=>finish(false));
  }else beginEncounter(t);
  syncHUD();
 }
@@ -1296,7 +1300,7 @@ function hero(now){
  const action=['parry','just'].includes(game.lastStrikeKind)?clamp(1-(now-(game.lastDeflectAt??-99999))/240,0,1):0;
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const age=now-(game.lastImpactAt??-99999),push=(age>=0&&age<160&&game.lastStrikeKind!=='miss'?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45);
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
+ if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:DEV_MODE?devPreviewSkin:'normal',counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
    attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:game.lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind,
    pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,
@@ -1604,6 +1608,10 @@ function drawFinalPhase(now){
 }
 function drawBonusSamples(now){
  if(game.mode!=='upgrade'||upgradeTab!=='bonus'||!COMBAT_ART)return;
+ for(const sample of document.querySelectorAll('canvas[data-skin-sample]')){
+  const c=sample.getContext('2d');if(!c)continue;c.clearRect(0,0,sample.width,sample.height);
+  window.ParryHeroPuppet?.drawHero(c,{skin:sample.dataset.skinSample,now,pose:{},layout:{heroX:280,ground:280,heroScale:1.5}});
+ }
  for(const sample of document.querySelectorAll('canvas[data-bonus-sample]')){
   const c=sample.getContext('2d');if(!c)continue;c.clearRect(0,0,180,74);c.fillStyle='#aebfd6';c.font='10px sans-serif';c.textAlign='center';
   if(sample.dataset.bonusSample==='slashTint'){
@@ -1735,13 +1743,15 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
  if(DEV_MODE)window.__parryDev=Object.freeze({
-  launch(floor=1,enemyKey='',practice=false){
+  launch(floor=1,enemyKey='',practice=false,skin='normal'){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
+   devPreviewSkin=window.ParryHeroPuppet?.skinId?.(skin)||'normal';
    const key=practice?(enemyKey||P.encounterForFloor(f,()=>.5).bookKey):null;
    start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice});
    return true;
   },
+  previewSkin(){return devPreviewSkin},
   reset(){title()},
   musicList(){return STAGE_MUSIC?.themes||[]},
   previewMusic(id,variant='normal'){
