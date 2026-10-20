@@ -2,11 +2,17 @@
 
 ## 現在の目的と承認
 
+最新依頼「モーションいじったんだけどさ、本番に反映してくんね」で工房保存データの採用・公開まで承認。updatedAt 1792499809689、差分は rogue / guardian / knight / ironwarden / dirgekeeper / timewarden の6体の全体配置。部品キー/連動軌道/残像設定は保持。JSONと同期JSが一致することを確認済み。今回のビルドはv0.9.3-8。ブラウザの工房/既存試遊タブは操作しない。未追跡outputは公開に含めない。
+
+Node344件成功（test-results/studio-motion-publication/node.txt）、37JS構文/差分空白/JSONと同梱JSの一致確認成功。ローカル実ブラウザで守護者の戦闘表示・動作と警告なしを確認。次はmain統合/push、CI/Pages、公開ファイルと実画面の確認。
+
+## 前回の公開：エリア別BGM
+
 最新依頼「めちゃくちゃいい感じなのでもう実装しちゃって」でDevの8曲を全採用し公開まで承認。採用 c92f6aa、main統合/公開 50071ec。現在main、v0.9.3-7を公開・実URL確認済み。1〜10Fは旧曲の発音コードを保持、11〜80Fは10階ごとのエリア専用7曲へ自動切替、81F以降も既存の巡回に従う。通常112/速い敵124/ボス136 BPM、判定時計、効果音25%、保存は保持。両エントリから stage-music.js を読み込む。Dev試聴室/通常・ボス比較/拍表示/曲指定の無敵練習も採用。詳細 [MUSIC_PREVIEW](./MUSIC_PREVIEW.md)。ビルドv0.9.3-7。
 
 先行Dev版はNode342件/外部ブラウザで兵舎112・礼拝堂136 BPMの再生と警告なしを確認済み。採用版はNode344件すべて成功（test-results/stage-bgm-release-final.txt）。全エリア境界/巡回/一時停止/同一判定時計/Dev通常起動の自動選曲を含む。全JS構文/差分空白確認成功。実ブラウザで21Fの自動選曲・戦闘開始・一時停止/再開と警告なしを確認済み。Pages 39422783766成功、Static checks 39422784887成功。公開HTML/dev/game/diagnostics/combat-sfx/stage-music/dev-tools.js/cssの8ファイルが公開コミットとSHA一致。公開実ブラウザでv0.9.3-7、41Fの工房曲自動選曲/戦闘開始、終刻の王のボス136 BPM試聴/拍表示/停止と警告なしを確認。証跡 test-results/stage-music-publication/。依頼は公開後確認まで完了。次は通常プレイでのフィードバック対応。
 
-外部試遊：<https://speaking-rico-jacket-period.trycloudflare.com/dev.html?music=barracks#devMusicRoom>。読み取り専用8003 server PID38832、tunnel PID39076。既存8002の工房サーバー/タブには操作しない。**作業中に工房由来の assets/character-art-defaults.js / assets/character-art/studio-project.json の未コミット変更が入ったため、そのまま保持してBGMコミットから除外する**。未追跡outputも保持。
+外部試遊：<https://speaking-rico-jacket-period.trycloudflare.com/dev.html?music=barracks#devMusicRoom>。読み取り専用8003 server PID38832、tunnel PID39076。既存8002の工房サーバー/タブには操作しない。当時工房由来の調整2ファイルをBGMコミットから除外して保持した。今回の最新依頼でその公開が承認された。未追跡outputも保持。
 
 ## 前回の公開：防御効果音25%
 
