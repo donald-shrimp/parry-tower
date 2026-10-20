@@ -2444,6 +2444,10 @@ test('skin selection preview switches one card at a time without charging, persi
  g.upgradeBuy('skin-preview','chick');g.press('upgradeOpenBtn');g.upgradeTab('bonus');
  g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：いつもの主人公/);
  assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
+ assert.match(g.el.get('upgradeList').innerHTML,/class="skin-price">50 欠片/);
+ assert.match(g.el.get('upgradeList').innerHTML,/data-action="skin-buy" data-key="chick" disabled/);
+ assert.match(g.el.get('upgradeList').innerHTML,/価格未定/);
+ g.upgradeBuy('skin-buy','chick');assert.equal(g.state().souls,2345);assert.deepEqual([...g.storage],saved);
  for(const skin of PR.SKINS){
   g.upgradeBuy('skin-preview',skin.id);const html=g.el.get('upgradeList').innerHTML;
   assert.ok(html.includes('プレビュー：'+skin.name));

@@ -228,6 +228,7 @@ test('extra color choices require ownership, whitelist colors and survive saving
 test('planned skin catalog is immutable and has no implicit ownership or gameplay modifiers',()=>{
  assert.deepEqual(P.SKINS.map(skin=>skin.id),['normal','chick','fundoshi','spacetime']);
  assert.equal(Object.isFrozen(P.SKINS),true);
- for(const skin of P.SKINS){assert.equal(Object.isFrozen(skin),true);assert.ok(skin.name&&skin.look&&skin.rule&&skin.color);assert.equal(skin.cost,undefined);}
+ assert.deepEqual(P.SKINS.map(skin=>[skin.id,skin.cost]),[['normal',0],['chick',50],['fundoshi',null],['spacetime',null]]);
+ for(const skin of P.SKINS){assert.equal(Object.isFrozen(skin),true);assert.ok(skin.name&&skin.look&&skin.rule&&skin.color);}
  const raw=P.normalize({selectedSkin:'fundoshi',skin:'chick'},skills);assert.equal(raw.selectedSkin,undefined);assert.equal(raw.skin,undefined);
 });

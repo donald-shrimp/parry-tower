@@ -78,12 +78,12 @@
   });
   return {bonus,mask,atRuns:newlyClaimed};
  }
- // Selection-screen catalog only. Artwork, ownership prices and gameplay rules follow later.
+ // Individual-sale screen catalog. null prices are undecided; artwork and rules follow later.
  const SKINS=Object.freeze([
-  Object.freeze({id:'normal',name:'いつもの主人公',icon:'⚔',tag:'STANDARD',color:'#93c7ff',look:'青い装いと盾。今の主人公の姿です。',rule:'いつものルールで塔に挑戦。'}),
-  Object.freeze({id:'chick',name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'全身を黄色寄りに。頭には小さなひよこ。',rule:'効果案：HP5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
-  Object.freeze({id:'fundoshi',name:'赤ふんどし',icon:'🔥',tag:'一発勝負',color:'#ff9c9c',look:'兜を残して生身に、赤いふんどしを締める。',rule:'効果案：敵の攻撃をパリィ／ジャストできなければ即死。'}),
-  Object.freeze({id:'spacetime',name:'時空のスキン',icon:'⌛',tag:'変則リズム',color:'#d4b0ff',look:'明るい紫色の装いと、時計の残像。',rule:'効果案：小節の区切りでBGMと敵が一緒に加速・減速。'})
+  Object.freeze({id:'normal',cost:0,name:'いつもの主人公',icon:'⚔',tag:'STANDARD',color:'#93c7ff',look:'青い装いと盾。今の主人公の姿です。',rule:'いつものルールで塔に挑戦。'}),
+  Object.freeze({id:'chick',cost:50,name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'全身を黄色寄りに。頭には小さなひよこ。',rule:'効果案：HP5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
+  Object.freeze({id:'fundoshi',cost:null,name:'赤ふんどし',icon:'🔥',tag:'一発勝負',color:'#ff9c9c',look:'兜を残して生身に、赤いふんどしを締める。',rule:'効果案：敵の攻撃をパリィ／ジャストできなければ即死。'}),
+  Object.freeze({id:'spacetime',cost:null,name:'時空のスキン',icon:'⌛',tag:'変則リズム',color:'#d4b0ff',look:'明るい紫色の装いと、時計の残像。',rule:'効果案：小節の区切りでBGMと敵が一緒に加速・減速。'})
  ]);
  const EXTRAS=Object.freeze([
   Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の塔へ。開発初期の主人公・敵のビジュアルに切り替えます。'}),

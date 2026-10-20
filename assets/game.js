@@ -378,9 +378,12 @@ function bonusNavigation(){
 }
 function renderSkinPicker(){
  const selected=PR.SKINS.find(skin=>skin.id===skinPreview)||PR.SKINS[0];
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">選択画面のプレビューです。見た目と効果は、いまの状態のままです。</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const chosen=skin.id===selected.id;
-  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(skin.id==='normal'?'現在の姿':'準備中')+'</span></div><div class="skin-emblem" role="img" aria-label="'+skin.name+'のイメージ">'+skin.icon+'</div><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button></article>';
+ return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">スキンは1着ずつ個別購入し、購入済みから1着を装備します。現在は販売準備中で、欠片は消費しません。</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
+  const chosen=skin.id===selected.id,normal=skin.id==='normal';
+  const price=normal?'無料':Number.isFinite(skin.cost)?skin.cost.toLocaleString('ja-JP')+' 欠片':'価格未定';
+  const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong><span>'+(normal?'標準スキン':'個別販売')+'</span></div>';
+  const buy=normal?'':'<button type="button" class="upgrade-buy skin-buy" data-action="skin-buy" data-key="'+skin.id+'" disabled aria-label="'+skin.name+' '+price+' 販売準備中">購入（準備中）</button>';
+  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(skin.id==='normal'?'現在の姿':'準備中')+'</span></div><div class="skin-emblem" role="img" aria-label="'+skin.name+'のイメージ">'+skin.icon+'</div><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button></div></article>';
  }).join('')+'</div>';
 }
 function renderUpgradeScreen(){
