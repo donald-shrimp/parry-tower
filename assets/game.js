@@ -79,7 +79,7 @@ function syncArtMode(){
  if(useIllustratedArt())KNIGHT_PUPPET?.preloadSources?.();
 }
 syncArtMode();
-let upgradeTab='loadout',upgradeReturnMode='title';
+let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items',skinPreview='normal';
 const SYNERGIES=[
  {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
  {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
@@ -373,6 +373,16 @@ function upgradeRow(o){
   :'';
  return `<div class="upgrade-row ${o.rarity||''}"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${o.desc}</div>${progress}</div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
 }
+function bonusNavigation(){
+ return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
+}
+function renderSkinPicker(){
+ const selected=PR.SKINS.find(skin=>skin.id===skinPreview)||PR.SKINS[0];
+ return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">選択画面のプレビューです。見た目と効果は、いまの状態のままです。</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
+  const chosen=skin.id===selected.id;
+  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(skin.id==='normal'?'現在の姿':'準備中')+'</span></div><div class="skin-emblem" role="img" aria-label="'+skin.name+'のイメージ">'+skin.icon+'</div><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button></article>';
+ }).join('')+'</div>';
+}
 function renderUpgradeScreen(){
  $('upgradeCoins').textContent=meta.coins+' ✧';
  const tabs=[['loadout','スキル装備'],['skills','スキル解放'],['base','基礎強化'],['special','特殊強化'],['seal','運命の封印'],['bonus','おまけ']];
@@ -389,8 +399,10 @@ function renderUpgradeScreen(){
    return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
   }).join('');
   $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div>${owned.length?'':'<div class="upgrade-empty">「スキル解放」から装備するスキルを購入</div>'}`;
+ }else if(upgradeTab==='bonus'&&bonusView==='skins'){
+  $('upgradeList').innerHTML=renderSkinPicker();
  }else if(upgradeTab==='bonus'){
-  $('upgradeList').innerHTML='<p class="upgrade-note">購入は一度だけ。購入後はここで無料でオン・オフできます。</p>'+PR.EXTRAS.map(item=>{
+  $('upgradeList').innerHTML=bonusNavigation()+'<p class="upgrade-note">購入は一度だけ。購入後はここで無料でオン・オフできます。</p>'+PR.EXTRAS.map(item=>{
    const owned=permanent.unlockedExtras.includes(item.id),enabled=PR.extraEnabled(permanent,item.id);
    const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
    return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div><div class="upgrade-effect">'+(owned?'購入済み · '+(enabled?'ON':'OFF'):'未購入')+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost.toLocaleString('ja-JP')+' ✧ で解放')+'</button></div>';
@@ -1700,7 +1712,11 @@ $('upgradeTabs').addEventListener('click',e=>{
 $('upgradeList').addEventListener('click',e=>{
  if(game.mode!=='upgrade')return;
  const btn=e.target.closest?.('[data-action]');
- if(btn)buyUpgrade(btn.dataset.action,btn.dataset.key);
+ if(btn?.dataset.action==='bonus-section'){
+  if(upgradeTab==='bonus'&&['items','skins'].includes(btn.dataset.key)){bonusView=btn.dataset.key;renderUpgradeScreen();}
+ }else if(btn?.dataset.action==='skin-preview'){
+  if(upgradeTab==='bonus'&&bonusView==='skins'&&PR.SKINS.some(skin=>skin.id===btn.dataset.key)){skinPreview=btn.dataset.key;renderUpgradeScreen();}
+ }else if(btn)buyUpgrade(btn.dataset.action,btn.dataset.key);
 });
 $('upgradeList').addEventListener('change',e=>{
  if(game.mode!=='upgrade')return;

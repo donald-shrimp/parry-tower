@@ -2436,3 +2436,32 @@ test('equipped dye reaches the actual hero crescent and combo glow is drawn with
   assert.deepEqual(g.audioEvents(),control.audioEvents());
  }
 });
+
+
+test('skin selection preview switches one card at a time without charging, persisting or changing bonus equipment',()=>{
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:2345}),parryTowerPermanent_v1:JSON.stringify({unlockedExtras:['slashTint'],enabledExtras:['slashTint'],extraOptions:{slashTint:'jade'}})};
+ const g=makeHarness(seed),saved=[...g.storage],initial=JSON.stringify(g.state().permanent);
+ g.upgradeBuy('skin-preview','chick');g.press('upgradeOpenBtn');g.upgradeTab('bonus');
+ g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：いつもの主人公/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
+ for(const skin of PR.SKINS){
+  g.upgradeBuy('skin-preview',skin.id);const html=g.el.get('upgradeList').innerHTML;
+  assert.ok(html.includes('プレビュー：'+skin.name));
+  const picked=[...html.matchAll(/data-action="skin-preview" data-key="([^"]+)" aria-pressed="true"/g)].map(m=>m[1]);assert.deepEqual(picked,[skin.id]);
+  assert.equal(g.state().souls,2345);assert.equal(JSON.stringify(g.state().permanent),initial);assert.deepEqual([...g.storage],saved);
+ }
+ const html=g.el.get('upgradeList').innerHTML;g.upgradeBuy('skin-preview','__proto__');assert.equal(g.el.get('upgradeList').innerHTML,html);
+ g.upgradeBuy('bonus-section','invalid');assert.equal(g.el.get('upgradeList').innerHTML,html);
+ g.upgradeBuy('bonus-section','items');assert.match(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
+ g.upgradeBuy('skin-preview','fundoshi');g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：時空のスキン/);
+ assert.deepEqual([...g.storage],saved);
+});
+
+test('previewing planned skins leaves actual HP, incoming damage, timing and BGM unchanged',()=>{
+ for(const skin of PR.SKINS){
+  const g=makeHarness({},true),control=makeHarness({},true);
+  g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');g.upgradeBuy('skin-preview',skin.id);g.press('upgradeCloseBtn');
+  for(const h of [g,control]){h.random(.5);h.dev().launch(5,'guardian:normal',true);h.frame(h.state().attackAt+1);}
+  assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' must not enable unfinished effects');assert.deepEqual(g.audioEvents(),control.audioEvents());
+ }
+});
