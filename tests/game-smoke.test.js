@@ -397,8 +397,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-9"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-9"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-10"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-10"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1097,7 +1097,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-9"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-10"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1416,7 +1416,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-9"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-10"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2513,15 +2513,15 @@ test('skin purchases charge approved prices once, preserve currency on failure, 
  g.upgradeBuy('skin-equip','normal');assert.equal(g.state().souls,50);assert.equal(g.state().permanent.equippedSkin,'normal');
  const poor=makeHarness({parryTowerPrototype_v1:JSON.stringify({coins:49})});poor.press('upgradeOpenBtn');poor.upgradeTab('bonus');poor.upgradeBuy('bonus-section','skins');
  poor.upgradeBuy('skin-buy','chick');poor.upgradeBuy('skin-equip','chick');assert.equal(poor.state().souls,49);assert.equal(poor.state().permanent.equippedSkin,'normal');
- const equipped=makeHarness({parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['chick'],equippedSkin:'chick'})});equipped.press('startBtn');assert.equal(equipped.state().maxHp,325);
- equipped.upgradeBuy('skin-equip','normal');assert.equal(equipped.state().maxHp,325,'changing equipment outside the shop cannot change an active run');
+ const equipped=makeHarness({parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['chick'],equippedSkin:'chick'})});equipped.press('startBtn');assert.equal(equipped.state().maxHp,98);
+ equipped.upgradeBuy('skin-equip','normal');assert.equal(equipped.state().maxHp,98,'changing equipment outside the shop cannot change an active run');
 });
 
 test('chick effect scales HP and updated health builds, widens both windows, and leaves input rearm in place',()=>{
  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'chick',true);
- assert.equal(g.state().maxHp,325);assert.equal(g.state().hp,325);assert.equal(g.dev().skinState().parryWindow,93);assert.equal(g.dev().skinState().justWindow,22);
- g.bloodTest().gainSkill('heal');assert.equal(g.state().maxHp,400);assert.equal(g.state().hp,400);
- g.bloodTest().grantRelic('reaper_pact');assert.equal(g.state().maxHp,320);
+ assert.equal(g.state().maxHp,98);assert.equal(g.state().hp,98);assert.equal(g.dev().skinState().parryWindow,93);assert.equal(g.dev().skinState().justWindow,22);
+ g.bloodTest().gainSkill('heal');assert.equal(g.state().maxHp,120);assert.equal(g.state().hp,120);
+ g.bloodTest().grantRelic('reaper_pact');assert.equal(g.state().maxHp,96);
  g.bloodTest().setSkill('focus',4);g.bloodTest().setSkill('stability',4);assert.equal(g.dev().skinState().justWindow,38);assert.equal(g.dev().skinState().parryWindow,129);
  const due=g.state().attackAt;g.clock(due-200);g.parry();assert.ok(g.state().parryCooldownRemaining>0);g.clock(due-190);g.parry();assert.equal(g.state().parryAnimAt,due-200);
  const visual=makeHarness({},true);visual.dev().launch(5,'guardian:normal',false,'chick',false);assert.equal(visual.state().maxHp,65);assert.equal(visual.dev().skinState().parryWindow,31);
@@ -2529,8 +2529,8 @@ test('chick effect scales HP and updated health builds, widens both windows, and
   const h=makeHarness({},true);h.dev().launch(5,'guardian:normal',false,'chick',true);const hit=h.state().attackAt;h.clock(hit-100-delta);h.parry();h.frame(hit+1);assert.equal(h.state().lastStrikeKind,kind);
  }
  const late=makeHarness({},true);late.dev().launch(5,'guardian:normal',false,'chick',true);late.bloodTest().setSkill('stability',4);
- const contact=late.state().attackAt;late.frame(contact+1);assert.equal(late.state().hp,325);
- late.clock(contact+25);late.parry();late.frame(contact+30);assert.equal(late.state().lastStrikeKind,'parry');assert.equal(late.state().hp,325,'full widened late edge remains usable');
+ const contact=late.state().attackAt;late.frame(contact+1);assert.equal(late.state().hp,98);
+ late.clock(contact+25);late.parry();late.frame(contact+30);assert.equal(late.state().lastStrikeKind,'parry');assert.equal(late.state().hp,98,'full widened late edge remains usable');
 });
 
 test('fundoshi fails on guards and hits through barriers, frost, reduction, reflection and revival, but not whiffs or parries',()=>{

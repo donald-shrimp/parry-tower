@@ -242,7 +242,7 @@ test('skin saves whitelist ownership and records, keep one equipped costume, and
  const chick=P.equipSkin(legacy,'chick',skills);assert.equal(chick.equippedSkin,'chick');assert.deepEqual(chick.enabledExtras,['slashTint']);
  const old=P.toggleExtra(chick,'legacyVisual',true,skills);assert.equal(old.equippedSkin,'normal');assert.deepEqual(old.unlockedSkins,['chick']);
  assert.deepEqual(P.normalize(JSON.parse(JSON.stringify(chick)),skills),chick);
- assert.equal(P.skinRules('chick').hp,5);assert.equal(P.skinRules('chick').parry,3);assert.equal(P.skinRules('chick').just,2);
+ assert.equal(P.skinRules('chick').hp,1.5);assert.equal(P.skinRules('chick').parry,3);assert.equal(P.skinRules('chick').just,2);
  assert.equal(P.skinRules('fundoshi').suddenDeath,true);assert.equal(P.skinRules('spacetime').randomTempo,true);
  assert.equal(P.skinRules('__proto__'),P.skinRules('normal'));
 });
