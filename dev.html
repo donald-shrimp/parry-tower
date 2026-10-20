@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.3-6">
+<meta name="parry-build" content="v0.9.3-7">
 <title>パリィの塔 | 開発者テスト v0.9.3</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.3-6&font=4">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.3-6">
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.3-7&font=4">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.3-7">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
@@ -32,6 +32,19 @@
  <p class="dev-note">押すと盾を前へ、長押しでガード。空振り後は盾を戻し、ボタンを少し離してから再パリィ。成功時だけ剣で反撃します。</p>
  <p class="dev-note"><a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
  <p class="dev-note">開発者向けの検証ページです。魂の欠片・図鑑・恒久育成・音声補正は保存しません。公開URLを知っている人は開けるため、認証付き管理画面ではありません。</p>
+</section>
+<section id="devMusicRoom" class="dev-panel dev-music" aria-label="ステージBGM試聴室">
+ <div class="dev-title"><strong>♫ ステージBGM試聴室</strong><span>採用曲 · 10階ごとにエリアのBGMへ切り替え</span></div>
+ <div class="dev-controls">
+  <label for="devMusicTheme">ステージ<select id="devMusicTheme"></select></label>
+  <label for="devMusicVariant">聴き方<select id="devMusicVariant"><option value="normal">通常 · 112 BPM</option><option value="boss">ボス · 136 BPM</option></select></label>
+  <button type="button" id="devMusicPlay">▶ BGMだけ再生</button><button type="button" id="devMusicStop" disabled>■ 停止</button>
+ </div>
+ <p id="devMusicTitle" class="dev-music-name"></p><p id="devMusicDescription"></p><p id="devMusicInstruments" class="dev-note"></p>
+ <div class="dev-music-transport"><div id="devMusicPulse" class="dev-music-pulse" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span></div><span id="devMusicPosition">停止中</span></div>
+ <div class="dev-controls dev-music-actions"><button type="button" id="devMusicPractice">この曲で無敵練習</button><span class="dev-note">練習の停止はゲーム側の一時停止ボタンから。BGMだけの再生は、画面を離れると停止します。</span></div>
+ <p id="devMusicStatus" role="status">1〜10Fの現行曲と、以降7エリアの採用曲を聴き比べられます。</p>
+ <details class="dev-music-score"><summary>今の譜面はどう作っている？</summary><p>録音ファイルではなく、Web Audioで音を合成しています。4拍を8分音符8個に分け、ドラム・ベース・旋律・和音のパターンを重ねた8小節ループです。</p><p>音符の高さ・長さ・音量・音色を配列で決めています。通常112 BPM、速い敵124 BPM、ボス136 BPM。敵ごとの攻撃間隔も同じ時計の拍・裏拍を使うため、BGMと攻撃がずれません。</p><p>攻撃の譜面は別の配列です。例：騎士の [2, 2, 3, 1] は、2拍待つ→2拍→3拍→1拍の繰り返し。曲を解析して攻撃する方式ではなく、曲と攻撃に同じ拍の基準を渡しています。</p><p>地下墓地は現行曲をそのまま再生。新しい7曲は、和音進行・旋律・打楽器・楽器構成を各エリア用に書いた採用曲です。本編でも階層に合わせて自動で切り替わります。</p></details>
 </section>
 <div class="app">
  <header class="topbar">
@@ -106,31 +119,32 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.3-6" defer></script>
-<script src="./assets/encounters.js?v=v0.9.3-6" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.3-6" defer></script>
-<script src="./assets/progression.js?v=v0.9.3-6" defer></script>
-<script src="./assets/relics.js?v=v0.9.3-6" defer></script>
-<script src="./assets/routes.js?v=v0.9.3-6" defer></script>
-<script src="./assets/events.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-art.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.3-6" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.3-6" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.3-6" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-style.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.3-6" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.3-6" defer></script>
-<script src="./assets/game.js?v=v0.9.3-6" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.3-6" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.3-7" defer></script>
+<script src="./assets/encounters.js?v=v0.9.3-7" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.3-7" defer></script>
+<script src="./assets/progression.js?v=v0.9.3-7" defer></script>
+<script src="./assets/relics.js?v=v0.9.3-7" defer></script>
+<script src="./assets/routes.js?v=v0.9.3-7" defer></script>
+<script src="./assets/events.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-art.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.3-7" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.3-7" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.3-7" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-style.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.3-7" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.3-7" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.3-7" defer></script>
+<script src="./assets/game.js?v=v0.9.3-7" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.3-7" defer></script>
 </body>
 </html>

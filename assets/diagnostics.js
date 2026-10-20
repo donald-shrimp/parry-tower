@@ -4,14 +4,14 @@
  */
 (function(root){
  'use strict';
- const BUILD='v0.9.3-6';
+ const BUILD='v0.9.3-7';
  const REQUIRED_ASSETS=[
   'style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js',
-  'relics.js','routes.js','events.js','combat-sfx.js','game.js'
+  'relics.js','routes.js','events.js','combat-sfx.js','stage-music.js','game.js'
  ];
  const MODULES={
   encounters:'ParryEncounters',motions:'ParryEnemyMotions',progression:'ParryProgression',
-  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents'
+  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents',stageMusic:'ParryStageMusic'
  };
  let registeredBuild=null,stateGetter=null,assetFailures=[];
  let hasLoaded=false;
