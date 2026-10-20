@@ -2,7 +2,7 @@
 
 ## 工房での手動調整を本番へ反映
 
-ユーザー保存 updatedAt 1792499809689 の6体（rogue/guardian/knight/ironwarden/dirgekeeper/timewarden）の配置を正本JSONと同期JSの両方で採用する。工房データは再生成/再編集せず一致を検証し、キャッシュ識別子をv0.9.3-8へ統一する。既存のモーション・描画・判定・保存回帰とブラウザ表示を確認してmain統合/push、CI/Pages、公開ファイル一致まで進める。
+ユーザー保存 updatedAt 1792499809689 の6体（rogue/guardian/knight/ironwarden/dirgekeeper/timewarden）の配置を正本JSONと同期JSの両方で採用する。工房データは再生成/再編集せず一致を検証し、キャッシュ識別子をv0.9.3-8へ統一する。採用30bb545、main統合/公開ea7383f。Node344件、37JS構文、GitHub CI/Pages成功。公開8ファイルのSHA一致、実ブラウザで守護者の描画・振り下ろし・残像/停止・警告なしまで確認し完了。
 
 ## エリア別BGMの採用・公開
 
