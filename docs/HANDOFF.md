@@ -2,7 +2,7 @@
 
 ## 現在の目的と承認
 
-ユーザーが高音抑制後のジャスト音を「いい感じ。これで実装頼む」と最終了承。試遊で了承された主人公モーション・連打対策・効果音を本編へ採用し、ビルドを **v0.9.3-4** に更新して最終検証済み。現在は `codex/shield-feedback-playtest` の採用コミットをローカルmainへマージする段階。今回の改善はGitHubへ未push、Pagesは前回公開のv0.9.3-3。
+ユーザーが高音抑制後のジャスト音を「いい感じ。これで実装頼む」と最終了承。試遊で了承された主人公モーション・連打対策・効果音を本編へ採用し、ビルドを **v0.9.3-4** に更新して最終検証済み。採用コミット `1247325` をローカルmainへマージ済み（`c7768ae`）。マージ結果のツリーは検証済み機能ブランチと完全一致。現在のブランチはmain。今回の改善はGitHubへ未push、Pagesは前回公開のv0.9.3-3。
 
 ## 採用内容と正本
 
@@ -25,4 +25,4 @@
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
 - 公開先 <https://donald-shrimp.github.io/parry-tower/>、公開済みmainの基点は `2aed84b`。今回の最終承認は本編採用/ローカルmainマージまでとして扱う。公開指示が来たら通常pushし、CI/Pagesと公開ビルドv0.9.3-4を確認する。
-- 次の操作はローカルmainへのマージと本書のマージ結果更新。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
+- 本編採用とローカルmainマージは完了。公開指示が来たらorigin/mainの更新を確認して通常pushし、CI/Pages成功と公開ビルドv0.9.3-4を確認する。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
