@@ -1,7 +1,7 @@
 {
   "schema": "parry-art-studio",
   "version": 1,
-  "updatedAt": 1792426370286,
+  "updatedAt": 1792499809689,
   "characters": {
     "hero": {
       "placement": {
@@ -197,7 +197,7 @@
     "rogue": {
       "placement": {
         "x": 0,
-        "y": 0,
+        "y": 57.21639796547656,
         "scale": 1
       },
       "layers": {
@@ -218,8 +218,8 @@
     },
     "guardian": {
       "placement": {
-        "x": 0,
-        "y": 0,
+        "x": -95.72867430195703,
+        "y": 54.49156585317816,
         "scale": 1
       },
       "layers": {
@@ -348,6 +348,38 @@
           ]
         }
       ]
+    },
+    "knight": {
+      "placement": {
+        "x": 0,
+        "y": 25.305854778544536,
+        "scale": 1
+      },
+      "layers": {}
+    },
+    "ironwarden": {
+      "placement": {
+        "x": 20.383199317054864,
+        "y": 29.118875209483488,
+        "scale": 1
+      },
+      "layers": {}
+    },
+    "dirgekeeper": {
+      "placement": {
+        "x": 42.137981856981675,
+        "y": 20.288562675646485,
+        "scale": 1
+      },
+      "layers": {}
+    },
+    "timewarden": {
+      "placement": {
+        "x": 11.125559817846389,
+        "y": 23.84069319830433,
+        "scale": 1
+      },
+      "layers": {}
     }
   }
 }
