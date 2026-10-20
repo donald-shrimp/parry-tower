@@ -388,8 +388,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-5"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-5"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-6"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-6"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1088,7 +1088,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-5"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-6"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1407,7 +1407,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-5"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-6"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1999,12 +1999,12 @@ test('metal feedback fires once at collision, respects mute, and developer sound
  g.press('audioBtn');assert.equal(g.dev().previewSound('parry'),false);const count=g.metalEvents().length;
  const next=g.state().attackAt;g.clock(next-100);g.parry();g.frame(next+1);assert.equal(g.metalEvents().length,count);
 });
-test('developer volume slider starts at half, updates three metal sounds live and leaves BGM and combat unchanged',()=>{
+test('developer volume slider matches adopted production, updates three metal sounds live and leaves BGM and combat unchanged',()=>{
  const g=makeHarness({},true),slider=g.el.get('devSfxVolume'),value=g.el.get('devSfxVolumeValue');
- assert.equal(slider.value,'50');assert.equal(value.textContent,'50%');assert.equal(g.dev().getSfxVolume(),50);
+ assert.equal(slider.value,'100');assert.equal(value.textContent,'100%');assert.equal(g.dev().getSfxVolume(),100);
  g.dev().launch(5,'guardian:normal',true);g.dev().previewSound('parry');
  const state=JSON.stringify(g.state()),saved=[...g.storage];
- assert.deepEqual({...g.bloodTest().mixGains()},{bgm:.35,steel:.5});
+ assert.deepEqual({...g.bloodTest().mixGains()},{bgm:.35,steel:1});
  slider.value='27';slider.listeners.input();assert.equal(value.textContent,'27%');
  assert.match(slider['aria-valuetext'],/^27%/);assert.equal(g.dev().getSfxVolume(),27);
  assert.deepEqual({...g.bloodTest().mixGains()},{bgm:.35,steel:.27});

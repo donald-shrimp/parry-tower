@@ -1,5 +1,16 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),S=require('../assets/combat-sfx');
+test('adopted defense gains equal the user-selected 25 percent of the reviewed production baseline',()=>{
+ const old={guard:.294,parry:.301,just:.2464},levels=[];
+ const ac={sampleRate:8000,currentTime:10,destination:{},
+  createBuffer(ch,n){return{getChannelData:()=>new Float32Array(n)}},
+  createBufferSource(){return{connect(){},start(){}}},
+  createGain(){return{gain:{setValueAtTime(value){levels.push(value)}},connect(){}}}};
+ for(const kind of ['guard','parry','just']){
+  assert.equal(S.PROFILES[kind].level,old[kind]*.25);assert.equal(S.play(ac,kind),true);
+ }
+ assert.deepEqual(levels,[.0735,.07525,.0616]);
+});
 test('three metal impacts have deterministic finite waveforms, clean boundaries, headroom and different timbres',()=>{
  const outputs=[];
  for(const rate of [44100,48000])for(const [kind,p]of Object.entries(S.PROFILES)){

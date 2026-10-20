@@ -2,13 +2,13 @@
 
 ## 現在の目的と承認
 
-最新依頼は「BGMを主役に、パリィ系の音量を自分で試して数値を決めたい」。`codex/dev-sfx-volume` でDev専用の0〜100%スライダーを追加し、**初期50%、100%＝現在の本編**で試遊可能。本編の採用音量はユーザーの指定待ち。通常ページの音量、音色、BGMは変更していない。mainへの統合/push/本番の音量変更はまだ行わない。
+最新依頼は **「25%が良かった。実装頼む」**。試遊時の100%を基準に、ガード/パリィ/ジャストをすべて25%へ下げて本番公開する承認あり。`codex/dev-sfx-volume` で採用準備中。旧ゲイン .294 / .301 / .2464 に .25 を掛け、**guard .0735 / parry .07525 / just .0616** を採用する。BGMのゲイン/時計、波形、音色/EQ、保存、立ち絵/モーションは保持。
 
-ガード/パリィ/ジャストだけをDev専用Gainへ通し、戦闘音と試聴3ボタンが共通で効く。音の余韻にも15ms時定数で反映する。BGMのGain/音声時計とは独立し、波形再合成やセーブ書込はしない。値はタイトルに戻る/再開始でも維持し、再読み込み時は初期50%（`sfxVolume` query指定も可）。比較用に「本編の音量（100%）」ボタンを追加。
+Dev音量バーも採用する。0〜100%、初期値を**100%＝採用後の本編音量**へ更新済み。旧試遊の25%をさらに掛けない。3音だけをDev専用Gainへ通し、戦闘音と試聴3ボタンが共通で効く。余韻にも15ms時定数で反映し、BGMとは独立。値はタイトル/再開始でも維持し、`sfxVolume` queryで開始値指定も可。本編100%へ戻すボタンを維持。mainの通常プレイは採用ゲインで直接再生する。
 
-試遊URL：<https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sfxVolume=50>（既存の読み取り専用8003＋トンネル、実HTTP200と新UIを確認済み）。ローカルは <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1&sfxVolume=50>。実ブラウザで27%/0%/100%/50%、戦闘中の変更、試聴、タイトル復帰、警告/エラーなしを確認。証跡 `test-results/dev-sfx-volume-ui.png`。焦点テスト4件・全体Node336件成功（`test-results/dev-sfx-volume-all.txt`）、変更JS2件の構文/差分空白確認成功。
+ビルドを**v0.9.3-6**へ統一済み。採用ゲインが旧基準の正確な25%であること、Dev初期100%と実Gain/戦闘時計/BGMの不変、通常ページ隔離、ビルド一致の焦点テスト5件成功（`test-results/sfx25-focused.txt`）。全体Node337件成功（`test-results/sfx25-release-node.txt`）、JS36ファイル構文/差分空白確認成功。先行するDevバー `4dbe17c` はNode336件成功・外部ブラウザ確認済み。ユーザーの音量判断は旧試遊で最終了承済み。
 
-次はユーザーの数値待ち。その数値を現在の3音のゲイン（guard .294 / parry .301 / just .2464）へ共通倍率として適用する。例えば50%なら .147 / .1505 / .1232。採用時はDevの100%基準も新しい本編へ合わせ、初期値を100%に戻して「さらに半減」にならないようにする。音色/EQ/波形/BGMを保持し、検証/main統合/公開まで進める。
+次は全体検証、main統合・push、CI/Pages、公開URL/ファイル一致/Dev初期100%を確認する。今回は公開まで承認済み。新しいDevの確認URLには旧試遊の `sfxVolume=25/50` を付けず、未指定または100を使う。
 
 ## 前回の公開：立ち絵の先読み
 
@@ -22,8 +22,8 @@ HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子をv0.9
 
 - 剣腕はパリィ/ジャスト成功時だけ反撃。盾は肩から起こして前に出し、構え切った接触位置を保持。ガードには衝突の反動、被弾には別の反動。
 - 再パリィは受理入力後300ms＋全指/キーを120ms離す両条件。成功時は接触で300ms回復を解除。拒否入力でも100ms保持すればガード。入力源全体で共有する。判定窓/敵時計/ダメージは変更していない。
-- `assets/combat-sfx.js` が添付「打ち合う2」/「3」/「盾で防御」の共振・粗い時間包絡を基準に独自波形を合成。ジャストは1.15倍速相当。再生ゲインはガード0.294/パリィ0.301/ジャスト0.2464。ジャストは4.5kHz周辺を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振を早く減衰させる。EQ後に音量を戻さない。3音をBGMの拍原点確定前に準備し、接触時に一度、同じAudioContextで再生。BGM/ミュートを保持。
-- devには任意の敵の無敵練習・3音の個別試聴。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子はv0.9.3-5、combat-sfxも必須アセットとして確認する。
+- `assets/combat-sfx.js` が添付「打ち合う2」/「3」/「盾で防御」の共振・粗い時間包絡を基準に独自波形を合成。ジャストは1.15倍速相当。採用ゲインはガード0.0735/パリィ0.07525/ジャスト0.0616（v0.9.3-5の25%）。ジャストは4.5kHz周辺を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振を早く減衰させる。EQ後に音量を戻さない。3音をBGMの拍原点確定前に準備し、接触時に一度、同じAudioContextで再生。BGM/ミュートを保持。
+- devには任意の敵の無敵練習・3音の個別試聴・効果音量バー。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子はv0.9.3-6、combat-sfxも必須アセットとして確認する。
 - 了承済みの全画像/配色/確定ポーズ/敵モーション/0.2秒白い反撃/精鋭とレア演出は保持。`assets/character-art/` と `character-art-defaults.js` はmainから差分なし。`studio-project.json` updatedAt **1792426370286** のまま。王は `approved/endking/` の手塗り正本。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。
 
 ## 防御改善時の検証（v0.9.3-4）
@@ -39,5 +39,5 @@ HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子をv0.9
 - 本編 <http://127.0.0.1:8002/>、無敵試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。`node scripts/serve-local.js 8002`。既存工房サーバーやタブは変更していない。
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
-- **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-5>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
+- **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-6>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
 - 先読み修正を含むmain統合/push/Pages/公開確認まで完了。次は公開後のフィードバック対応。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
