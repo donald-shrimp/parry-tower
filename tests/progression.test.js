@@ -225,10 +225,24 @@ test('extra color choices require ownership, whitelist colors and survive saving
 });
 
 
-test('planned skin catalog is immutable and has no implicit ownership or gameplay modifiers',()=>{
+test('skin catalog has approved individual prices and no forged implicit ownership',()=>{
  assert.deepEqual(P.SKINS.map(skin=>skin.id),['normal','chick','fundoshi','spacetime']);
  assert.equal(Object.isFrozen(P.SKINS),true);
- assert.deepEqual(P.SKINS.map(skin=>[skin.id,skin.cost]),[['normal',0],['chick',50],['fundoshi',null],['spacetime',null]]);
+ assert.deepEqual(P.SKINS.map(skin=>[skin.id,skin.cost]),[['normal',0],['chick',50],['fundoshi',600],['spacetime',600]]);
  for(const skin of P.SKINS){assert.equal(Object.isFrozen(skin),true);assert.ok(skin.name&&skin.look&&skin.rule&&skin.color);}
  const raw=P.normalize({selectedSkin:'fundoshi',skin:'chick'},skills);assert.equal(raw.selectedSkin,undefined);assert.equal(raw.skin,undefined);
+});
+
+test('skin saves whitelist ownership and records, keep one equipped costume, and preserve other bonuses',()=>{
+ const p=P.normalize({unlockedSkins:['chick','chick','bogus'],equippedSkin:'fundoshi',skinRecords:{chick:{bestFloor:9,bestCombo:NaN,runs:2},bogus:{runs:99}}},skills);
+ assert.deepEqual(p.unlockedSkins,['chick']);assert.equal(p.equippedSkin,'normal');
+ assert.deepEqual(p.skinRecords,{chick:{bestFloor:9,bestCombo:0,runs:2}});
+ assert.equal(P.equipSkin(p,'fundoshi',skills),null);assert.equal(P.equipSkin(p,'__proto__',skills),null);
+ const legacy=P.normalize({...p,unlockedExtras:['legacyVisual','slashTint'],enabledExtras:['legacyVisual','slashTint']},skills);
+ const chick=P.equipSkin(legacy,'chick',skills);assert.equal(chick.equippedSkin,'chick');assert.deepEqual(chick.enabledExtras,['slashTint']);
+ const old=P.toggleExtra(chick,'legacyVisual',true,skills);assert.equal(old.equippedSkin,'normal');assert.deepEqual(old.unlockedSkins,['chick']);
+ assert.deepEqual(P.normalize(JSON.parse(JSON.stringify(chick)),skills),chick);
+ assert.equal(P.skinRules('chick').hp,5);assert.equal(P.skinRules('chick').parry,3);assert.equal(P.skinRules('chick').just,2);
+ assert.equal(P.skinRules('fundoshi').suddenDeath,true);assert.equal(P.skinRules('spacetime').randomTempo,true);
+ assert.equal(P.skinRules('__proto__'),P.skinRules('normal'));
 });

@@ -19,6 +19,7 @@
   <button type="button" id="devLaunch">▶ 指定条件で開始</button>
   <button type="button" id="devReset">↻ タイトルに戻る</button>
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
+  <label for="devSkinEffects" class="dev-toggle"><input id="devSkinEffects" type="checkbox" checked> スキン効果を有効にする</label>
  </div>
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
  <p id="devStatus" role="status">フロアと敵を選び、開始ボタンを押してください。</p>
@@ -31,7 +32,8 @@
   <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編（試遊で選んだ旧音量の25%を採用済み）。BGMの音量は変わりません。戦闘中も変更できます。</p>
  </div>
  <p class="dev-note">押すと盾を前へ、長押しでガード。空振り後は盾を戻し、ボタンを少し離してから再パリィ。成功時だけ剣で反撃します。</p>
- <p class="dev-note">スキンは外見だけの試作です。HP・判定・被ダメージ・BPMは通常ルール。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
+ <p id="devSkinStatus" class="dev-note" role="status"></p>
+ <p class="dev-note">設定を変えたら「指定条件で開始」。無敵練習中はふんどしでも死にません。効果をOFFにすると外見だけを比較できます。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
  <p class="dev-note"><a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
  <p class="dev-note">開発者向けの検証ページです。魂の欠片・図鑑・恒久育成・音声補正は保存しません。公開URLを知っている人は開けるため、認証付き管理画面ではありません。</p>
 </section>

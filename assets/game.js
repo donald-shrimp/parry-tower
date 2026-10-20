@@ -73,6 +73,9 @@ const SKILLS=[
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
 let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.getItem(PERMANENT_KEY)||'{}'),SKILLS)}catch(e){}
+if(!permanent.skinRecords.normal)permanent.skinRecords.normal={bestFloor:meta.bestFloor,bestCombo:meta.bestCombo,runs:meta.runs};
+function visualSkin(){return game?.skin||(DEV_MODE?devPreviewSkin:permanent.equippedSkin)||'normal'}
+function runSkinRules(){return PR.skinRules(game?.skinEffects?game.skin:'normal')}
 function legacyVisualEnabled(){return PR.extraEnabled(permanent,'legacyVisual')}
 function useIllustratedArt(){return (DEV_MODE&&devPreviewSkin!=='normal')||(ILLUSTRATED_ENABLED&&!legacyVisualEnabled())}
 function syncArtMode(){
@@ -245,7 +248,7 @@ function playMusicStep(n,t){
 function stopScore(){score.active=false;score.nextStep=0;if(score.bus&&audioContext){score.bus.gain.cancelScheduledValues(audioContext.currentTime);score.bus.gain.setTargetAtTime(0,audioContext.currentTime,.025);
  const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
 }}
-function startScore(enemy){if(!ensureAudio()){score.active=false;return}const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.beat=60/(score.boss?136:enemy.kind==='rogue'?124:112);score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35:0,ac.currentTime,.018);const selected=STAGE_MUSIC?.get(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function startScore(enemy){score.beat=60/((enemy.boss?136:enemy.kind==='rogue'?124:112)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0));if(!ensureAudio()){score.active=false;return}const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35:0,ac.currentTime,.018);const selected=STAGE_MUSIC?.get(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function scoreToPerf(t){if(audioContext&&audioContext.state!=='suspended'){if(audioContext.getOutputTimestamp){const ts=audioContext.getOutputTimestamp();if(ts&&ts.performanceTime>0&&ts.contextTime>0)return ts.performanceTime+(t-ts.contextTime)*1000+latencyOffset}return performance.now()+(t-audioContext.currentTime)*1000+latencyOffset}return score.visualOriginPerf+(t-score.origin)*1000+latencyOffset}
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat);game.telegraphStart=game.attackAt-game.attackSpan}
@@ -289,8 +292,8 @@ function sfxSwing(){if(!audioEnabled)return;try{
 function upgradeCount(){return Object.values(game.lv||{}).reduce((a,b)=>a+b,0)}
 function lvl(id){return game.lv?.[id]||0}
 function has(a,b){return lvl(a)>0&&lvl(b)>0}
-function getPerfectWindow(){return 11+lvl('focus')*2}
-function getParryWindow(){return 31+lvl('stability')*3}
+function getPerfectWindow(){return (11+lvl('focus')*2)*runSkinRules().just}
+function getParryWindow(){return (31+lvl('stability')*3)*runSkinRules().parry}
 // Lock the entire death overlay (including dynamically rendered shop buttons).
 // Keep the retry / home / bestiary buttons natively disabled for keyboard and accessibility.
 function deathInputBlocked(now=performance.now()){
@@ -344,7 +347,7 @@ function relicShield(amount){
  game.shield=Math.min(cap,game.shield+amount);
 }
 function adjustRelicMaxHp(){
- const base=game.rawMaxHp||game.maxHp;
+ const base=(game.rawMaxHp||game.maxHp)*runSkinRules().hp;
  game.maxHp=hasRelic('reaper_pact')?Math.max(1,Math.floor(base*.8)):base;
  game.hp=Math.min(game.maxHp,game.hp);
 }
@@ -353,7 +356,18 @@ function renderRelicInventory(){
  $('relicCount').textContent=items.length+' / '+RR.MAX_HELD;
  $('relicList').innerHTML=items.length?items.map(r=>`<div class="relic-owned ${r.rarity}"><span class="relic-owned-icon">${r.icon}</span><div><div class="relic-owned-title">${r.name}</div><div class="relic-owned-desc">${r.desc}</div></div></div>`).join(''):'<div class="empty">遺物なし</div>';
 }
-function records(){return `<span>最高到達 <b>${meta.bestFloor}F</b></span><span>最高コンボ <b>${meta.bestCombo}</b></span><span>挑戦 <b>${meta.runs}回</b></span>`}
+function records(){
+ const id=game?.skin||permanent.equippedSkin,skin=PR.SKINS.find(s=>s.id===id)||PR.SKINS[0];
+ const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0,runs:0};
+ return `<span>${skin.icon} ${skin.name}</span><span>最高到達 <b>${r.bestFloor}F</b></span><span>最高コンボ <b>${r.bestCombo}</b></span><span>挑戦 <b>${r.runs}回</b></span>`;
+}
+function recordSkinRun(finished=false){
+ if(DEV_MODE||game.practice)return;
+ const r=permanent.skinRecords[game.skin]||{bestFloor:0,bestCombo:0,runs:0};
+ r.bestFloor=Math.max(r.bestFloor,game.floor);r.bestCombo=Math.max(r.bestCombo,game.peakCombo);
+ if(finished)r.runs++;
+ permanent.skinRecords[game.skin]=r;savePermanent();
+}
 
 function soulReward(n){return Math.ceil(n*(1+PR.value(permanent,'soulGain')/100))}
 // Deferred until defeat: avoids unexpectedly rewriting old saves on page load.
@@ -380,12 +394,15 @@ function bonusNavigation(){
 function renderSkinPicker(){
  for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
  const selected=PR.SKINS.find(skin=>skin.id===skinPreview)||PR.SKINS[0];
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">スキンは1着ずつ個別購入し、購入済みから1着を装備します。現在は販売準備中で、欠片は消費しません。</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const chosen=skin.id===selected.id,normal=skin.id==='normal';
-  const price=normal?'無料':Number.isFinite(skin.cost)?skin.cost.toLocaleString('ja-JP')+' 欠片':'価格未定';
-  const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong><span>'+(normal?'標準スキン':'個別販売')+'</span></div>';
-  const buy=normal?'':'<button type="button" class="upgrade-buy skin-buy" data-action="skin-buy" data-key="'+skin.id+'" disabled aria-label="'+skin.name+' '+price+' 販売準備中">購入（準備中）</button>';
-  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">外見レビュー可</span></div><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button><a class="upgrade-buy" href="./skin-preview.html?skin='+skin.id+'">モーションを見る ↗</a></div></article>';
+ const equipped=PR.SKINS.find(skin=>skin.id===permanent.equippedSkin)||PR.SKINS[0];
+ return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">1着ずつ個別購入。購入後は無料で着替えられ、次の挑戦から外見と効果を適用します。開発初期モードとは同時使用できません。</p><p class="skin-preview-status">装備中：'+equipped.name+'</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
+  const chosen=skin.id===selected.id,owned=PR.ownsSkin(permanent,skin.id),wearing=skin.id===equipped.id;
+  const price=skin.cost===0?'無料':skin.cost.toLocaleString('ja-JP')+' 欠片';
+  const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong><span>'+(owned?'購入済み':'個別販売')+'</span></div>';
+  const action=owned?'skin-equip':'skin-buy';
+  const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(wearing?'装備中':owned?'装備する':price+'で購入して装備')+'</button>';
+  const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0};
+  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(wearing?'装備中':'効果あり')+'</span></div><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><p class="skin-look">自己記録：'+r.bestFloor+'F / '+r.bestCombo+' COMBO</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button><a class="upgrade-buy" href="./skin-preview.html?skin='+skin.id+'">モーションを見る ↗</a><a class="upgrade-buy" href="./dev.html?floor=5&amp;enemy=guardian&amp;skin='+skin.id+'&amp;skinEffects=1">効果を試す ↗</a></div></article>';
  }).join('')+'</div>';
 }
 function renderUpgradeScreen(){
@@ -452,9 +469,13 @@ function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
  upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
 }
-function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode)}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records();}
 function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
+ if(action==='skin-equip'){
+  const next=PR.equipSkin(permanent,key,SKILLS);if(!next)return;
+  permanent=next;skinPreview=key;savePermanent();syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);renderUpgradeScreen();return;
+ }
  if(action==='bonus-toggle'){
   const next=PR.toggleExtra(permanent,key,!PR.extraEnabled(permanent,key),SKILLS);if(!next)return;
   permanent=next;savePermanent();syncArtMode();renderUpgradeScreen();sound(650,.12,'triangle',.04,140);return;
@@ -469,6 +490,11 @@ function buyUpgrade(action,key){
   const index=Number(key);
   if(Number.isInteger(index)&&index===permanent.slots&&index<PR.SLOT_COSTS.length){
    cost=PR.SLOT_COSTS[index];apply=()=>{permanent.slots++};
+  }
+ }else if(action==='skin-buy'){
+  const skin=PR.SKINS.find(s=>s.id===key);
+  if(skin&&Number.isFinite(skin.cost)&&!PR.ownsSkin(permanent,key)){
+   cost=skin.cost;apply=()=>{permanent.unlockedSkins.push(key);permanent=PR.equipSkin(permanent,key,SKILLS);skinPreview=key;syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);};
   }
  }else if(action==='bonus-buy'){
   const item=PR.EXTRAS.find(item=>item.id===key);
@@ -495,10 +521,11 @@ function buyUpgrade(action,key){
 }
 function title(){stopScore();devMusicAudition=false;devMusicTheme='auto';clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
+ const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=STAGE_MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const startingHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:startingHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=baseHp*PR.skinRules(runEffects?runSkin:'normal').hp;const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:false,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 // The 4F/8F rooms replace ordinary combat on each ten-floor route cycle.
 function enterFloor(at=performance.now()){
  if(!game.practice&&!(DEV_MODE&&game.devOverride)&&RT.branchKind(game.floor)){
@@ -718,7 +745,8 @@ function spawnEnemy(t){
  game.phaseStage=null;game.phaseStartedAt=0;game.phaseCountStartAt=0;
  if(archetype.boss&&!game.practice)game.shield+=PR.value(permanent,'bossWard');
  game.artLoading=false;game.artFallback=false;
- const skinReady=!DEV_MODE||!window.ParryHeroPuppet?.skinReady||window.ParryHeroPuppet.skinReady(devPreviewSkin);
+ game.skinTempoOffset=runSkinRules().randomTempo?[12,0,-12][Math.min(2,Math.floor(Math.random()*3))]:0;
+ const skinReady=!window.ParryHeroPuppet?.skinReady||window.ParryHeroPuppet.skinReady(visualSkin());
  if(useIllustratedArt()&&KNIGHT_PUPPET&&(!KNIGHT_PUPPET.readyFor(game.enemy)||!skinReady)){
   const run=game,encounter=game.enemy;game.artLoading=true;stopScore();setMode('loading');
   // Resume from a fresh beat origin only after both characters can be drawn.
@@ -728,13 +756,14 @@ function spawnEnemy(t){
    game.artLoading=false;game.artFallback=!ok;beginEncounter(performance.now());setMode('combat');
   };
   Promise.resolve().then(()=>Promise.all([KNIGHT_PUPPET.preload(encounter),
-   DEV_MODE?window.ParryHeroPuppet?.preloadSkin?.(devPreviewSkin)??true:true])).then(results=>finish(results.every(Boolean)),()=>finish(false));
+   window.ParryHeroPuppet?.preloadSkin?.(visualSkin())??true])).then(results=>finish(results.every(Boolean)),()=>finish(false));
  }else beginEncounter(t);
  syncHUD();
 }
 function beginEncounter(t){
  const archetype=game.enemy,floor=game.floor||1;
  startScore(game.enemy);
+ if(runSkinRules().randomTempo)showText(game.skinTempoOffset>0?'時空加速 ＋12':game.skinTempoOffset<0?'時空減速 −12':'時空安定 ±0',w*.5,h*.3,'#d9bcff',18);
  if(archetype.rare&&!game.practice){sound(890,.20,'sine',.08,-180);showText('✦ RARE ENCOUNTER ✦',w*.50,h*.20,'#f6d58b',20)}
  game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170;game.telegraphStart=t;
  game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;
@@ -769,7 +798,7 @@ function beginFinalCountIn(){
  const e=game.enemy;
  startScore(e);
  // If the browser cannot initialize audio, the visual count-in still finishes safely.
- if(!score.active)score.beat=60/136;
+ if(!score.active)score.beat=60/(136+(runSkinRules().randomTempo?game.skinTempoOffset||0:0));
  game.phaseCountStartAt=score.active?scoreToPerf(score.origin):performance.now()+170;
  if(score.active){
   // Four low drum strokes on the same AudioContext clock; only the first is accented.
@@ -861,7 +890,7 @@ function damageEnemy(n,color='#fff',label){
 }
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);const restored=Math.max(0,game.hp-a);if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);return restored}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
-function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(kind==='guard'){
+function strikeResult(kind,at){const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=at;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
   game.relicJustStreak=0;game.justStreak=0;
   if(hasRelic('stopped_hand')&&!game.relicStopUsed){
    game.relicStopUsed=true;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
@@ -969,7 +998,7 @@ function clearFloor(){
  }
  // Reaching the summit is recorded immediately; a player need not die to earn the milestone.
  game.finalClear=!game.practice&&game.floor===80&&defeated.id==='endking';
- if(game.finalClear){meta.bestFloor=Math.max(meta.bestFloor,80);save();}
+ if(game.finalClear){meta.bestFloor=Math.max(meta.bestFloor,80);recordSkinRun();save();}
  stopScore();game.mode='victory';game.clearAt=performance.now();defeated.hp=0;
  game.bossKills+=Number(defeated.boss);
  puff(w*.72,h*.58,defeated.color,40,1.8);flash=1;flashColor='#f6cb84';
@@ -1024,6 +1053,7 @@ function die(){
  meta.bestFloor=Math.max(meta.bestFloor,game.floor);
  meta.bestCombo=Math.max(meta.bestCombo,game.peakCombo);
  meta.runs++;
+ recordSkinRun(true);
  const rescue=grantRescueRewards();
  save(); // Reward currency and claim mask are saved together.
  $('deathSummary').innerHTML=`<b>${game.floor}F</b>で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b> / 空振り <b>${game.whiffs}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+game.bonusSouls+rescue} ✧</b>${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
@@ -1123,7 +1153,7 @@ function gainSkillLevel(id){
  game.lv[id]=(game.lv[id]||0)+1;
  if(id==='thunder'||id==='overcharge')game.relicEmperorDue=false;
  if(id==='heal'){
-  game.rawMaxHp=65+10*meta.life+lvl('heal')*15;adjustRelicMaxHp();
+  game.rawMaxHp=65+PR.baseValue(meta,'life')+lvl('heal')*15;adjustRelicMaxHp();
   game.hp=Math.min(game.maxHp,game.hp+game.maxHp-prevMax+12);
  }
 }
@@ -1300,7 +1330,7 @@ function hero(now){
  const action=['parry','just'].includes(game.lastStrikeKind)?clamp(1-(now-(game.lastDeflectAt??-99999))/240,0,1):0;
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const age=now-(game.lastImpactAt??-99999),push=(age>=0&&age<160&&game.lastStrikeKind!=='miss'?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45);
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:DEV_MODE?devPreviewSkin:'normal',counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
+ if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
    attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:game.lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind,
    pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,
@@ -1654,8 +1684,15 @@ function update(now,dt){const m=game.mode;if(m==='combat'){scheduleScore();syncA
   game.cuePlayed=true;sfxSwing();
  }
  if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
- if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt)
-  strikeResult(game.pendingKind||(guardReadyAt(game.attackAt)?'guard':'miss'),game.attackAt);
+ if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt){
+  const guarding=guardReadyAt(game.attackAt);
+  // At high Stability, the chick's wider press window can extend slightly
+  // beyond contact. Leave just that missing-input result open for the late
+  // edge; successful presses and established guards still resolve on contact.
+  const grace=runSkinRules().parry>1?Math.max(0,getParryWindow()-PARRY_STARTUP):0;
+  if(game.pendingKind||guarding||now>=game.attackAt+grace)
+   strikeResult(game.pendingKind||(guarding?'guard':'miss'),game.attackAt);
+ }
  }else if(m==='phase')updateFinalPhase(now);
  else if(m==='victory'&&now-game.clearAt>900)showRewards();
  shake=Math.max(0,shake-dt*.08);flash=Math.max(0,flash-dt*.003);particles=particles.filter(p=>{p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vx*=.985;p.vy+=.025;p.life-=dt;return p.life>0});texts=texts.filter(a=>now-a.t<a.life);
@@ -1743,15 +1780,16 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
  if(DEV_MODE)window.__parryDev=Object.freeze({
-  launch(floor=1,enemyKey='',practice=false,skin='normal'){
+  launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
-   devPreviewSkin=window.ParryHeroPuppet?.skinId?.(skin)||'normal';
+   devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
    const key=practice?(enemyKey||P.encounterForFloor(f,()=>.5).bookKey):null;
-   start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice});
+   start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects});
    return true;
   },
   previewSkin(){return devPreviewSkin},
+  skinState(){return {id:visualSkin(),effects:!!game.skinEffects,hpMultiplier:runSkinRules().hp,parryWindow:getParryWindow(),justWindow:getPerfectWindow(),tempoOffset:game.skinTempoOffset||0}},
   reset(){title()},
   musicList(){return STAGE_MUSIC?.themes||[]},
   previewMusic(id,variant='normal'){

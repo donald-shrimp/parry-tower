@@ -78,13 +78,27 @@
   });
   return {bonus,mask,atRuns:newlyClaimed};
  }
- // Individual-sale screen catalog. null prices are undecided; artwork and rules follow later.
+ // Individual prices: chick 50, fundoshi and spacetime 600 each.
  const SKINS=Object.freeze([
   Object.freeze({id:'normal',cost:0,name:'いつもの主人公',icon:'⚔',tag:'STANDARD',color:'#93c7ff',look:'青い装いと盾。今の主人公の姿です。',rule:'いつものルールで塔に挑戦。'}),
-  Object.freeze({id:'chick',cost:50,name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'全身を黄色寄りに。頭には小さなひよこ。',rule:'効果案：HP5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
-  Object.freeze({id:'fundoshi',cost:null,name:'赤ふんどし',icon:'🔥',tag:'一発勝負',color:'#ff9c9c',look:'兜を残して生身に、赤いふんどしを締める。',rule:'効果案：敵の攻撃をパリィ／ジャストできなければ即死。'}),
-  Object.freeze({id:'spacetime',cost:null,name:'時空のスキン',icon:'⌛',tag:'変則リズム',color:'#d4b0ff',look:'明るい紫色の装いと、時計の残像。',rule:'効果案：小節の区切りでBGMと敵が一緒に加速・減速。'})
+  Object.freeze({id:'chick',cost:50,name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'全身を黄色寄りに。頭には大きなひよこ。',rule:'HP5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
+  Object.freeze({id:'fundoshi',cost:600,name:'赤ふんどし',icon:'🔥',tag:'一発勝負',color:'#ff9c9c',look:'兜を残して生身に、赤いふんどしを締める。',rule:'敵の攻撃がガード・被弾なら即死。障壁・軽減・復活も無効。'}),
+  Object.freeze({id:'spacetime',cost:600,name:'時空のスキン',icon:'⌛',tag:'変則リズム',color:'#d4b0ff',look:'明るい紫色の装いと、時計の残像。',rule:'遭遇ごとにBPM＋12・0・−12を等確率で抽選。BGMと攻撃が一緒に変速。'})
  ]);
+ const SKIN_RULES=Object.freeze({
+  normal:Object.freeze({hp:1,parry:1,just:1,suddenDeath:false,randomTempo:false}),
+  chick:Object.freeze({hp:5,parry:3,just:2,suddenDeath:false,randomTempo:false}),
+  fundoshi:Object.freeze({hp:1,parry:1,just:1,suddenDeath:true,randomTempo:false}),
+  spacetime:Object.freeze({hp:1,parry:1,just:1,suddenDeath:false,randomTempo:true})
+ });
+ const skinRules=id=>Object.hasOwn(SKIN_RULES,id)?SKIN_RULES[id]:SKIN_RULES.normal;
+ const ownsSkin=(p,id)=>id==='normal'||SKINS.some(s=>s.id===id)&&Array.isArray(p?.unlockedSkins)&&p.unlockedSkins.includes(id);
+ function equipSkin(progress,id,skills=[]){
+  const p=normalize(progress,skills);if(!SKINS.some(s=>s.id===id)||!ownsSkin(p,id))return null;
+  p.equippedSkin=id;
+  if(id!=='normal')p.enabledExtras=p.enabledExtras.filter(other=>other!=='legacyVisual');
+  return p;
+ }
  const EXTRAS=Object.freeze([
   Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の塔へ。開発初期の主人公・敵のビジュアルに切り替えます。'}),
   Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。紅・紫・翠から選べます。',choices:Object.freeze([
@@ -107,6 +121,7 @@
   const p=normalize(progress,skills);
   if(!EXTRAS.some(item=>item.id===id)||!p.unlockedExtras.includes(id)||typeof enabled!=='boolean')return null;
   p.enabledExtras=p.enabledExtras.filter(other=>other!==id);if(enabled)p.enabledExtras.push(id);
+  if(id==='legacyVisual'&&enabled)p.equippedSkin='normal';
   return p;
  }
  const KNOWN_UPGRADES=Object.freeze(Object.fromEntries(UPGRADES.map(v=>[v.id,v])));
@@ -114,7 +129,7 @@
   return typeof value==='number'&&Number.isFinite(value)?Math.min(max,Math.max(0,Math.floor(value))):0;
  }
  function defaults(){return {version:VERSION,slots:0,unlockedSkills:[],equipped:[null,null],
-  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[],extraOptions:{slashTint:'crimson'}};}
+  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[],extraOptions:{slashTint:'crimson'},unlockedSkins:[],equippedSkin:'normal',skinRecords:{}};}
  function skillPrice(skill){
   if(!skill||typeof skill.id!=='string')return Infinity;
   if(Number.isSafeInteger(skill.startCost)&&skill.startCost>=0)return skill.startCost;
@@ -127,6 +142,12 @@
   p.unlockedExtras=[...new Set((Array.isArray(raw.unlockedExtras)?raw.unlockedExtras:[]).filter(id=>extraIds.has(id)))];
   p.enabledExtras=[...new Set((Array.isArray(raw.enabledExtras)?raw.enabledExtras:[]).filter(id=>p.unlockedExtras.includes(id)))];
   for(const item of EXTRAS)if(item.choices)p.extraOptions[item.id]=extraOption(raw,item.id).id;
+  p.unlockedSkins=[...new Set((Array.isArray(raw.unlockedSkins)?raw.unlockedSkins:[]).filter(id=>SKINS.some(s=>s.id===id&&id!=='normal')))];
+  if(ownsSkin(p,raw.equippedSkin)&&!p.enabledExtras.includes('legacyVisual'))p.equippedSkin=raw.equippedSkin;
+  for(const skin of SKINS){
+   const record=raw.skinRecords?.[skin.id];if(!record||typeof record!=='object')continue;
+   p.skinRecords[skin.id]=Object.fromEntries(['bestFloor','bestCombo','runs'].map(key=>[key,Number.isSafeInteger(record[key])&&record[key]>=0?record[key]:0]));
+  }
   p.slots=safeLevel(raw.slots,SLOT_COSTS.length);
   for(const def of UPGRADES)p[def.id]=safeLevel(raw[def.id],def.costs.length);
   const owned=Array.isArray(raw.unlockedSkills)?raw.unlockedSkills.filter(id=>typeof id==='string'&&id.length<=80):[];
@@ -192,7 +213,7 @@
   return level===def.costs.length?Infinity:def.costs[level];
  }
  const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
-  SKINS,EXTRAS,extraEnabled,extraOption,setExtraOption,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
+  SKINS,skinRules,ownsSkin,equipSkin,EXTRAS,extraEnabled,extraOption,setExtraOption,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;
 })(typeof window!=='undefined'?window:undefined);
