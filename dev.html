@@ -24,6 +24,11 @@
  <div class="dev-controls dev-sound-controls" aria-label="金属音を試聴">
   <span>効果音を試す · 参考音版 v3</span><button type="button" id="soundGuard">ガン · ガード</button><button type="button" id="soundParry">ガキン！ · パリィ</button><button type="button" id="soundJust">ジャキーン！ · ジャスト</button>
  </div>
+ <div class="dev-volume">
+  <label for="devSfxVolume">パリィ系効果音の音量 <output id="devSfxVolumeValue" for="devSfxVolume">50%</output></label>
+  <div class="dev-volume-row"><input id="devSfxVolume" type="range" min="0" max="100" step="1" value="50"><button type="button" id="devSfxOriginal">本編の音量（100%）</button></div>
+  <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編、50%＝その半分。BGMの音量は変わりません。戦闘中も変更できます。気に入った数値を教えてください。</p>
+ </div>
  <p class="dev-note">押すと盾を前へ、長押しでガード。空振り後は盾を戻し、ボタンを少し離してから再パリィ。成功時だけ剣で反撃します。</p>
  <p class="dev-note"><a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
  <p class="dev-note">開発者向けの検証ページです。魂の欠片・図鑑・恒久育成・音声補正は保存しません。公開URLを知っている人は開けるため、認証付き管理画面ではありません。</p>

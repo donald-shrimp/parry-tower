@@ -89,6 +89,12 @@ const SYNERGIES=[
 const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
 let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,audioContext=null,choiceSet=[],cuePlayed=false;
+let devSfxVolume=.5,devSfxBus=null;
+function steelDestination(){
+ if(!DEV_MODE)return audioContext.destination;
+ if(!devSfxBus){devSfxBus=audioContext.createGain();devSfxBus.gain.value=devSfxVolume;devSfxBus.connect(audioContext.destination);}
+ return devSfxBus;
+}
 let pausedFrom='combat',pauseAt=0,screenOffset=0;
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
@@ -224,7 +230,7 @@ function scoreToPerf(t){if(audioContext&&audioContext.state!=='suspended'){if(au
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat);game.telegraphStart=game.attackAt-game.attackSpan}
 function musicParry(kind){
  if(!audioEnabled||!audioContext)return;
- if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003);return;}
+ if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
  if(!score.bus||!score.noise)return;
  const t=audioContext.currentTime+.003;
  // Musical response to a successful parry. All notes use the BGM's AudioContext clock.
@@ -1659,11 +1665,18 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
    return true;
   },
   reset(){title()},
+  getSfxVolume(){return Math.round(devSfxVolume*100)},
+  setSfxVolume(percent){
+   const value=Number(percent);if(!Number.isFinite(value))return Math.round(devSfxVolume*100);
+   devSfxVolume=Math.max(0,Math.min(100,Math.round(value)))/100;
+   if(devSfxBus)devSfxBus.gain.setTargetAtTime(devSfxVolume,audioContext.currentTime,.015);
+   return Math.round(devSfxVolume*100);
+  },
   previewSound(kind){
    if(!audioEnabled||!window.ParryCombatSfx?.PROFILES[kind])return false;
    audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
    if(audioContext.state==='suspended')audioContext.resume();
-   return window.ParryCombatSfx.play(audioContext,kind);
+   return window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime,steelDestination());
   },
   list(){return P.codexEntries().map(e=>({key:e.bookKey,name:e.displayName,rare:e.rare,boss:e.boss,elite:e.elite}))},
   preview(floor=1,enemyKey=''){
