@@ -4,7 +4,9 @@
 
 最新依頼はひよこちゃんのHPを5倍から1.5倍へ調整。通常パリィ受付3倍・ジャスト2倍、価格50欠片は維持し、本番反映する。最終最大HPは小数点以下を切り上げて整数にする（基礎65なら98）。生命強化/スキル/遺物再計算も同じ倍率・丸めを使う。v0.9.3-10としてHTML/query/診断/ゲーム/CI/契約テストを統一。
 
-Node全368件成功（test-results/chick-hp-balance/node.txt）。既存の装備・開始HP98/生命スキル追加で120/死神契約96/受付3倍・ジャスト2倍/受付後端/連打抑制を更新・検証。JS38構文・差分空白・CIのSVG/PNG/Pages参照も成功。実ブラウザでHP98/98、HP×1.5・±93ms/±22ms、警告なしを確認。画像・ポーズ・BGM・他スキンは変更なし。次はmain統合/pushとCI/Pages・本番確認。
+Node全368件成功（test-results/chick-hp-balance/node.txt）。既存の装備・開始HP98/生命スキル追加で120/死神契約96/受付3倍・ジャスト2倍/受付後端/連打抑制を更新・検証。JS38構文・差分空白・CIのSVG/PNG/Pages参照も成功。実ブラウザでHP98/98、HP×1.5・±93ms/±22ms、警告なしを確認。画像・ポーズ・BGM・他スキンは変更なし。
+
+採用115e9bb、main統合/push 358be54、Pages 39514767577成功、v0.9.3-10を公開済み。HTML/dev/game/診断/progressionの公開5ファイルがGit正本とSHA一致。公開Devでも既存生命強化込みHP128/128（通常85×1.5切り上げ）、HP×1.5・±93ms/±22ms、戦闘・停止と警告なしを確認（test-results/chick-hp-balance/live.png、live-status.png、live-assets.json）。GitHub Static checks 39514768041も成功。公開・公開後確認まで完了。次は公開後フィードバック対応。
 
 ## 前回の公開：おまけショップ・スキン効果
 
