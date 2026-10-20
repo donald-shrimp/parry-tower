@@ -2,7 +2,7 @@
 
 ## 現在の目的と承認
 
-最新依頼「いいかんじ 実装よろ」でレビュー版を採用し、main統合・公開まで承認。時空は遭遇ごとに+12/0/-12を等確率、戦闘中固定に変更済み。個別価格はユーザー回答でひよこ50、ふんどし600、時空600欠片。採用7b5d64d、codex/shop-bonus-tabの採用済みおまけ/スキンをv0.9.3-9として公開する。公開前はv0.9.3-8。
+最新依頼「いいかんじ 実装よろ」でレビュー版を採用し、main統合・公開まで承認。時空は遭遇ごとに+12/0/-12を等確率、戦闘中固定に変更済み。個別価格はユーザー回答でひよこ50、ふんどし600、時空600欠片。採用7b5d64d、公開準備5585d9a、main統合/push c332b2e。v0.9.3-9を公開済み。
 
 実装：購入・一着装備を既存progressionの任意フィールドへ追加し、旧セーブは通常装備に移行。購入後は無料で着替え、挑戦開始時に外見と効果を固定する。開発初期モードとスキンは相互に切り替える（染色/残光は併用可）。スキン別に最高階/コンボ/挑戦回数を記録し、旧最高記録は通常へ引き継ぐ。欠片/図鑑/累計救済は共通。Devは保存しない。
 
@@ -14,9 +14,11 @@ Devレビュー http://127.0.0.1:8004/dev.html?floor=5&enemy=guardian&skin=chick
 
 一回予約1-46は2026-10-21 1:46に実行後削除済み。繰り返し予約は追加しない。既存output/は保持し、コミットしない。8002工房やユーザーの開いているタブは操作しない。
 
-公開用検証：Node全368件・Python画像8件成功（test-results/skin-release/）。JS38構文・CIのSVG/参照PNG/Pages参照チェック・既存バランスシミュレーション・差分空白も確認成功。公開用識別子をHTML/アセットquery/診断/ゲーム登録/CI/契約テストでv0.9.3-9へ統一。既存正本ポーズ/敵画像/BGM/効果音はmainから差分なし。次はmain統合/pushと公開後確認。
+公開用検証：Node全368件・Python画像8件成功（test-results/skin-release/）。JS38構文・CIのSVG/参照PNG/Pages参照チェック・既存バランスシミュレーション・差分空白も確認成功。公開用識別子をHTML/アセットquery/診断/ゲーム登録/CI/契約テストでv0.9.3-9へ統一。既存正本ポーズ/敵画像/BGM/効果音は公開前mainから差分なし。
 
-検証完了：Node全368件成功（test-results/skin-effects-final-node.txt）、タイトル記録更新後の関連3件成功（skin-effects-final-ui.txt）、関連16件成功（skin-effects-focused.txt）、Python画像8件成功（skin-effects-art.txt）、JS38ファイル構文と差分空白確認成功。実ブラウザでHP325/通常値へ戻る比較、時空-12→124 BPMと再開後の維持、ふんどし最初の被弾で即死、販売50/600/600・資金不足ボタン・無料装備表示、警告なしを確認。証跡 test-results/skin-effects-chick.png、skin-effects-spacetime.png、skin-effects-fundoshi.png、skin-effects-shop.png。差分レビュー済み。ユーザーのDev試遊レビューは了承済み。次は公開用識別子・全体検証、main統合/push、CI/Pages・公開実画面の確認。
+Pages 39508981745成功。公開HTML/dev/game/診断/progression/style/hero-puppet/combat-art/dev-tools/skin-preview/skin-preview.js/ふんどし採用PNGの12ファイルが公開コミットc332b2eのSHAと一致（Windows作業ファイルのCRLFではなくGit正本と比較）。公開実ブラウザで旧セーブの通常記録4F/6COMBOを保持、ショップの50/600/600と資金不足ボタン・全スキン描画を確認。公開Devのひよこは既存生命強化込みHP425/425、パリィ±93ms・ジャスト±22ms、戦闘/一時停止/再開と警告なし。証跡 live-shop.png、live-shop-more.png、live-chick.png、live-assets.json。GitHub Static checks 39508983485も成功。main統合・公開・公開後確認まで完了。次は公開後のフィードバック対応。
+
+検証完了：Node全368件成功（test-results/skin-effects-final-node.txt）、タイトル記録更新後の関連3件成功（skin-effects-final-ui.txt）、関連16件成功（skin-effects-focused.txt）、Python画像8件成功（skin-effects-art.txt）、JS38ファイル構文と差分空白確認成功。実ブラウザでHP325/通常値へ戻る比較、時空-12→124 BPMと再開後の維持、ふんどし最初の被弾で即死、販売50/600/600・資金不足ボタン・無料装備表示、警告なしを確認。証跡 test-results/skin-effects-chick.png、skin-effects-spacetime.png、skin-effects-fundoshi.png、skin-effects-shop.png。差分レビュー済み。ユーザーのDev試遊レビューは了承済み。公開用識別子・全体検証、main統合/push、CI/Pages・公開実画面の確認まで完了。
 
 ## 前回の公開：工房調整
 
