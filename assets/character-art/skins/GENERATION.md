@@ -3,6 +3,43 @@
 Local artwork and motion review. The accepted normal hero, enemies and saved
 motion project are unchanged. All variants use the production seven-part rig.
 
+The user also requested a chick roughly the size of the hero's helmet. Its
+existing pixel motif is enlarged 3× (6px → 18px cells), with origin (838,34)
+so its feet stay seated on the helmet crown. It remains inside the torso's
+transform and uses the same motion keys. No raster regeneration is needed.
+
+## Hand correction v2
+
+User correction: the sword hand must show its dorsal surface. The built-in
+imagegen edit of `fundoshi/hero-fundoshi-v1.png` is saved as
+`fundoshi/hero-fundoshi-hand-edit-v2.png`. The builder adopts only source region
+`(606,246)-(714,354)` after applying the existing v1 palette and 6px grid.
+`fundoshi/hero-fundoshi-fine-v2.png` is the active runtime asset; every pixel
+outside that hand region is identical to fine-v1. No motion/mask/joint changes.
+SHA256 fine-v2: `1fcf6fb6f2c9495fbfc76df4c69d0f2aa36d5fbb4ebee3d336457933c1b9255b`.
+
+Built-in edit prompt:
+
+> Precise local anatomy correction. Edit target is this transparent 1445x1088
+> game hero sprite. Change ONLY the sword-gripping right hand in the small area
+> x=610..712, y=245..350. The visible surface MUST be the BACK OF THE HAND
+> (dorsal surface), with knuckles and the backs of curled fingers facing the
+> viewer, rather than palm, thumb pad, palm creases or finger pads. The fingers
+> wrap naturally around the existing black sword grip. Wrist connects to the
+> existing bare forearm without changing its position. This is a pronated sword
+> grip: viewer sees a broad dorsal hand plane, subtle tendons leading from wrist
+> to four knuckles, curled finger backs across the grip; palm and thumb mostly
+> on far side, no large visible fleshy thumb pad. Preserve exact sword angle and
+> grip location. Preserve EVERYTHING outside the hand: same full 1445x1088
+> canvas and transparent alpha, same sword blade/guard/pommel, same limb geometry
+> and joint locations, helmet, shield, adult warrior torso, red opaque fundoshi,
+> legs and feet. No change to pose, frame, style, color palette, body size or
+> weapon. Keep hand faceted shading and dark ink outlines matching the original.
+> Do not mirror the image or rotate/translate any part. Only fix the visible
+> side of the hand.
+
+## Initial costumes v1
+
 - Chick: the existing fine-pixel parts receive a cached yellow HSL filter,
   preserving their lightness/alpha/contours. The 6px-grid chick is a code-native
   ornament drawn inside the helmet/body transform.

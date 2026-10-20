@@ -20,6 +20,16 @@ def main():
     target = folder / 'hero-fundoshi-fine-v1.png'
     result.save(target, optimize=True)
     print(f'{target.relative_to(ROOT)}: {target.stat().st_size} bytes')
+    # Adopt only the generated hand correction; every other accepted pixel
+    # remains byte-identical, including the shield and weapon geometry.
+    hand = Image.open(folder / 'hero-fundoshi-hand-edit-v2.png').convert('RGBA')
+    assert hand.size == source.size, hand.size
+    corrected, _ = pixel.convert(hand, 6, palette)
+    region = (606, 246, 714, 354)  # Whole 6px blocks around the gripping hand.
+    result.paste(corrected.crop(region), region)
+    target = folder / 'hero-fundoshi-fine-v2.png'
+    result.save(target, optimize=True)
+    print(f'{target.relative_to(ROOT)}: {target.stat().st_size} bytes')
 
 if __name__ == '__main__':
     main()

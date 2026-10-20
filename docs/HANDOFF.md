@@ -2,6 +2,10 @@
 
 ## 現在の目的と承認
 
+追加微修正「ひよこを主人公の頭と同じくらい」に対応。既存モチーフを3倍（6→18pxセル）、原画座標(838,34)へ移して足を兜の上へ置いた。頭/胴パーツ内の描画なので既存モーションに追従する。小さなCanvasへ一度描いて拡大し、隣り合うドットの継ぎ目が出ないようにした。画像生成/モーションキーの変更は不要。関連Node7件成功（test-results/skin-hand-chick-node.txt）。実ブラウザで拡大後の待機/反撃を確認。証跡 test-results/skin-chick-large.png。
+
+微修正「主人公の剣を持つ手で見えるべきは手の甲」を反映。ふんどしの掌を手の甲/拳の節が見える握りに修正し、fine-v2を採用。imagegen出力のうち(606,246)-(714,354)だけを旧共通パレット/6px処理で採用し、その外側はv1と全画素同一。モーション/関節/他スキンは不変。原画/プロンプト/手順は assets/character-art/skins/GENERATION.md。関連Node7件・Python8件成功（test-results/skin-hand-node.txt、skin-hand-python.txt）。ブラウザで待機/反撃と警告なしを確認。証跡 test-results/skin-hand-v2.png。レビューは下記URLを再読み込み、または ?skin=fundoshi&review=hand-v2 。公開未依頼、次はユーザーの外見レビュー。
+
 最新依頼「まず立ち絵、実際モーション確認できるとこまで全スキン」で、通常/ひよこ/赤ふんどし/時空の外見と動作レビューを制作。codex/shop-bonus-tab上のローカル版。ひよこは陰影を残す黄色フィルタ＋兜へ追従するドットのひよこ、時空は明るい紫フィルタ＋時計3個。ふんどしは同じ1445×1088座標の透過原画をbuilt-in imagegenで追加し、既存6px/64色の加工を適用。新規PNG・生成プロンプト・再生成手順は assets/character-art/skins/GENERATION.md。受理済みの元絵・敵・studio-project.json/同梱JSは無変更。既存7部品と採用モーションを共用し、追加切り抜き/色処理はキャッシュする。
 
 レビュー http://127.0.0.1:8004/skin-preview.html?skin=fundoshi 。4種を同じ時刻で再生/スロー0.25・0.1/位置バー/待機・盾・反撃・復帰へ移動できる。各カードから dev.html?floor=5&enemy=guardian&practice=1&skin=ID で実戦へ。Devの外見セレクトを設定後「指定条件で開始」。新スキンも準備してから戦闘/BGM時計を開始する。ショップ内は本物の立ち絵と比較ページへのリンクへ更新。購入/装備保存/HP/判定/即死/BPM効果は未実装で次段階。ひよこ50欠片・通常無料・他2種は価格未定を維持。公開/main統合/pushは未依頼。

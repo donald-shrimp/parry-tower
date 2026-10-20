@@ -32,8 +32,10 @@ test('skin decorations are scoped, deterministic, and leave the accepted pose un
  for(const skin of h.SKIN_IDS){await h.preloadSkin(skin);r.calls.length=0;
   h.drawCutout(r.ctx(),h.pose(input),{skin,now:600});
   assert.equal(r.calls.filter(c=>c.key==='save').length,r.calls.filter(c=>c.key==='restore').length);
-  assert.equal(r.calls.filter(c=>c.key==='drawImage').length,7,skin+' uses the same seven accepted parts');
-  if(skin==='chick')assert.ok(r.calls.some(c=>c.key==='translate'&&c.args[0]===884&&c.args[1]===151),'chick is attached inside body transform');
+  assert.equal(r.calls.filter(c=>c.key==='drawImage').length,skin==='chick'?8:7,skin+' uses the same seven accepted parts plus its ornament');
+  if(skin==='chick'){
+   assert.ok(r.calls.some(c=>c.key==='drawImage'&&c.args[1]===838&&c.args[2]===34&&c.args[3]===270&&c.args[4]===216),'large cached chick is seated on the helmet inside the body transform');
+  }
   if(skin==='spacetime')assert.equal(r.calls.filter(c=>c.key==='arc').length,3);
   assert.equal(JSON.stringify(h.pose(input)),before);
  }

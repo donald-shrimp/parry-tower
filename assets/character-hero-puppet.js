@@ -8,7 +8,7 @@
 })(typeof window!=='undefined'?window:globalThis,function(root){
  'use strict';
  const SOURCE='character-art/rework/hero/hero-ready-candidate.png';
- const SKIN_SOURCE='character-art/skins/fundoshi/hero-fundoshi-fine-v1.png';
+ const SKIN_SOURCE='character-art/skins/fundoshi/hero-fundoshi-fine-v2.png';
  const SKIN_IDS=Object.freeze(['normal','chick','fundoshi','spacetime']);
  const scriptUrl=root?.document?.currentScript?.src;
  const WIDTH=1445,HEIGHT=1088,SCALE=.16,ORIGIN=Object.freeze([850,1045]);
@@ -46,7 +46,7 @@
  const foreDirection=Math.atan2(P.wrist.y-P.elbow.y,P.wrist.x-P.elbow.x);
  const IDLE_BEND=Math.atan2(Math.sin(foreDirection-upperDirection),Math.cos(foreDirection-upperDirection));
  let image=null,layers=null,status='idle',pending=null,maskStamp='',layerCrops={};
- let fundoshiImage=null,fundoshiPending=null;
+ let fundoshiImage=null,fundoshiPending=null,chickSprite=null;
  const skinLayers=new Map();
  const skinId=id=>SKIN_IDS.includes(id)?id:'normal';
  const sourceUrl=()=>new URL(root.ParryPixelArt?.source(SOURCE)||SOURCE,scriptUrl||'https://invalid.local/assets/character-hero-puppet.js').href;
@@ -147,6 +147,7 @@
  }
  function buildSkin(id){
   const parts=id==='fundoshi'?prepare(fundoshiImage,false):filteredLayers(id);
+  if(id==='chick')chickImage();
   skinLayers.set(id,parts);return true;
  }
  function skinReady(id='normal'){
@@ -167,15 +168,19 @@
  }
  // Pixel-native head ornament. Drawn in the torso's source coordinates, so
  // the accepted body keys and whole-character edits carry it with the helmet.
- function drawChick(ctx){
-  ctx.save();ctx.translate(884,151);const pixel=6;
+ function chickImage(){
+  if(chickSprite)return chickSprite;
+  chickSprite=canvas(15,12);const ctx=chickSprite.getContext('2d'),pixel=1;
   const rows=[
    '....oo.........','...oyyo........','..oyyyyyo......',
    '.oyyyyyyyo.....','oyhyyyyyyyo....','oyhyyyykyyo....',
    'oyyyyyyyyoor...','.oyyyyyyyo.....','..oyyyyyyo.....',
    '...oyyyyo......','....oooo.......','....r..r.......'];
   const colors={o:'#855413',y:'#ffdc4d',h:'#fff3a2',k:'#1d2630',r:'#f19b32'};
-  rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(colors[v]){ctx.fillStyle=colors[v];ctx.fillRect(x*pixel,y*pixel,pixel,pixel)}}));ctx.restore();
+  rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(colors[v]){ctx.fillStyle=colors[v];ctx.fillRect(x*pixel,y*pixel,pixel,pixel)}}));return chickSprite;
+ }
+ function drawChick(ctx){
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(chickImage(),838,34,270,216);ctx.restore();
  }
  function drawClocks(ctx,now){
   ctx.save();ctx.lineWidth=1;ctx.strokeStyle='#d7b0ff';
