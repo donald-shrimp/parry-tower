@@ -34,9 +34,28 @@ test('skin decorations are scoped, deterministic, and leave the accepted pose un
   assert.equal(r.calls.filter(c=>c.key==='save').length,r.calls.filter(c=>c.key==='restore').length);
   assert.equal(r.calls.filter(c=>c.key==='drawImage').length,skin==='chick'?8:7,skin+' uses the same seven accepted parts plus its ornament');
   if(skin==='chick'){
-   assert.ok(r.calls.some(c=>c.key==='drawImage'&&c.args[1]===838&&c.args[2]===34&&c.args[3]===270&&c.args[4]===216),'large cached chick is seated on the helmet inside the body transform');
+   const images=r.calls.filter(c=>c.key==='drawImage');
+   assert.deepEqual(images.at(-1).args.slice(1),[-107,-216,270,216],'chick is drawn last, above the sword, using its helmet anchor');
   }
   if(skin==='spacetime')assert.equal(r.calls.filter(c=>c.key==='arc').length,3);
   assert.equal(JSON.stringify(h.pose(input)),before);
  }
+});
+
+test('chick hops once during successful sword counters and lands, while guard, hit and idle stay seated',async()=>{
+ const r=load(),h=r.hero;await h.preloadSkin('chick');
+ function anchor(input){
+  r.calls.length=0;h.drawCutout(r.ctx(),h.pose(input),{skin:'chick'});
+  const images=r.calls.filter(c=>c.key==='drawImage');
+  const bird=images.at(-1),at=r.calls.indexOf(bird);
+  return r.calls.slice(0,at).filter(c=>c.key==='translate').at(-1).args;
+ }
+ for(const kind of ['parry','just']){
+  assert.deepEqual(anchor({action:1,lastStrikeKind:kind}),[945,250]);
+  const rising=anchor({action:.8,lastStrikeKind:kind}),apex=anchor({action:.5125,lastStrikeKind:kind}),falling=anchor({action:.2,lastStrikeKind:kind});
+  assert.ok(rising[1]<250);assert.ok(apex[1]<rising[1]);assert.equal(apex[1],100);assert.ok(falling[1]>apex[1]&&falling[1]<250);
+  assert.deepEqual(anchor({action:.04,lastStrikeKind:kind}),[945,250]);
+  assert.deepEqual(anchor({action:0,lastStrikeKind:kind}),[945,250]);
+ }
+ for(const kind of ['guard','miss'])assert.deepEqual(anchor({action:.5,lastStrikeKind:kind}),[945,250]);
 });

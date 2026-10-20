@@ -2,6 +2,8 @@
 
 ## 現在の目的と承認
 
+最新依頼「ひよこを最前面、剣を振った瞬間に跳んで避ける」に対応。全パーツの後に編集済み胴の変換を再適用してひよこを描く。パリィ/ジャストの既存240ms反撃位相で、一度上昇→着地（高さ150原画px、少し後方へ移動/傾き/伸び）。idle/ガード/被弾は着座。乱数/追加タイマー/ゲーム状態/元ポーズを変えず、スロー・位置指定・一時停止と一致。レビュー http://127.0.0.1:8004/skin-preview.html?skin=chick&review=chick-hop 。Node361件成功（test-results/chick-hop-all-node.txt）、実ブラウザで浮き/着地/最前面/スロー/警告なしを確認。証跡 test-results/chick-hop-apex.png、chick-hop-landed.png。ローカルレビューのみ、公開は未依頼。
+
 追加微修正「ひよこを主人公の頭と同じくらい」に対応。既存モチーフを3倍（6→18pxセル）、原画座標(838,34)へ移して足を兜の上へ置いた。頭/胴パーツ内の描画なので既存モーションに追従する。小さなCanvasへ一度描いて拡大し、隣り合うドットの継ぎ目が出ないようにした。画像生成/モーションキーの変更は不要。関連Node7件成功（test-results/skin-hand-chick-node.txt）。実ブラウザで拡大後の待機/反撃を確認。証跡 test-results/skin-chick-large.png。
 
 微修正「主人公の剣を持つ手で見えるべきは手の甲」を反映。ふんどしの掌を手の甲/拳の節が見える握りに修正し、fine-v2を採用。imagegen出力のうち(606,246)-(714,354)だけを旧共通パレット/6px処理で採用し、その外側はv1と全画素同一。モーション/関節/他スキンは不変。原画/プロンプト/手順は assets/character-art/skins/GENERATION.md。関連Node7件・Python8件成功（test-results/skin-hand-node.txt、skin-hand-python.txt）。ブラウザで待機/反撃と警告なしを確認。証跡 test-results/skin-hand-v2.png。レビューは下記URLを再読み込み、または ?skin=fundoshi&review=hand-v2 。公開未依頼、次はユーザーの外見レビュー。

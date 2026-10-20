@@ -166,8 +166,7 @@
   syncLayers();if(skinLayers.has(id))return true;
   try{return buildSkin(id)}catch(error){root.console?.warn?.('[hero skin]',error);return false}
  }
- // Pixel-native head ornament. Drawn in the torso's source coordinates, so
- // the accepted body keys and whole-character edits carry it with the helmet.
+ // Pixel-native head ornament, anchored to the torso but drawn above all parts.
  function chickImage(){
   if(chickSprite)return chickSprite;
   chickSprite=canvas(15,12);const ctx=chickSprite.getContext('2d'),pixel=1;
@@ -179,8 +178,15 @@
   const colors={o:'#855413',y:'#ffdc4d',h:'#fff3a2',k:'#1d2630',r:'#f19b32'};
   rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(colors[v]){ctx.fillStyle=colors[v];ctx.fillRect(x*pixel,y*pixel,pixel,pixel)}}));return chickSprite;
  }
- function drawChick(ctx){
-  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(chickImage(),838,34,270,216);ctx.restore();
+ function drawChick(ctx,q){
+  // Use the existing counter phase: no separate timer or mutable jump state,
+  // so pause, slow motion and scrubbing show the same hop as real combat.
+  const t=q.action>0?clamp((q.phase-.025)/.925):0;
+  const hop=4*t*(1-t),stretch=Math.sin(Math.PI*t);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.translate(945-18*hop,250-150*hop);
+  ctx.rotate(-.12*Math.sin(Math.PI*2*t));ctx.scale(1-.04*stretch,1+.06*stretch);
+  ctx.drawImage(chickImage(),-107,-216,270,216);ctx.restore();
  }
  function drawClocks(ctx,now){
   ctx.save();ctx.lineWidth=1;ctx.strokeStyle='#d7b0ff';
@@ -234,6 +240,12 @@
    forearm:{at:q.elbow,pivot:PIVOTS.elbow,angle:q.foreAngle},
    weapon:{at:q.wrist,pivot:PIVOTS.wrist,angle:q.swordAngle}};
  }
+ function beginPart(ctx,t){
+  ctx.save();if(root.ParryPixelArt?.enabled)ctx.imageSmoothingEnabled=false;
+  if(t.opacity!==undefined)ctx.globalAlpha*=t.opacity;
+  ctx.translate(t.at.x,t.at.y);ctx.rotate(t.angle);
+  ctx.scale(SCALE*(t.sx||1),SCALE*(t.sy||1));ctx.translate(-t.pivot[0],-t.pivot[1]);
+ }
  function drawCutout(ctx,q,{debug=false,editTime=q.action>0?q.phase*240:0,skin='normal',now=0}={}){
   if(status!=='ready')return false;
   syncLayers();skin=skinId(skin);
@@ -248,14 +260,17 @@
   for(const name of edits?.orderFor('hero',ORDER)||ORDER){
    const t=adjusted[name];
    if(t.visible===false)continue;
-   const [x,y]=layerCrops[name]||CROPS[name];ctx.save();if(root.ParryPixelArt?.enabled)ctx.imageSmoothingEnabled=false;if(t.opacity!==undefined)ctx.globalAlpha*=t.opacity;ctx.translate(t.at.x,t.at.y);ctx.rotate(t.angle);
-   ctx.scale(SCALE*(t.sx||1),SCALE*(t.sy||1));ctx.translate(-t.pivot[0],-t.pivot[1]);ctx.drawImage(activeLayers[name],x,y);
-   if(skin==='chick'&&name==='body')drawChick(ctx);
+   const [x,y]=layerCrops[name]||CROPS[name];beginPart(ctx,t);ctx.drawImage(activeLayers[name],x,y);
    ctx.restore();
   }
   if(debug){
    ctx.save();ctx.strokeStyle='#7affec';ctx.lineWidth=.8;ctx.beginPath();
    ctx.moveTo(q.shoulder.x,q.shoulder.y);ctx.lineTo(q.elbow.x,q.elbow.y);ctx.lineTo(q.wrist.x,q.wrist.y);ctx.lineTo(q.hand.x,q.hand.y);ctx.lineTo(q.tip.x,q.tip.y);ctx.stroke();ctx.restore();
+  }
+  // Reapply the edited body's anchor after the sword/arms, even when a custom
+  // layer order is active. The chick keeps its helmet seat and stays foremost.
+  if(skin==='chick'&&adjusted.body.visible!==false){
+   beginPart(ctx,adjusted.body);drawChick(ctx,q);ctx.restore();
   }
   edits?.end(ctx);return true;
  }

@@ -4,9 +4,13 @@ Local artwork and motion review. The accepted normal hero, enemies and saved
 motion project are unchanged. All variants use the production seven-part rig.
 
 The user also requested a chick roughly the size of the hero's helmet. Its
-existing pixel motif is enlarged 3× (6px → 18px cells), with origin (838,34)
-so its feet stay seated on the helmet crown. It remains inside the torso's
-transform and uses the same motion keys. No raster regeneration is needed.
+existing pixel motif is enlarged 3× (6px → 18px cells), with resting origin
+(838,34) so its feet sit on the helmet crown. It is drawn last, above all
+character parts, using the edited torso's anchor. During a successful sword
+counter it hops 150 source pixels upward, drifts slightly back and stretches,
+then lands within the existing 240ms counter. The hop uses counter phase only;
+guard/hit/idle remain seated, and pause/scrubbing are deterministic. No raster
+regeneration or accepted motion-key changes are needed.
 
 ## Hand correction v2
 
