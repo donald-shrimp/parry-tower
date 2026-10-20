@@ -61,6 +61,40 @@
  for(const [id,kind]of [['soundGuard','guard'],['soundParry','parry'],['soundJust','just']]){
   $(id).addEventListener('click',()=>{status.textContent=engine.previewSound(kind)?({'guard':'ガン · ガード','parry':'ガキン！ · パリィ','just':'ジャキーン！ · ジャスト'}[kind]+' を試聴中'):'SOUND ONにしてから試してください';});
  }
+ const musicThemes=engine.musicList?.()||[],musicTheme=$('devMusicTheme'),musicVariant=$('devMusicVariant');
+ for(const theme of musicThemes){const option=document.createElement('option');option.value=theme.id;option.textContent=theme.from+'–'+theme.to+'F · '+theme.zone;musicTheme.appendChild(option);}
+ musicTheme.value=musicThemes.some(t=>t.id===params.get('music'))?params.get('music'):'crypt';
+ musicVariant.value=params.get('musicMode')==='boss'?'boss':'normal';
+ function renderMusic(){
+  const theme=musicThemes.find(t=>t.id===musicTheme.value);
+  $('devMusicTitle').textContent=theme?theme.name+(theme.original?' · 現行曲':' · 採用曲'):'BGMを読み込めませんでした';
+  $('devMusicDescription').textContent=theme?.description||'';
+  $('devMusicInstruments').textContent=theme?'楽器：'+theme.instruments+' · 8小節ループ':'';
+  $('devMusicTitle').style.color=theme?.color||'';
+ }
+ let lastMusicKey='';
+ function updateMusic(){
+  const state=engine.musicState?.();if(!state)return;
+  const key=[state.active,state.audition,state.id,state.bpm,state.bar,state.beat].join(':');if(key===lastMusicKey)return;lastMusicKey=key;
+  const name=musicThemes.find(t=>t.id===state.id)?.name||'';
+  $('devMusicPulse').dataset.beat=state.active?String(state.beat):'';
+  $('devMusicPosition').textContent=state.active?state.bar+' / 8小節 · '+state.beat+'拍目 · '+state.bpm+' BPM':'停止中';
+  $('devMusicStop').disabled=!state.audition;
+  $('devMusicStatus').textContent=state.active?(state.audition?'試聴中：':'練習中：')+name:'再生ボタンで聴き比べられます。';
+ }
+ musicTheme.addEventListener('change',renderMusic);
+ $('devMusicPlay').addEventListener('click',()=>{
+  if(!engine.previewMusic?.(musicTheme.value,musicVariant.value)){$('devMusicStatus').textContent='SOUND ONにしてから試してください。';return;}
+  updateMusic();
+ });
+ $('devMusicStop').addEventListener('click',()=>{engine.stopMusic?.();updateMusic();});
+ $('devMusicPractice').addEventListener('click',()=>{
+  if(!engine.practiceMusic?.(musicTheme.value,musicVariant.value))return;
+  const current=engine.state();floor.value=String(current.floor);enemy.value=current.variant;$('devPractice').checked=true;
+  renderBalance();updateMusic();status.textContent='選択したBGMで無敵練習中 · 記録しません';
+ });
+ if(!musicThemes.length){$('devMusicPlay').disabled=true;$('devMusicPractice').disabled=true;}
+ renderMusic();updateMusic();
  renderBalance();
- window.__parryDevUI={launch,renderBalance,enemyCount:options.length};
+ window.__parryDevUI={launch,renderBalance,updateMusic,enemyCount:options.length};
 })();

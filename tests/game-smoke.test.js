@@ -62,6 +62,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  const window={
   ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
+ window.ParryStageMusic=require('../assets/stage-music');
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
   createElement(tag){if(tag==='canvas')return {getContext:()=>ctx};return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
@@ -116,6 +117,8 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    return outcome;
   };
   window.__parryBloodTest={
+   musicTheme:()=>score.music,
+   musicBus:()=>score.bus,
    mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
    clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
@@ -388,8 +391,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-6"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-6"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-7"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-7"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1088,7 +1091,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-6"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-7"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1407,7 +1410,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-6"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-7"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2029,6 +2032,48 @@ test('developer volume can be shared in a URL, survives resets and is bounded wi
  assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain,undefined);
  assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devSfxVolume/);
 });
+test('Dev BGM-only playback schedules all eight themes without combat or saves, and stops cleanly',()=>{
+ const g=makeHarness({},true),saved=[...g.storage];
+ assert.equal(g.dev().musicList().length,8);
+ for(const s of g.dev().musicList()){
+  g.clearAudioEvents();assert.equal(g.dev().previewMusic(s.id),true);
+  assert.equal(g.state().mode,'title');assert.equal(g.state().enemy,undefined);assert.equal(g.state().bpm,112);
+  for(let i=0;i<8;i++)g.frame(g.now+250);
+  assert.ok(g.audioEvents().length>0,s.id+' must actually sound');assert.equal(g.dev().musicState().id,s.id);
+  assert.ok(g.el.get('devMusicPosition').textContent.includes('112 BPM'));
+  assert.equal(g.dev().stopMusic(),true);assert.equal(g.state().scoreActive,false);
+  g.clearAudioEvents();g.frame(g.now+1000);assert.equal(g.audioEvents().length,0);
+ }
+ assert.deepEqual([...g.storage],saved);
+});
+test('Dev music switching retires the old bus, preserves tempo and supports every zone in invulnerable practice',()=>{
+ const g=makeHarness({},true),saved=[...g.storage];
+ assert.equal(g.dev().previewMusic('chapel'),true);const oldBus=g.bloodTest().musicBus();
+ assert.equal(g.dev().previewMusic('forge','boss'),true);
+ assert.equal(oldBus.gain.value,0);assert.notEqual(g.bloodTest().musicBus(),oldBus);assert.equal(g.state().bpm,136);
+ for(const s of g.dev().musicList())for(const mode of ['normal','boss']){
+  assert.equal(g.dev().practiceMusic(s.id,mode),true);
+  assert.equal(g.state().practice,true);assert.equal(g.state().floor,s.from+(mode==='boss'?4:0));
+  assert.equal(g.state().bpm,mode==='boss'?136:112);
+  assert.equal(g.dev().musicState().audition,false);assert.equal(g.dev().stopMusic(),false,'never stop a live combat clock via the audition stop button');
+  const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+  assert.equal(g.state().lastStrikeKind,'just',s.id+' still hits the same beat');
+ }
+ assert.deepEqual([...g.storage],saved);
+});
+test('Dev BGM buttons, invalid choices, mute, reset and page hiding keep playback exclusive',()=>{
+ const g=makeHarness({},true,'','?music=astral&musicMode=boss');
+ assert.equal(g.el.get('devMusicTheme').value,'astral');assert.match(g.el.get('devMusicTitle').textContent,/星図/);
+ g.press('devMusicPlay');assert.equal(g.state().bpm,136);assert.equal(g.dev().musicState().audition,true);
+ g.hide();assert.equal(g.state().scoreActive,false);assert.equal(g.dev().musicState().audition,false);
+ assert.equal(g.dev().previewMusic('__proto__'),false);assert.equal(g.dev().previewMusic('forge','invalid'),false);
+ g.press('audioBtn');assert.equal(g.dev().previewMusic('forge'),false);g.press('audioBtn');
+ g.press('devMusicPractice');assert.equal(g.state().floor,65);assert.equal(g.state().enemy,'star_warden');
+ assert.match(g.el.get('devBalanceInfo').textContent,/星界/);
+ g.press('devMusicPlay');assert.equal(g.state().mode,'title');g.press('devMusicStop');assert.equal(g.state().scoreActive,false);
+ g.press('devMusicPlay');g.dev().launch(5,'guardian:normal',true);assert.equal(g.dev().musicState().audition,false);
+ g.dev().reset();assert.equal(g.state().scoreActive,false);
+});
 
 test('developer invulnerable practice permits unseen enemies but never unlocks or saves them',()=>{
  const seed={'parryTowerPrototype_v1':JSON.stringify({coins:77,runs:3})},g=makeHarness(seed,true);
@@ -2290,4 +2335,33 @@ test('base upgrade panel advertises run milestones and updates claimed states af
  assert.match(after,/累計挑戦応援（現在 3回）/);
  assert.match(after,/✓ 受取済 3回：\+20 ✧/);
  assert.match(after,/○ 未受取 8回：\+35 ✧/);
+});
+
+
+test('production music follows every zone boundary and repeats with the existing tower map',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');
+ const themes=require('../assets/stage-music').themes;
+ for(const cycle of [0,80])for(const theme of themes)for(const floor of [theme.from+cycle,theme.to+cycle]){
+  g.bloodTest().jumpFloor(floor);assert.equal(g.state().mode,'combat');
+  assert.equal(g.bloodTest().musicTheme(),theme.id,'floor '+floor);
+  const enemy=P.byId[g.state().enemy],bpm=enemy.boss?136:enemy.kind==='rogue'?124:112;
+  assert.equal(g.state().bpm,bpm);assert.equal(g.bloodTest().mixGains().bgm,.35);
+  if(!theme.original)assert.ok(g.el.get('trackLabel').textContent.includes(theme.name));
+  const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+  assert.equal(g.state().lastStrikeKind,'just','same hit clock on '+floor);
+ }
+});
+
+test('adopted production music survives pause and Dev ordinary launch returns to automatic stage selection',()=>{
+ const g=makeHarness();g.press('startBtn');g.bloodTest().jumpFloor(51);
+ const oldBus=g.bloodTest().musicBus();g.press('pauseBtn');
+ assert.equal(g.state().scoreActive,false);assert.equal(oldBus.gain.value,0);
+ g.press('resumeBtn');assert.equal(g.bloodTest().musicTheme(),'frost');
+ assert.notEqual(g.bloodTest().musicBus(),oldBus);assert.equal(g.state().bpm,112);
+ const d=makeHarness({},true);d.dev().previewMusic('void','boss');
+ d.dev().launch(11,'rogue:normal',true);
+ assert.equal(d.dev().musicState().id,'barracks');assert.equal(d.state().bpm,124);
+ assert.equal(d.dev().musicState().audition,false);
+ assert.equal(d.dev().launch(25,P.zoneForFloor(25).boss+':normal',true),true);
+ assert.equal(d.dev().musicState().id,'chapel');
 });
