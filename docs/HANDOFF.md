@@ -2,27 +2,27 @@
 
 ## 現在の目的と承認
 
-ユーザーが「完璧」と全立ち絵/モーション/終刻の王の最新塗り分けを了承し、ドット3段階の一番上「細かめ」の本編導入とマージを明示依頼。実装・検証後、機能コミット `29cc47a` をローカルmainへマージ済み（`c899839`）。続く「公開して！」でmainのpushとGitHub Pages公開を明示許可。最新origin/mainを確認して通常pushし、CI/Pagesの反映と公開ビルド `v0.9.3-3` を確認する。
+ユーザーが高音抑制後のジャスト音を「いい感じ。これで実装頼む」と最終了承。試遊で了承された主人公モーション・連打対策・効果音を本編へ採用し、ビルドを **v0.9.3-4** に更新して最終検証済み。現在は `codex/shield-feedback-playtest` の採用コミットをローカルmainへマージする段階。今回の改善はGitHubへ未push、Pagesは前回公開のv0.9.3-3。
 
-## 実装の正本
+## 採用内容と正本
 
-- `index.html` / `dev.html` はURL指定なしで細かめ（6px・共通64色）の既存PNG加工版を使用。主人公＋敵26種の確定済みモーション、中割り/残像/踏み込み/剣腕、0.2秒の白い反撃、精鋭/レア演出を保持。
-- `assets/character-style.js` が事前加工PNGを選び、既存puppetで描画。配色IDごとの部品キャッシュで共有原画の色混入を防ぐ。敵は直近4種類、主人公と騎士は別キャッシュ。炉心は旧色相フィルタ/基本素材、他11配色は了承済み画像を使い二重変色なし。
-- `assets/character-art/studio-project.json` updatedAt **1792426370286** は変更していない。同期の `character-art-defaults.js` も同梱し、新しい手動編集を優先。工房保存時にJSONとJSを更新する。ビルド識別子は `v0.9.3-3`。
-- 王の了承済み正本は `assets/character-art/approved/endking/project.json` と両PNG。冠は黒鉄、腰布/マントの裾は紫、赤い目/金の胸飾りは維持。自動素材推測へ戻さず、このPNGからドット加工。工房開始例にも同じ手塗り範囲を反映。
-- 原画/ポーズ工房/フィルタ工房/比較3密度を残す。本編の既定のみ細かめ。手順と設計は [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。過去の制作状態は [制作記録](./character-art/DEVELOPMENT_HISTORY.md)。
+- 剣腕はパリィ/ジャスト成功時だけ反撃。盾は肩から起こして前に出し、構え切った接触位置を保持。ガードには衝突の反動、被弾には別の反動。
+- 再パリィは受理入力後300ms＋全指/キーを120ms離す両条件。成功時は接触で300ms回復を解除。拒否入力でも100ms保持すればガード。入力源全体で共有する。判定窓/敵時計/ダメージは変更していない。
+- `assets/combat-sfx.js` が添付「打ち合う2」/「3」/「盾で防御」の共振・粗い時間包絡を基準に独自波形を合成。ジャストは1.15倍速相当。再生ゲインはガード0.294/パリィ0.301/ジャスト0.2464。ジャストは4.5kHz周辺を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振を早く減衰させる。EQ後に音量を戻さない。3音をBGMの拍原点確定前に準備し、接触時に一度、同じAudioContextで再生。BGM/ミュートを保持。
+- devには任意の敵の無敵練習・3音の個別試聴。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子をv0.9.3-4へ統一し、combat-sfxも必須アセットとして確認する。
+- 了承済みの全画像/配色/確定ポーズ/敵モーション/0.2秒白い反撃/精鋭とレア演出は保持。`assets/character-art/` と `character-art-defaults.js` はmainから差分なし。`studio-project.json` updatedAt **1792426370286** のまま。王は `approved/endking/` の手塗り正本。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。
 
-## 検証済み
+## 最終検証
 
-- Node **316件成功**。戦闘時計/入力/音声/ダメージ/保存互換、全キャラの了承済み姿勢、色違い連続切替、欠損時の限定フォールバック、古い/新しい手動保存の優先順位、工房の保存を検証。
-- Python **6件成功**。PNGのハッシュ/寸法/二値アルファ/整数格子/共通パレット、王の原寸出力と了承済みPNGの全画素一致、原画不変を検証。全JS構文/差分空白チェック成功。
-- 実Canvasで全26敵と再訪7例、900×550/360×640の7時点、計462描画成功。全キャラQAと直接開いた実戦ページにconsole警告/エラーなし。描画呼出し中央値0.10ms/95%点0.50ms/最大5.30ms（初期展開除外、スマホ実機FPS保証ではない）。
-- 終刻の王75Fの実背景、守護者5Fの実背景、360px実ページ（本文幅345px・横はみ出しなし）を確認。証跡 `test-results/adopted-art/`、ログ `test-results/integration-*.txt`。
+- **Node329件成功**。連打5ms/回復と解放の境界/複数入力/全26敵で各16連続成功/剣腕と盾の幾何/ガードと被弾/音の波形と減衰/初回事前準備と再利用/保存互換/診断とビルド一致を含む。`test-results/shield-adoption/node.txt`。
+- **Python画像6件成功**、全JS36ファイル構文、CIのSVG/参照PNG/Pagesリンク検証、既存ボスバランスシミュレーション成功。`test-results/shield-adoption/`。
+- 通常本編の新しい保存領域（127.0.0.1:8004）でv0.9.3-4、効果音ロード、戦闘、Space長押しGUARD（14攻撃→5ダメージ）、一時停止を確認。360pxで本文345px、横はみ出しなし。console警告/エラーなし。証跡 `main.png` / `mobile.png`。8004の試験は普段の8002の保存データに影響しない。
+- 高音抑制の解析は `test-results/just-soft/`。0.1〜0.6秒の3〜8kHzエネルギーは抑制前の約12.5%、4〜5kHzは約6%。主観的な音色/音量はユーザーが外部試遊で最終了承済み。添付MP3/解析用WAV/依存ライブラリは公開対象へ入れていない。
 
-## 再開時
+## 起動・外部確認・次の作業
 
-`git branch --show-current` / `git log -3 --oneline` / `git status --short` とGitHubの実行結果で公開状態を確認する。公開先は <https://donald-shrimp.github.io/parry-tower/>。ユーザーによる通常プレイと実音声/実スマホの体感確認が次のレビュー。既存の `output/` 内の資料と塗り分け書出しは保持し、公開用コミットには重複して含めない。
-
-## ローカル確認
-
-内側リポジトリ `C:/Users/EBIHARA/Downloads/parry-tower/parry-tower`。`node scripts/serve-local.js 8002`、本編 <http://127.0.0.1:8002/>、王 <http://127.0.0.1:8002/dev.html?floor=75&enemy=endking>。実行中のサーバーは既存タブの状態を変更せず静的ファイルを配信する。4:00の単発予約は実行済みで再作成不要。
+- 本編 <http://127.0.0.1:8002/>、無敵試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。`node scripts/serve-local.js 8002`。既存工房サーバーやタブは変更していない。
+- 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
+- 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
+- 公開先 <https://donald-shrimp.github.io/parry-tower/>、公開済みmainの基点は `2aed84b`。今回の最終承認は本編採用/ローカルmainマージまでとして扱う。公開指示が来たら通常pushし、CI/Pagesと公開ビルドv0.9.3-4を確認する。
+- 次の操作はローカルmainへのマージと本書のマージ結果更新。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。

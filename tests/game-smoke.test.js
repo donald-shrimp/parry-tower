@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal'){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],artDrawCounts={hero:0,enemy:0};
+ const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -53,7 +53,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    osc.frequency.setValueAtTime=(hz)=>{osc.initialFrequency=hz};
    return osc;
   }
-  createBuffer(){return {getChannelData:()=>new Float32Array(22050)}}
+  createBuffer(channels,length){return {getChannelData:()=>new Float32Array(length)}}
   createBufferSource(){return {connect:noop,start:noop,stop:noop}}
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }
@@ -73,6 +73,8 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console,Math:math
  };
+ vm.runInNewContext(fs.readFileSync('assets/combat-sfx.js','utf8'),context);
+ const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when){metalEvents.push({kind,when:when??ac.currentTime});return metal.play(ac,kind,when);}};
  if(artMode){
   context.URL=URL;
   window.location={search:artMode==='adopted'?'':'?art='+(artMode==='missing'?'impact':artMode==='missing-illustrated'?'illustrated':artMode)};window.document=document;window.URL=URL;window.localStorage=context.localStorage;
@@ -85,7 +87,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   document.currentScript=null;
   if(['illustrated','adopted'].includes(artMode)){
    const original=window.ParryKnightPuppet;
-   window.ParryKnightPuppet={...original,drawHero(...args){const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
+   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
     drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
   }
  }
@@ -174,6 +176,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
   artDrawCounts:()=>({...artDrawCounts}),
+  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
@@ -343,8 +346,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-3"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-3"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-4"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-4"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1043,7 +1046,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-3"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-4"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1362,7 +1365,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-3"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-4"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1885,6 +1888,85 @@ test('hold guard remains raised through repeated hits; early short tap misses in
  assert.equal(short.state().guardHeld,false);
  short.frame(short.state().attackAt+1);
  assert.equal(short.state().hp,65-short.state().enemyAttack,'early short tap does not grant guard');
+});
+
+test('ultra-fast repeated taps cannot re-arm parry and do not restart the shield animation',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);
+ const due=g.state().attackAt,first=due-650;
+ for(let t=first;t<=due-50;t+=5){g.clock(t);g.hold();g.clock(t+1);g.release();}
+ assert.equal(g.state().parryAnimAt,first);assert.equal(g.metalEvents().length,0);
+ g.frame(due+1);assert.equal(g.state().lastStrikeKind,'miss');assert.equal(g.state().practice,true);
+ assert.equal(g.state().hp,g.state().maxHp);assert.equal(g.state().mode,'combat');
+});
+
+test('a fresh parry needs both the 300ms action recovery and 120ms fully released gap, including exact boundaries',()=>{
+ for(const [delay,expected]of [[299,'miss'],[300,'just']]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt,first=due-400;
+  g.clock(first);g.parry();g.clock(first+delay);g.parry();g.frame(due+1);assert.equal(g.state().lastStrikeKind,expected,'recovery '+delay);
+ }
+ for(const [gap,expected]of [[119,'miss'],[120,'just']]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt;
+  g.clock(due-600);g.hold();g.clock(due-100-gap);g.release();g.clock(due-100);g.parry();g.frame(due+1);
+  assert.equal(g.state().lastStrikeKind,expected,'release gap '+gap);
+ }
+});
+
+test('all fingers and keys share re-arm state, duplicate releases cannot shorten it, and rejected presses can still hold guard',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt;
+ g.clock(due-500);g.hold(1);g.hold(2);g.keyDown();
+ g.clock(due-300);g.release(1);g.keyUp();assert.equal(g.state().guardHeld,true);
+ g.clock(due-150);g.release(2);g.release(77);g.keyUp();assert.equal(g.state().guardHeld,false);
+ g.clock(due-101);g.keyDown();g.frame(due+1);
+ assert.equal(g.state().lastStrikeKind,'guard','blocked fresh parry still becomes defense after its 100ms startup');
+ assert.equal(g.state().parryAnimAt,due-500,'secondary keys and pointer edges cannot restart the first attempt');
+ const h=makeHarness({},true);h.dev().launch(5,'guardian:normal',true);const hit=h.state().attackAt;
+ h.clock(hit-400);h.parry();h.clock(hit-150);h.hold();assert.equal(h.state().parryCooldownRemaining,50);
+ h.frame(hit+1);assert.equal(h.state().lastStrikeKind,'guard');
+});
+
+test('parry success cancels recovery at contact, and intended inputs still succeed across every enemy fast pattern',()=>{
+ for(const e of P.all){
+  const g=makeHarness({},true);g.dev().launch(80,e.bookKey||e.id+(e.rare?':rare':':normal'),true);
+  for(let i=0;i<16;i++){
+   const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+   assert.equal(g.state().lastStrikeKind,'just',e.id+' intended consecutive hit '+i);assert.equal(g.state().parryCooldownRemaining,0);
+  }
+ }
+});
+
+test('game draws a sword counter only after successful defense, while guard and miss have shield or hurt recoil',async()=>{
+ const g=makeHarness({},true,'adopted');g.dev().launch(5,'guardian:normal',true);await g.readyArt(P.byId.guardian);
+ for(const kind of ['guard','miss','parry','just']){
+  const due=g.state().attackAt;
+  if(kind==='guard'){g.clock(due-400);g.hold();}
+  else if(kind!=='miss'){g.clock(due-(kind==='just'?100:80));g.parry();}
+  g.frame(due+1);g.frame(due+80);g.release();
+  assert.equal(g.state().lastStrikeKind,kind);assert.ok(g.heroPose());
+  if(['guard','miss'].includes(kind))assert.equal(g.heroPose().action,0);
+  else assert.ok(g.heroPose().action>0);
+  if(kind==='guard')assert.ok(g.heroPose().push>0);
+  if(kind==='miss')assert.ok(g.heroPose().hurt>0);
+ }
+});
+
+test('metal feedback fires once at collision, respects mute, and developer sound previews do not affect the fight',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt;
+ g.clock(due-100);g.parry();assert.equal(g.metalEvents().length,0);g.frame(due+1);g.frame(due+10);
+ assert.deepEqual(g.metalEvents().map(e=>e.kind),['just']);assert.ok(Math.abs(g.metalEvents()[0].when-(due+1)/1000-.003)<.00001);
+ const state=JSON.stringify(g.state());assert.equal(g.dev().previewSound('guard'),true);assert.equal(JSON.stringify(g.state()),state);
+ g.press('audioBtn');assert.equal(g.dev().previewSound('parry'),false);const count=g.metalEvents().length;
+ const next=g.state().attackAt;g.clock(next-100);g.parry();g.frame(next+1);assert.equal(g.metalEvents().length,count);
+});
+
+test('developer invulnerable practice permits unseen enemies but never unlocks or saves them',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:77,runs:3})},g=makeHarness(seed,true);
+ const saved=[...g.storage];assert.equal(g.dev().launch(75,'endking:normal',true),true);
+ assert.equal(g.state().practice,true);assert.equal(g.state().enemy,'endking');assert.equal(g.state().floor,75);
+ for(let i=0;i<4;i++)g.frame(g.state().attackAt+1);
+ assert.equal(g.state().mode,'combat');assert.equal(g.state().hp,g.state().maxHp);assert.deepEqual([...g.storage],saved);
+ assert.equal(g.state().discovered.length,0);assert.match(g.el.get('practiceEnemy').innerHTML,/gem_slime:rare/);
+ g.el.get('practiceEnemy').value='guardian:normal';g.el.get('practiceEnemy').listeners.change();assert.equal(g.state().enemy,'guardian');
+ assert.deepEqual([...g.storage],saved);
 });
 test('holding guard reduces 80F boss damage to maxHP 40%; combo decays but is not wiped',()=>{
  const g=makeHarness({},true),d=g.bloodTest();g.dev().launch(80,'endking:elite');

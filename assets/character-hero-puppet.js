@@ -134,7 +134,8 @@
  }
  function armExtension(phase){return smooth((phase-.18)/.16)*(1-smooth((phase-.42)/.12));}
  function pose(input={}){
-  const action=clamp(input.action),phase=1-action,weight=action>0?Math.sin(phase*Math.PI):0;
+  const success=input.lastStrikeKind===undefined||['parry','just'].includes(input.lastStrikeKind);
+  const action=success?clamp(input.action):0,phase=1-action,weight=action>0?Math.sin(phase*Math.PI):0;
   const push=clamp(input.push),hurt=clamp(input.hurt)*(input.lastStrikeKind==='guard'?.35:1);
   const lift=Math.max(clamp(input.lift),input.guardHeld?clamp(input.heldLift):0);
   // The player holds their ground; opponents provide the approach motion.
@@ -145,14 +146,18 @@
   const forePoint=p=>add(elbow,rotate(point(p.x-P.elbow.x,p.y-P.elbow.y),foreAngle));
   const wrist=forePoint(P.wrist),swordAngle=foreAngle+angles.wrist;
   const swordPoint=p=>add(wrist,rotate(point(p.x-P.wrist.x,p.y-P.wrist.y),swordAngle));
+  // Lower the far arm at rest, then rotate it about its shoulder to the
+  // established contact position. A fully raised shield keeps the old hit point.
+  const shieldShoulder=about(P.shieldShoulder,P.waist,lean),shieldAngle=lean+.30*(1-smooth(lift))+push*.09;
+  const shieldContact=add(shieldShoulder,rotate(point(P.shieldContact.x-P.shieldShoulder.x,P.shieldContact.y-P.shieldShoulder.y),shieldAngle));
   return {action,phase,weight,push,hurt,lift,lean,slide,angles,extension:action>0?armExtension(phase):0,shoulder,elbow,wrist,foreAngle,swordAngle,
-   hand:swordPoint(P.grip),tip:swordPoint(P.tip),shieldAngle:-lift*.045+push*.025,
+   hand:swordPoint(P.grip),tip:swordPoint(P.tip),shieldShoulder,shieldContact,shieldAngle,
    frontFoot:P.frontFoot,rearFoot:P.rearFoot};
  }
  function placements(q){
   const body={at:P.waist,pivot:PIVOTS.waist,angle:q.lean};
   return {cape:body,legs:{at:point(0,0),pivot:ORIGIN,angle:0},body,
-   shield:{at:point(P.shieldContact.x-q.slide,P.shieldContact.y),pivot:PIVOTS.shieldContact,angle:q.shieldAngle},
+   shield:{at:q.shieldShoulder,pivot:PIVOTS.shieldShoulder,angle:q.shieldAngle},
    upperArm:{at:q.shoulder,pivot:PIVOTS.shoulder,angle:q.lean+q.angles.shoulder},
    forearm:{at:q.elbow,pivot:PIVOTS.elbow,angle:q.foreAngle},
    weapon:{at:q.wrist,pivot:PIVOTS.wrist,angle:q.swordAngle}};
@@ -204,8 +209,9 @@
   }
   drawCutout(ctx,q,{debug});
   if((input.guardHeld&&clamp(input.heldLift)>.98)||(input.lastStrikeKind==='just'&&(data.now||0)-(input.lastImpactAt??-99999)<170)){
-   ctx.save();ctx.translate(-q.slide,0);ctx.strokeStyle='#b4f6ff';ctx.globalAlpha=.4;ctx.lineWidth=1;
-   ctx.beginPath();ctx.ellipse(P.shieldContact.x-17,P.shieldContact.y+4,24,38,-.14,0,Math.PI*2);ctx.stroke();ctx.restore();
+   const offset=rotate(point(-17,4),q.shieldAngle);
+   ctx.save();ctx.strokeStyle='#b4f6ff';ctx.globalAlpha=.4;ctx.lineWidth=1;
+   ctx.beginPath();ctx.ellipse(q.shieldContact.x+offset.x,q.shieldContact.y+offset.y,24,38,q.shieldAngle-.14,0,Math.PI*2);ctx.stroke();ctx.restore();
   }
   ctx.restore();
   const counterPhase=data.counterPhase??(q.action>0?q.phase:-1);
