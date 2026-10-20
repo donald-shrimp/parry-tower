@@ -195,3 +195,17 @@ test('one-time rescue milestones are deterministic, bounded and never pay twice'
  }
  assert.equal(P.rescueMask(255),7,'reserved bits cannot accidentally unlock future rewards');
 });
+
+
+test('bonus ownership migrates old saves, rejects unknown or unowned activation and survives equipment normalization',()=>{
+ const old=P.normalize({slots:1,unlockedSkills:['blood']},skills);assert.deepEqual(old.unlockedExtras,[]);assert.deepEqual(old.enabledExtras,[]);
+ const forged=P.normalize({unlockedExtras:['legacyVisual','legacyVisual','__proto__',null],enabledExtras:['legacyVisual','legacyVisual','missing']},skills);
+ assert.deepEqual(forged.unlockedExtras,['legacyVisual']);assert.deepEqual(forged.enabledExtras,['legacyVisual']);assert.equal(P.extraEnabled(forged,'legacyVisual'),true);
+ assert.deepEqual(P.normalize({enabledExtras:['legacyVisual']},skills).enabledExtras,[]);
+ assert.equal(P.extraEnabled({unlockedExtras:'legacyVisual',enabledExtras:'legacyVisual'},'legacyVisual'),false);
+ assert.equal(P.toggleExtra(old,'legacyVisual',true,skills),null);assert.equal(P.toggleExtra(forged,'missing',true,skills),null);
+ assert.equal(P.toggleExtra(forged,'legacyVisual','yes',skills),null);
+ const off=P.toggleExtra(forged,'legacyVisual',false,skills);assert.equal(P.extraEnabled(off,'legacyVisual'),false);assert.equal(P.extraEnabled(forged,'legacyVisual'),true,'immutable');
+ const equipped=P.equip({...forged,slots:1,unlockedSkills:['blood']},0,'blood',skills);assert.equal(P.extraEnabled(equipped,'legacyVisual'),true);
+ assert.equal(P.EXTRAS[0].cost,1000);assert.equal(Object.isFrozen(P.EXTRAS[0]),true);
+});

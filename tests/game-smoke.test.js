@@ -177,7 +177,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   window,document,location:{search:devSearch},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
-  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  el,clickers,storage,artMode:()=>document.documentElement.dataset.parryArt,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
   artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
   readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
@@ -2364,4 +2364,43 @@ test('adopted production music survives pause and Dev ordinary launch returns to
  assert.equal(d.dev().musicState().audition,false);
  assert.equal(d.dev().launch(25,P.zoneForFloor(25).boss+':normal',true),true);
  assert.equal(d.dev().musicState().id,'chapel');
+});
+
+
+test('bonus tab requires exactly 1000 fragments, unlocks once and persists free on/off switches across reloads',()=>{
+ const key='parryTowerPrototype_v1',perm='parryTowerPermanent_v1';
+ const poor=makeHarness({[key]:JSON.stringify({coins:999})});poor.press('upgradeOpenBtn');poor.upgradeTab('bonus');
+ assert.match(poor.el.get('upgradeList').innerHTML,/1,000/);assert.match(poor.el.get('upgradeList').innerHTML,/disabled/);
+ poor.upgradeBuy('bonus-toggle','legacyVisual');poor.upgradeBuy('bonus-buy','__proto__');poor.upgradeBuy('bonus-buy','legacyVisual');
+ assert.equal(poor.state().souls,999);assert.equal(poor.state().permanent.unlockedExtras.length,0);
+ const rich=makeHarness({[key]:JSON.stringify({coins:3000})});rich.press('upgradeOpenBtn');rich.upgradeTab('bonus');
+ rich.upgradeBuy('bonus-buy','legacyVisual');rich.upgradeBuy('bonus-buy','legacyVisual');assert.equal(rich.state().souls,2000,'owned item cannot charge again even with enough funds');
+ const g=makeHarness({[key]:JSON.stringify({coins:1000,life:2,bestFloor:24})});
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,1000,'purchase only in shop');
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="bonus"/);
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0);assert.equal(g.state().permanent.unlockedExtras[0],'legacyVisual');
+ assert.equal(g.state().permanent.enabledExtras.length,0,'purchase starts OFF');
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0,'no repeat charge');
+ assert.match(g.el.get('upgradeList').innerHTML,/購入済み · OFF/);
+ g.upgradeBuy('bonus-toggle','legacyVisual');assert.equal(g.artMode(),'legacy');assert.equal(g.state().souls,0);
+ assert.match(g.el.get('upgradeList').innerHTML,/aria-pressed="true"/);
+ let saved=JSON.parse(g.storage.get(perm));assert.deepEqual(saved.enabledExtras,['legacyVisual']);
+ const reload=makeHarness(Object.fromEntries(g.storage));assert.equal(reload.artMode(),'legacy');
+ reload.press('upgradeOpenBtn');reload.upgradeTab('bonus');reload.upgradeBuy('bonus-toggle','legacyVisual');
+ assert.equal(reload.artMode(),'illustrated');assert.equal(reload.state().souls,0);
+ saved=JSON.parse(reload.storage.get(perm));assert.deepEqual(saved.unlockedExtras,['legacyVisual']);assert.deepEqual(saved.enabledExtras,[]);
+ const meta=JSON.parse(reload.storage.get(key));assert.equal(meta.life,2);assert.equal(meta.bestFloor,24);
+});
+
+test('legacy bonus changes both renderers while preserving combat and BGM; switching off restores adopted art',async()=>{
+ const key='parryTowerPermanent_v1',owned={unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']};
+ const seed={[key]:JSON.stringify(owned)},legacy=makeHarness(seed,true,'adopted'),current=makeHarness({},true,'adopted');
+ for(const g of [legacy,current]){await g.readyArt(P.byId.guardian);g.dev().launch(5,'guardian:normal',true);await g.readyArt(P.byId.guardian);}
+ for(const g of [legacy,current]){const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);}
+ assert.deepEqual(legacy.artDrawCounts(),{hero:0,enemy:0});assert.ok(current.artDrawCounts().hero>0);assert.ok(current.artDrawCounts().enemy>0);
+ for(const name of ['mode','enemy','hp','bpm','attackAt','lastStrikeKind','enemyHp'])assert.equal(legacy.state()[name],current.state()[name],name);
+ assert.deepEqual(legacy.audioEvents(),current.audioEvents());
+ const before=[...legacy.storage];legacy.dev().reset();legacy.press('upgradeOpenBtn');legacy.upgradeTab('bonus');legacy.upgradeBuy('bonus-toggle','legacyVisual');
+ legacy.press('upgradeCloseBtn');legacy.dev().launch(5,'guardian:normal',true);await legacy.readyArt(P.byId.guardian);legacy.frame(legacy.now+1);
+ assert.ok(legacy.artDrawCounts().hero>0);assert.ok(legacy.artDrawCounts().enemy>0);assert.deepEqual([...legacy.storage],before,'Dev never writes bonus preferences');
 });

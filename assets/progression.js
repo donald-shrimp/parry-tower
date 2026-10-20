@@ -78,12 +78,22 @@
   });
   return {bonus,mask,atRuns:newlyClaimed};
  }
+ const EXTRAS=Object.freeze([
+  Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の塔へ。開発初期の主人公・敵のビジュアルに切り替えます。'})
+ ]);
+ const extraEnabled=(progress,id)=>EXTRAS.some(item=>item.id===id)&&Array.isArray(progress?.unlockedExtras)&&progress.unlockedExtras.includes(id)&&Array.isArray(progress?.enabledExtras)&&progress.enabledExtras.includes(id);
+ function toggleExtra(progress,id,enabled,skills=[]){
+  const p=normalize(progress,skills);
+  if(!EXTRAS.some(item=>item.id===id)||!p.unlockedExtras.includes(id)||typeof enabled!=='boolean')return null;
+  p.enabledExtras=p.enabledExtras.filter(other=>other!==id);if(enabled)p.enabledExtras.push(id);
+  return p;
+ }
  const KNOWN_UPGRADES=Object.freeze(Object.fromEntries(UPGRADES.map(v=>[v.id,v])));
  function safeLevel(value,max){
   return typeof value==='number'&&Number.isFinite(value)?Math.min(max,Math.max(0,Math.floor(value))):0;
  }
  function defaults(){return {version:VERSION,slots:0,unlockedSkills:[],equipped:[null,null],
-  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[]};}
+  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[]};}
  function skillPrice(skill){
   if(!skill||typeof skill.id!=='string')return Infinity;
   if(Number.isSafeInteger(skill.startCost)&&skill.startCost>=0)return skill.startCost;
@@ -92,6 +102,9 @@
  function normalize(raw,skills=[]){
   const p=defaults();
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return p;
+  const extraIds=new Set(EXTRAS.map(item=>item.id));
+  p.unlockedExtras=[...new Set((Array.isArray(raw.unlockedExtras)?raw.unlockedExtras:[]).filter(id=>extraIds.has(id)))];
+  p.enabledExtras=[...new Set((Array.isArray(raw.enabledExtras)?raw.enabledExtras:[]).filter(id=>p.unlockedExtras.includes(id)))];
   p.slots=safeLevel(raw.slots,SLOT_COSTS.length);
   for(const def of UPGRADES)p[def.id]=safeLevel(raw[def.id],def.costs.length);
   const owned=Array.isArray(raw.unlockedSkills)?raw.unlockedSkills.filter(id=>typeof id==='string'&&id.length<=80):[];
@@ -157,7 +170,7 @@
   return level===def.costs.length?Infinity:def.costs[level];
  }
  const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
-  defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
+  EXTRAS,extraEnabled,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;
 })(typeof window!=='undefined'?window:undefined);

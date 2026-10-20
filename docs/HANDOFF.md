@@ -2,6 +2,14 @@
 
 ## 現在の目的と承認
 
+ショップへ「おまけ」タブを追加し、1,000欠片の「開発初期モード」を一度だけ解放、同じタブで無料のON/OFF。現在codex/shop-bonus-tabで実装・ローカルレビュー準備完了。購入直後OFF、旧描画は主人公と敵を共に切替。所有/有効化を恒久保存v1の任意配列へ追加し、旧セーブは未購入OFFへ移行。判定/音楽/モーション正本は保持。今回の新機能の公開は未依頼なので、レビュー用の実装と検証を行う。outputは保持・コミット対象外。
+
+Node347件成功（test-results/bonus-all.txt）。購入999/1000境界、十分な資金がある状態の二重購入/未購入切替、保存再読込、Dev保存隔離、旧新描画の切替と戦闘/BGM不変を検証。変更JS構文/差分空白確認成功。実ブラウザはおまけタブ/価格/所持不足時の無効化/警告なしを確認。購入とON/OFFはVM統合テストで検証し、実端末での好みはユーザーレビュー対象。レビュー http://127.0.0.1:8004/?review=bonus-shop 、証跡test-results/bonus-shop.png。
+
+次はユーザーレビュー。公開依頼が来たらbuildをv0.9.3-9以降へ統一してmain統合/push、CI/Pages、公開確認まで行う。今回のコードは未公開。
+
+## 前回の公開：工房調整
+
 最新依頼「モーションいじったんだけどさ、本番に反映してくんね」で工房保存データの採用・公開まで承認。updatedAt 1792499809689、差分は rogue / guardian / knight / ironwarden / dirgekeeper / timewarden の6体の全体配置。部品キー/連動軌道/残像設定は保持。JSONと同期JSが一致することを確認済み。採用30bb545、main統合/公開ea7383f。現在main、v0.9.3-8。ブラウザの工房/既存試遊タブは操作しない。未追跡outputは公開に含めない。
 
 Node344件成功（test-results/studio-motion-publication/node.txt）、37JS構文/差分空白/JSONと同梱JSの一致確認成功。ローカル実ブラウザで守護者の戦闘表示・動作と警告なしを確認。main統合/pushとPages 39424159925成功。公開HTML/dev/game/diagnostics/同梱JS/正本JSON/edit/knight-puppetの8ファイルが公開コミットとSHA一致。公開実ブラウザでv0.9.3-8、守護者の戦闘描画・振り下ろし・残像、一時停止、警告なしを確認。証跡 test-results/studio-motion-publication/。GitHub Static checks 39424160493成功。依頼は公開後確認まで完了。次は本番プレイでのフィードバック対応。
