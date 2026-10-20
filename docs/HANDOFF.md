@@ -2,13 +2,13 @@
 
 ## 現在の目的と承認
 
-最新依頼は **「25%が良かった。実装頼む」**。試遊時の100%を基準に、ガード/パリィ/ジャストをすべて25%へ下げて本番公開する承認あり。`codex/dev-sfx-volume` で採用準備中。旧ゲイン .294 / .301 / .2464 に .25 を掛け、**guard .0735 / parry .07525 / just .0616** を採用する。BGMのゲイン/時計、波形、音色/EQ、保存、立ち絵/モーションは保持。
+最新依頼は **「25%が良かった。実装頼む」**。試遊時の100%を基準に、ガード/パリィ/ジャストをすべて25%へ下げて本番公開する承認あり。採用 `ac2783b`、main統合/push `e611f17` まで完了。現在main、**v0.9.3-6を公開・実URL確認済み**。旧ゲイン .294 / .301 / .2464 に .25 を掛け、**guard .0735 / parry .07525 / just .0616** を採用する。BGMのゲイン/時計、波形、音色/EQ、保存、立ち絵/モーションは保持。
 
 Dev音量バーも採用する。0〜100%、初期値を**100%＝採用後の本編音量**へ更新済み。旧試遊の25%をさらに掛けない。3音だけをDev専用Gainへ通し、戦闘音と試聴3ボタンが共通で効く。余韻にも15ms時定数で反映し、BGMとは独立。値はタイトル/再開始でも維持し、`sfxVolume` queryで開始値指定も可。本編100%へ戻すボタンを維持。mainの通常プレイは採用ゲインで直接再生する。
 
 ビルドを**v0.9.3-6**へ統一済み。採用ゲインが旧基準の正確な25%であること、Dev初期100%と実Gain/戦闘時計/BGMの不変、通常ページ隔離、ビルド一致の焦点テスト5件成功（`test-results/sfx25-focused.txt`）。全体Node337件成功（`test-results/sfx25-release-node.txt`）、JS36ファイル構文/差分空白確認成功。先行するDevバー `4dbe17c` はNode336件成功・外部ブラウザ確認済み。ユーザーの音量判断は旧試遊で最終了承済み。
 
-次は全体検証、main統合・push、CI/Pages、公開URL/ファイル一致/Dev初期100%を確認する。今回は公開まで承認済み。新しいDevの確認URLには旧試遊の `sfxVolume=25/50` を付けず、未指定または100を使う。
+Pages **39417089135成功**、Static checks **39417089251成功**。公開HTML/dev/game.js/diagnostics/combat-sfx/dev-tools.js/cssの7ファイルが公開コミットとSHA一致。実ブラウザでv0.9.3-6、Dev初期100%、戦闘開始と3音の試聴、警告/エラーなしを確認。証跡/API/配信ファイル比較は `test-results/sfx25-publication/`。全チェック/公開後確認まで完了。次は本番プレイのフィードバック対応。今回は公開まで承認済み。新しいDevの確認URLには旧試遊の `sfxVolume=25/50` を付けず、未指定または100を使う。
 
 ## 前回の公開：立ち絵の先読み
 
@@ -40,4 +40,4 @@ HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子をv0.9
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
 - **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-6>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
-- 先読み修正を含むmain統合/push/Pages/公開確認まで完了。次は公開後のフィードバック対応。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
+- 音量25%と先読み修正を含むmain統合/push/CI/Pages/公開確認まで完了。次は公開後のフィードバック対応。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
