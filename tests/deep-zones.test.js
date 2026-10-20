@@ -66,5 +66,5 @@ test('source keeps fight timing unchanged, while deep atmosphere is decorative',
  assert.match(source,/paintDeepZone\(now,P\.zoneForFloor\(game\.floor\|\|1\)\.scene\)/);
  assert.match(source,/ctx\.filter='hue-rotate\('/);
  assert.match(source,/const PARRY_STARTUP=100/);
- assert.match(source,/getPerfectWindow\(\)\{return 11\+lvl\('focus'\)\*2\}/);
+ assert.match(source,/getPerfectWindow\(\)\{return \(11\+lvl\('focus'\)\*2\)\*runSkinRules\(\)\.just\}/);
 });

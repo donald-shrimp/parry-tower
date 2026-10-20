@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;
+ const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -89,10 +89,13 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   document.currentScript=null;
   if(['illustrated','adopted'].includes(artMode)){
    const original=window.ParryKnightPuppet;
-   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
+   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};lastHeroSkin=args[1].skin;const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
     drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
   }
  }
+ if(window.ParryCombatArt){const art=window.ParryCombatArt;window.ParryCombatArt={...art,
+  counterSlash(ctx,data){const out=art.counterSlash(ctx,data);if(out)bonusArtEvents.push({kind:'slashTint',tint:data.tint?.id||null});return out;},
+  comboAura(ctx,data){const out=art.comboAura(ctx,data);if(out)bonusArtEvents.push({kind:'comboGlow',tier:out.tier,combo:data.combo});return out;}};}
  if(artGate)window.ParryKnightPuppet=artGate;
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
@@ -161,6 +164,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
 
   bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
+  gainSkill:id=>gainSkillLevel(id),
   setHp:hp=>{game.hp=hp},
   setMaxHp:hp=>{game.maxHp=hp},
   setEnemyHp:hp=>{game.enemy.hp=hp;game.enemy.maxHp=Math.max(game.enemy.maxHp,hp)},
@@ -177,17 +181,19 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   window,document,location:{search:devSearch},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
-  el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  el,clickers,storage,artMode:()=>document.documentElement.dataset.parryArt,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
   artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
   readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
+  bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
   artDrawCounts:()=>({...artDrawCounts}),
-  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,
+  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
-   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:()=>({dataset:{equip:String(slot)},value:id||''})}})},
+   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-equip]'?{dataset:{equip:String(slot)},value:id||''}:null}})},
+   upgradeOption(id,value){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-extra-option]'?{dataset:{extraOption:id},value}:null}})},
    relicSelect(id){el.get('relicOfferCards').listeners.click({target:{closest:()=>({dataset:{relic:id}})}})},
    relicReplace(id){el.get('relicReplaceList').listeners.click({target:{closest:()=>({dataset:{replace:id}})}})},
    routeSelect(id){el.get('routeCards').listeners.click({target:{closest:()=>({dataset:{route:id}})}})},
@@ -391,8 +397,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-8"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-8"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-9"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-9"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -531,8 +537,8 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
  }
  assert.doesNotMatch(script,/\$\('musicStatus'\)|\$\('timingInfo'\)/);
  assert.doesNotMatch(script,/\$\('codexCount'\)/);
- assert.match(script,/function getPerfectWindow\(\)\{return 11\+lvl\('focus'\)\*2\}/);
- assert.match(script,/function getParryWindow\(\)\{return 31\+lvl\('stability'\)\*3\}/);
+ assert.match(script,/function getPerfectWindow\(\)\{return \(11\+lvl\('focus'\)\*2\)\*runSkinRules\(\)\.just\}/);
+ assert.match(script,/function getParryWindow\(\)\{return \(31\+lvl\('stability'\)\*3\)\*runSkinRules\(\)\.parry\}/);
  assert.match(script,/const PARRY_STARTUP=100/);
 });
 test('ordinary skill reward omits generic advice and actual unlock notice remains',()=>{
@@ -1091,7 +1097,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-8"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-9"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1410,7 +1416,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-8"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-9"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2186,8 +2192,8 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  assert.deepEqual([saved.life,saved.attack,saved.ward],[12,8,12]);
  assert.equal(saved.bestFloor,60);
  assert.equal(saved.runs,25);
- assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),PR.defaults(),
-  'legacy stat upgrade never alters the content of the separate equipment save');
+ assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),{...PR.defaults(),skinRecords:{normal:{bestFloor:60,bestCombo:0,runs:25}}},
+  'legacy upgrades preserve equipment and migrate only the pre-skin normal record');
  html=g.el.get('upgradeList').innerHTML;
  assert.match(html,/Lv.12\/12/);
  assert.match(html,/Lv.8\/8/);
@@ -2364,4 +2370,202 @@ test('adopted production music survives pause and Dev ordinary launch returns to
  assert.equal(d.dev().musicState().audition,false);
  assert.equal(d.dev().launch(25,P.zoneForFloor(25).boss+':normal',true),true);
  assert.equal(d.dev().musicState().id,'chapel');
+});
+
+
+test('bonus tab requires exactly 1000 fragments, unlocks once and persists free on/off switches across reloads',()=>{
+ const key='parryTowerPrototype_v1',perm='parryTowerPermanent_v1';
+ const poor=makeHarness({[key]:JSON.stringify({coins:999})});poor.press('upgradeOpenBtn');poor.upgradeTab('bonus');
+ assert.match(poor.el.get('upgradeList').innerHTML,/1,000/);assert.match(poor.el.get('upgradeList').innerHTML,/disabled/);
+ poor.upgradeBuy('bonus-toggle','legacyVisual');poor.upgradeBuy('bonus-buy','__proto__');poor.upgradeBuy('bonus-buy','legacyVisual');
+ assert.equal(poor.state().souls,999);assert.equal(poor.state().permanent.unlockedExtras.length,0);
+ const rich=makeHarness({[key]:JSON.stringify({coins:3000})});rich.press('upgradeOpenBtn');rich.upgradeTab('bonus');
+ rich.upgradeBuy('bonus-buy','legacyVisual');rich.upgradeBuy('bonus-buy','legacyVisual');assert.equal(rich.state().souls,2000,'owned item cannot charge again even with enough funds');
+ const g=makeHarness({[key]:JSON.stringify({coins:1000,life:2,bestFloor:24})});
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,1000,'purchase only in shop');
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="bonus"/);
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0);assert.equal(g.state().permanent.unlockedExtras[0],'legacyVisual');
+ assert.equal(g.state().permanent.enabledExtras.length,0,'purchase starts OFF');
+ g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0,'no repeat charge');
+ assert.match(g.el.get('upgradeList').innerHTML,/購入済み · OFF/);
+ g.upgradeBuy('bonus-toggle','legacyVisual');assert.equal(g.artMode(),'legacy');assert.equal(g.state().souls,0);
+ assert.match(g.el.get('upgradeList').innerHTML,/aria-pressed="true"/);
+ let saved=JSON.parse(g.storage.get(perm));assert.deepEqual(saved.enabledExtras,['legacyVisual']);
+ const reload=makeHarness(Object.fromEntries(g.storage));assert.equal(reload.artMode(),'legacy');
+ reload.press('upgradeOpenBtn');reload.upgradeTab('bonus');reload.upgradeBuy('bonus-toggle','legacyVisual');
+ assert.equal(reload.artMode(),'illustrated');assert.equal(reload.state().souls,0);
+ saved=JSON.parse(reload.storage.get(perm));assert.deepEqual(saved.unlockedExtras,['legacyVisual']);assert.deepEqual(saved.enabledExtras,[]);
+ const meta=JSON.parse(reload.storage.get(key));assert.equal(meta.life,2);assert.equal(meta.bestFloor,24);
+});
+
+test('legacy bonus changes both renderers while preserving combat and BGM; switching off restores adopted art',async()=>{
+ const key='parryTowerPermanent_v1',owned={unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']};
+ const seed={[key]:JSON.stringify(owned)},legacy=makeHarness(seed,true,'adopted'),current=makeHarness({},true,'adopted');
+ for(const g of [legacy,current]){await g.readyArt(P.byId.guardian);g.dev().launch(5,'guardian:normal',true);await g.readyArt(P.byId.guardian);}
+ for(const g of [legacy,current]){const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);}
+ assert.deepEqual(legacy.artDrawCounts(),{hero:0,enemy:0});assert.ok(current.artDrawCounts().hero>0);assert.ok(current.artDrawCounts().enemy>0);
+ for(const name of ['mode','enemy','hp','bpm','attackAt','lastStrikeKind','enemyHp'])assert.equal(legacy.state()[name],current.state()[name],name);
+ assert.deepEqual(legacy.audioEvents(),current.audioEvents());
+ const before=[...legacy.storage];legacy.dev().reset();legacy.press('upgradeOpenBtn');legacy.upgradeTab('bonus');legacy.upgradeBuy('bonus-toggle','legacyVisual');
+ legacy.press('upgradeCloseBtn');legacy.dev().launch(5,'guardian:normal',true);await legacy.readyArt(P.byId.guardian);legacy.frame(legacy.now+1);
+ assert.ok(legacy.artDrawCounts().hero>0);assert.ok(legacy.artDrawCounts().enemy>0);assert.deepEqual([...legacy.storage],before,'Dev never writes bonus preferences');
+});
+
+
+test('additional bonus purchases and color selection remain independent and persist through normal shop operations',()=>{
+ const key='parryTowerPrototype_v1',perm='parryTowerPermanent_v1',g=makeHarness({[key]:JSON.stringify({coins:2500})});
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeOption('slashTint','jade');assert.equal(g.state().permanent.extraOptions.slashTint,'crimson');
+ assert.match(g.el.get('upgradeList').innerHTML,/コンボの残光/);assert.match(g.el.get('upgradeList').innerHTML,/data-bonus-sample="slashTint"/);
+ for(const id of ['slashTint','comboGlow'])g.upgradeBuy('bonus-buy',id);assert.equal(g.state().souls,800);
+ for(const id of ['slashTint','comboGlow'])g.upgradeBuy('bonus-toggle',id);
+ g.upgradeOption('slashTint','violet');assert.equal(g.state().permanent.extraOptions.slashTint,'violet');
+ g.upgradeOption('slashTint','missing');assert.equal(g.state().permanent.extraOptions.slashTint,'violet');
+ g.upgradeBuy('bonus-toggle','slashTint');assert.deepEqual([...g.state().permanent.enabledExtras],['comboGlow']);
+ const reloaded=makeHarness(Object.fromEntries(g.storage));assert.equal(reloaded.state().permanent.extraOptions.slashTint,'violet');assert.equal(reloaded.state().souls,800);
+ assert.deepEqual(JSON.parse(g.storage.get(perm)).unlockedExtras,['slashTint','comboGlow']);
+});
+
+test('equipped dye reaches the actual hero crescent and combo glow is drawn without changing combat or audio',async()=>{
+ for(const legacy of [false,true]){
+  const active=['slashTint','comboGlow',...(legacy?['legacyVisual']:[])],perm={unlockedExtras:active,enabledExtras:active,extraOptions:{slashTint:'violet'}};
+  const g=makeHarness({parryTowerPermanent_v1:JSON.stringify(perm)},true,'adopted'),control=makeHarness({parryTowerPermanent_v1:JSON.stringify(legacy?{unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']}:{})},true,'adopted');
+  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.dev().launch(5,'guardian:normal',true);await h.readyArt(P.byId.guardian);h.bloodTest().setEnemyHp(100000);h.bloodTest().setCombo(50);const due=h.state().attackAt;h.clock(due-100);h.parry();h.frame(due+110);}
+  assert.ok(g.bonusArtEvents().some(e=>e.kind==='slashTint'&&e.tint==='violet'),legacy?'legacy wave':'painted hero wave');
+  assert.ok(g.bonusArtEvents().some(e=>e.kind==='comboGlow'&&e.tier===3));
+  assert.ok(!control.bonusArtEvents().some(e=>e.kind==='comboGlow'));
+  for(const name of ['mode','combo','hp','enemyHp','attackAt','bpm','lastStrikeKind'])assert.equal(g.state()[name],control.state()[name],name);
+  assert.deepEqual(g.audioEvents(),control.audioEvents());
+ }
+});
+
+
+test('skin selection preview switches one card at a time without charging, persisting or changing bonus equipment',()=>{
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:2345}),parryTowerPermanent_v1:JSON.stringify({unlockedExtras:['slashTint'],enabledExtras:['slashTint'],extraOptions:{slashTint:'jade'}})};
+ const g=makeHarness(seed),saved=[...g.storage],initial=JSON.stringify(g.state().permanent);
+ g.upgradeBuy('skin-preview','chick');g.press('upgradeOpenBtn');g.upgradeTab('bonus');
+ g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：いつもの主人公/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
+ assert.match(g.el.get('upgradeList').innerHTML,/class="skin-price">50 欠片/);
+ assert.match(g.el.get('upgradeList').innerHTML,/data-action="skin-buy" data-key="chick" /);
+ assert.match(g.el.get('upgradeList').innerHTML,/600 欠片/);
+ for(const skin of PR.SKINS){
+  g.upgradeBuy('skin-preview',skin.id);const html=g.el.get('upgradeList').innerHTML;
+  assert.ok(html.includes('プレビュー：'+skin.name));
+  const picked=[...html.matchAll(/data-action="skin-preview" data-key="([^"]+)" aria-pressed="true"/g)].map(m=>m[1]);assert.deepEqual(picked,[skin.id]);
+  assert.equal(g.state().souls,2345);assert.equal(JSON.stringify(g.state().permanent),initial);assert.deepEqual([...g.storage],saved);
+ }
+ const html=g.el.get('upgradeList').innerHTML;g.upgradeBuy('skin-preview','__proto__');assert.equal(g.el.get('upgradeList').innerHTML,html);
+ g.upgradeBuy('bonus-section','invalid');assert.equal(g.el.get('upgradeList').innerHTML,html);
+ g.upgradeBuy('bonus-section','items');assert.match(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
+ g.upgradeBuy('skin-preview','fundoshi');g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：時空のスキン/);
+ assert.deepEqual([...g.storage],saved);
+});
+
+test('previewing planned skins leaves actual HP, incoming damage, timing and BGM unchanged',()=>{
+ for(const skin of PR.SKINS){
+  const g=makeHarness({},true),control=makeHarness({},true);
+  g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');g.upgradeBuy('skin-preview',skin.id);g.press('upgradeCloseBtn');
+  for(const h of [g,control]){h.random(.5);h.dev().launch(5,'guardian:normal',true);h.frame(h.state().attackAt+1);}
+  assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' must not enable unfinished effects');assert.deepEqual(g.audioEvents(),control.audioEvents());
+ }
+});
+
+test('all real Dev skin renderers preserve combat, score, damage and saves across guard, hit and counterattack',async()=>{
+ for(const skin of PR.SKINS){
+  const g=makeHarness({},true,'adopted'),control=makeHarness({},true,'adopted');
+  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.random(.5);}
+  g.dev().launch(5,'guardian:normal',true,skin.id);control.dev().launch(5,'guardian:normal',true);
+  await g.readyArt(P.byId.guardian);await control.readyArt(P.byId.guardian);
+  assert.equal(g.dev().previewSkin(),skin.id);
+  for(const kind of ['just','guard','miss','parry']){
+   for(const h of [g,control]){
+    const due=h.state().attackAt;h.frame(due-280);h.frame(due-160);
+    if(['just','parry'].includes(kind)){h.clock(due-(kind==='just'?100:80));h.parry()}
+    else if(kind==='guard'){h.clock(due-150);h.hold()}
+    h.frame(due+1);h.release();h.frame(due+110);
+   }
+   assert.equal(g.heroSkin(),skin.id);assert.ok(g.artDrawCounts().hero>0);
+   assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' / '+kind);
+   assert.deepEqual(g.audioEvents(),control.audioEvents());assert.deepEqual([...g.storage],[...control.storage]);
+  }
+ }
+});
+
+test('Dev skin URLs populate the selector and the launch button waits for new skin artwork before starting',async()=>{
+ const g=makeHarness({},true,'adopted','?floor=5&enemy=guardian&practice=1&skin=fundoshi');await g.readyArt(P.byId.guardian);
+ assert.equal(g.el.get('devSkin').value,'fundoshi');g.press('devLaunch');
+ assert.equal(g.state().mode,'loading');assert.equal(g.state().scoreActive,false);
+ await g.readyArt(P.byId.guardian);assert.equal(g.state().mode,'combat');g.frame(g.now+1);
+ assert.equal(g.heroSkin(),'fundoshi');assert.ok(g.artDrawCounts().hero>0);assert.equal(g.storage.size,0);
+});
+
+test('skin purchases charge approved prices once, preserve currency on failure, equip one costume and survive reload',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({coins:1300,bestFloor:12,bestCombo:18,runs:4})});
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');
+ g.upgradeBuy('skin-buy','chick');assert.equal(g.state().souls,1250);assert.equal(g.state().permanent.equippedSkin,'chick');
+ g.upgradeBuy('skin-buy','chick');assert.equal(g.state().souls,1250);
+ g.upgradeBuy('skin-buy','fundoshi');assert.equal(g.state().souls,650);g.upgradeBuy('skin-buy','spacetime');assert.equal(g.state().souls,50);
+ assert.equal(g.state().permanent.equippedSkin,'spacetime');assert.deepEqual(Array.from(g.state().permanent.unlockedSkins),['chick','fundoshi','spacetime']);
+ g.press('upgradeCloseBtn');assert.match(g.el.get('titleRecords').innerHTML,/時空のスキン/);g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');
+ const saved=[...g.storage];g.upgradeBuy('skin-buy','__proto__');assert.deepEqual([...g.storage],saved);
+ const reload=makeHarness(Object.fromEntries(g.storage));assert.equal(reload.state().permanent.equippedSkin,'spacetime');
+ assert.equal(reload.state().permanent.skinRecords.normal.bestFloor,12,'old record migrated');
+ g.upgradeBuy('skin-equip','normal');assert.equal(g.state().souls,50);assert.equal(g.state().permanent.equippedSkin,'normal');
+ const poor=makeHarness({parryTowerPrototype_v1:JSON.stringify({coins:49})});poor.press('upgradeOpenBtn');poor.upgradeTab('bonus');poor.upgradeBuy('bonus-section','skins');
+ poor.upgradeBuy('skin-buy','chick');poor.upgradeBuy('skin-equip','chick');assert.equal(poor.state().souls,49);assert.equal(poor.state().permanent.equippedSkin,'normal');
+ const equipped=makeHarness({parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['chick'],equippedSkin:'chick'})});equipped.press('startBtn');assert.equal(equipped.state().maxHp,325);
+ equipped.upgradeBuy('skin-equip','normal');assert.equal(equipped.state().maxHp,325,'changing equipment outside the shop cannot change an active run');
+});
+
+test('chick effect scales HP and updated health builds, widens both windows, and leaves input rearm in place',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'chick',true);
+ assert.equal(g.state().maxHp,325);assert.equal(g.state().hp,325);assert.equal(g.dev().skinState().parryWindow,93);assert.equal(g.dev().skinState().justWindow,22);
+ g.bloodTest().gainSkill('heal');assert.equal(g.state().maxHp,400);assert.equal(g.state().hp,400);
+ g.bloodTest().grantRelic('reaper_pact');assert.equal(g.state().maxHp,320);
+ g.bloodTest().setSkill('focus',4);g.bloodTest().setSkill('stability',4);assert.equal(g.dev().skinState().justWindow,38);assert.equal(g.dev().skinState().parryWindow,129);
+ const due=g.state().attackAt;g.clock(due-200);g.parry();assert.ok(g.state().parryCooldownRemaining>0);g.clock(due-190);g.parry();assert.equal(g.state().parryAnimAt,due-200);
+ const visual=makeHarness({},true);visual.dev().launch(5,'guardian:normal',false,'chick',false);assert.equal(visual.state().maxHp,65);assert.equal(visual.dev().skinState().parryWindow,31);
+ for(const [delta,kind]of [[20,'just'],[70,'parry']]){
+  const h=makeHarness({},true);h.dev().launch(5,'guardian:normal',false,'chick',true);const hit=h.state().attackAt;h.clock(hit-100-delta);h.parry();h.frame(hit+1);assert.equal(h.state().lastStrikeKind,kind);
+ }
+ const late=makeHarness({},true);late.dev().launch(5,'guardian:normal',false,'chick',true);late.bloodTest().setSkill('stability',4);
+ const contact=late.state().attackAt;late.frame(contact+1);assert.equal(late.state().hp,325);
+ late.clock(contact+25);late.parry();late.frame(contact+30);assert.equal(late.state().lastStrikeKind,'parry');assert.equal(late.state().hp,325,'full widened late edge remains usable');
+});
+
+test('fundoshi fails on guards and hits through barriers, frost, reduction, reflection and revival, but not whiffs or parries',()=>{
+ for(const kind of ['guard','miss']){
+  const g=makeHarness({parryTowerPermanent_v1:JSON.stringify({revive:1})},true);g.dev().launch(5,'guardian:normal',false,'fundoshi',true);
+  const d=g.bloodTest();d.setShield(100000);d.setSkill('frost',6);d.setFrostWard(true);d.setSkill('thorns',5);d.grantRelic('rusty_crest');
+  const before=g.state().enemyHp,hit=g.state().attackAt;g.clock(hit-150);if(kind==='guard')g.hold();g.frame(hit+1);
+  assert.equal(g.state().mode,'gameover');assert.equal(g.state().hp,0);assert.equal(g.state().reviveUsed,false);assert.equal(g.state().enemyHp,before);
+ }
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'fundoshi',true);g.clock(g.now+10);g.parry();assert.equal(g.state().mode,'combat');
+ const hit=g.state().attackAt;g.clock(hit-100);g.parry();g.frame(hit+1);assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.state().mode,'combat');assert.equal(g.state().hp,65);
+ const practice=makeHarness({},true);practice.dev().launch(5,'guardian:normal',true,'fundoshi',true);practice.frame(practice.state().attackAt+1);assert.equal(practice.state().hp,65);assert.equal(practice.state().mode,'combat');
+});
+
+test('spacetime rolls +12,0,-12 per encounter against each base tempo and retains it through pause and restart',()=>{
+ for(const [id,base]of [['knight',112],['rogue',124],['guardian',136]])for(const [r,offset]of [[.1,12],[.5,0],[.9,-12]]){
+  const g=makeHarness({},true);g.random(r);g.dev().launch(5,id+':normal',false,'spacetime',true);
+  assert.equal(g.state().bpm,base+offset);assert.equal(g.dev().skinState().tempoOffset,offset);assert.equal(g.dev().skinState().parryWindow,31);
+  const due=g.state().scoreOrigin+g.state().attackBeat*g.state().beat;assert.ok(Number.isFinite(due));assert.equal(g.state().attackSpan,4*60000/(base+offset));
+  g.random(.9);g.press('pauseBtn');g.frame(g.now+3000);g.press('pauseBtn');assert.equal(g.state().bpm,base+offset);assert.equal(g.dev().skinState().tempoOffset,offset);
+  g.bloodTest().jumpFloor(5);const next=P.findByKey(g.state().encounterKey),nextBase=next.boss?136:next.kind==='rogue'?124:112;
+  assert.equal(g.state().bpm,nextBase-12,'next encounter starts from its own base, not previous tempo');
+ }
+});
+
+test('spacetime keeps its rolled tempo through the summit second movement',()=>{
+ const g=makeHarness({},true);g.random(.1);g.dev().launch(80,'endking:elite',false,'spacetime',true);assert.equal(g.state().bpm,148);
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);g.bloodTest().setBaseAttack(1);resolveBloodParry(g,20);assert.equal(g.state().phaseStage,'rumble');
+ g.random(.9);g.frame(g.now+1500);assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,148);assert.equal(g.dev().skinState().tempoOffset,12);
+ g.frame(g.state().phaseCountStartAt+g.state().beat*4000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,148);
+});
+
+test('skin records keep normal history and per-costume attempts separate while rewards stay shared',()=>{
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:0,bestFloor:12,bestCombo:19,runs:4}),parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['fundoshi'],equippedSkin:'fundoshi'})};
+ const g=makeHarness(seed);g.press('startBtn');g.frame(g.state().attackAt+1);assert.equal(g.state().mode,'gameover');
+ const p=g.state().permanent;assert.equal(p.skinRecords.normal.bestFloor,12);assert.equal(p.skinRecords.normal.runs,4);assert.equal(p.skinRecords.fundoshi.runs,1);assert.equal(p.skinRecords.fundoshi.bestFloor,1);assert.ok(g.state().souls>0);
+ const dev=makeHarness(seed,true);const saved=[...dev.storage];dev.dev().launch(5,'guardian:normal',false,'fundoshi',true);dev.frame(dev.state().attackAt+1);assert.deepEqual([...dev.storage],saved);
 });

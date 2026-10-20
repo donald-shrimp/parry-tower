@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="color-scheme" content="dark"><title>パリィの塔 · 主人公スキンの動作確認</title>
+ <link rel="stylesheet" href="./assets/art-preview.css">
+ <link rel="stylesheet" href="./assets/skin-preview.css">
+</head>
+<body><main>
+ <header><div><p class="eyebrow">PARRY TOWER / HERO SKINS</p><h1>着替えて、いつもの一振り。</h1><p class="intro">4つの姿を同じ動きで比較。採用中のドット絵とモーションで再生します。</p></div><a class="play" href="./dev.html?practice=1">Devへ ↗</a></header>
+ <section class="controls" aria-label="スキン動作の設定">
+  <label>動作<select id="motion"><option value="just">ジャストパリィ → 反撃</option><option value="parry">パリィ → 反撃</option><option value="guard">盾でガード</option><option value="miss">被弾</option></select></label>
+  <label>速度<select id="speed"><option value="1">実戦速度</option><option value="0.25">スロー ×0.25</option><option value="0.1">スロー ×0.1</option></select></label>
+  <button id="play" class="primary" type="button">一時停止</button>
+ </section>
+ <section class="transport" aria-label="動きの位置">
+  <div class="scrub"><label for="time">位置 <span id="phase">待機</span></label><input id="time" type="range" min="0" max="1199" value="0" step="1"></div><output id="timeLabel" for="time">0 ms</output>
+ </section>
+ <nav class="poses" aria-label="ポーズへ移動"><button type="button" data-time="0">待機</button><button type="button" data-time="470">盾を前へ</button><button type="button" data-time="540">接触</button><button type="button" data-time="610">剣を振る</button><button type="button" data-time="650">腕を伸ばす</button><button type="button" data-time="710">振り抜く</button><button type="button" data-time="900">復帰</button></nav>
+ <p id="loadStatus" role="status">立ち絵を読み込み中…</p>
+ <section id="skins" class="skin-review-grid" aria-label="4種のスキン比較"></section>
+ <footer><p>この画面は外見と動きの比較用です。効果は各カードからDevで試せます。無敵練習中はふんどしでも死にません。Dev上部で無敵を外すと即死も確認できます。</p><p>ショップで個別購入・装備できます。ひよこ50欠片、赤ふんどし・時空は各600欠片。効果は次の挑戦から適用します。音はDev側で再生します。</p><a href="./index.html">ショップへ戻る ↗</a></footer>
+</main>
+<script src="./assets/progression.js" defer></script>
+<script src="./assets/character-art-defaults.js" defer></script>
+<script src="./assets/character-edit.js" defer></script>
+<script src="./assets/palette-candidates.js" defer></script>
+<script src="./assets/character-style.js" defer></script>
+<script src="./assets/character-hero-puppet.js" defer></script>
+<script src="./assets/skin-preview.js" defer></script>
+</body></html>

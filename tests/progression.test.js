@@ -195,3 +195,54 @@ test('one-time rescue milestones are deterministic, bounded and never pay twice'
  }
  assert.equal(P.rescueMask(255),7,'reserved bits cannot accidentally unlock future rewards');
 });
+
+
+test('bonus ownership migrates old saves, rejects unknown or unowned activation and survives equipment normalization',()=>{
+ const old=P.normalize({slots:1,unlockedSkills:['blood']},skills);assert.deepEqual(old.unlockedExtras,[]);assert.deepEqual(old.enabledExtras,[]);
+ const forged=P.normalize({unlockedExtras:['legacyVisual','legacyVisual','__proto__',null],enabledExtras:['legacyVisual','legacyVisual','missing']},skills);
+ assert.deepEqual(forged.unlockedExtras,['legacyVisual']);assert.deepEqual(forged.enabledExtras,['legacyVisual']);assert.equal(P.extraEnabled(forged,'legacyVisual'),true);
+ assert.deepEqual(P.normalize({enabledExtras:['legacyVisual']},skills).enabledExtras,[]);
+ assert.equal(P.extraEnabled({unlockedExtras:'legacyVisual',enabledExtras:'legacyVisual'},'legacyVisual'),false);
+ assert.equal(P.toggleExtra(old,'legacyVisual',true,skills),null);assert.equal(P.toggleExtra(forged,'missing',true,skills),null);
+ assert.equal(P.toggleExtra(forged,'legacyVisual','yes',skills),null);
+ const off=P.toggleExtra(forged,'legacyVisual',false,skills);assert.equal(P.extraEnabled(off,'legacyVisual'),false);assert.equal(P.extraEnabled(forged,'legacyVisual'),true,'immutable');
+ const equipped=P.equip({...forged,slots:1,unlockedSkills:['blood']},0,'blood',skills);assert.equal(P.extraEnabled(equipped,'legacyVisual'),true);
+ assert.equal(P.EXTRAS[0].cost,1000);assert.equal(Object.isFrozen(P.EXTRAS[0]),true);
+});
+
+
+test('extra color choices require ownership, whitelist colors and survive saving and other progression changes',()=>{
+ assert.deepEqual(P.EXTRAS.map(item=>[item.id,item.cost]),[['legacyVisual',1000],['slashTint',500],['comboGlow',1200]]);
+ const raw={unlockedExtras:['slashTint','comboGlow'],enabledExtras:['slashTint'],extraOptions:{slashTint:'violet'}};
+ const p=P.normalize(raw,skills);assert.equal(P.extraOption(p,'slashTint').id,'violet');
+ assert.equal(P.setExtraOption(P.defaults(),'slashTint','jade',skills),null);
+ assert.equal(P.setExtraOption(p,'slashTint','bogus',skills),null);assert.equal(P.setExtraOption(p,'comboGlow','jade',skills),null);
+ const jade=P.setExtraOption(p,'slashTint','jade',skills);assert.equal(P.extraOption(jade,'slashTint').id,'jade');assert.equal(P.extraOption(p,'slashTint').id,'violet');
+ const off=P.toggleExtra(jade,'slashTint',false,skills);assert.equal(P.extraOption(off,'slashTint').id,'jade');
+ assert.deepEqual(P.normalize(JSON.parse(JSON.stringify(off)),skills),off);
+ for(const extraOptions of [null,[],{slashTint:'__proto__'},{slashTint:123}])assert.equal(P.extraOption(P.normalize({...raw,extraOptions},skills),'slashTint').id,'crimson');
+ const equipped=P.equip({...jade,slots:1,unlockedSkills:['blood']},0,'blood',skills);assert.equal(P.extraOption(equipped,'slashTint').id,'jade');
+});
+
+
+test('skin catalog has approved individual prices and no forged implicit ownership',()=>{
+ assert.deepEqual(P.SKINS.map(skin=>skin.id),['normal','chick','fundoshi','spacetime']);
+ assert.equal(Object.isFrozen(P.SKINS),true);
+ assert.deepEqual(P.SKINS.map(skin=>[skin.id,skin.cost]),[['normal',0],['chick',50],['fundoshi',600],['spacetime',600]]);
+ for(const skin of P.SKINS){assert.equal(Object.isFrozen(skin),true);assert.ok(skin.name&&skin.look&&skin.rule&&skin.color);}
+ const raw=P.normalize({selectedSkin:'fundoshi',skin:'chick'},skills);assert.equal(raw.selectedSkin,undefined);assert.equal(raw.skin,undefined);
+});
+
+test('skin saves whitelist ownership and records, keep one equipped costume, and preserve other bonuses',()=>{
+ const p=P.normalize({unlockedSkins:['chick','chick','bogus'],equippedSkin:'fundoshi',skinRecords:{chick:{bestFloor:9,bestCombo:NaN,runs:2},bogus:{runs:99}}},skills);
+ assert.deepEqual(p.unlockedSkins,['chick']);assert.equal(p.equippedSkin,'normal');
+ assert.deepEqual(p.skinRecords,{chick:{bestFloor:9,bestCombo:0,runs:2}});
+ assert.equal(P.equipSkin(p,'fundoshi',skills),null);assert.equal(P.equipSkin(p,'__proto__',skills),null);
+ const legacy=P.normalize({...p,unlockedExtras:['legacyVisual','slashTint'],enabledExtras:['legacyVisual','slashTint']},skills);
+ const chick=P.equipSkin(legacy,'chick',skills);assert.equal(chick.equippedSkin,'chick');assert.deepEqual(chick.enabledExtras,['slashTint']);
+ const old=P.toggleExtra(chick,'legacyVisual',true,skills);assert.equal(old.equippedSkin,'normal');assert.deepEqual(old.unlockedSkins,['chick']);
+ assert.deepEqual(P.normalize(JSON.parse(JSON.stringify(chick)),skills),chick);
+ assert.equal(P.skinRules('chick').hp,5);assert.equal(P.skinRules('chick').parry,3);assert.equal(P.skinRules('chick').just,2);
+ assert.equal(P.skinRules('fundoshi').suddenDeath,true);assert.equal(P.skinRules('spacetime').randomTempo,true);
+ assert.equal(P.skinRules('__proto__'),P.skinRules('normal'));
+});

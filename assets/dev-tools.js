@@ -34,7 +34,7 @@
   floor.value=String(f);
   const key=enemy.value;
   const practice=$('devPractice').checked;
-  const ok=engine.launch(f,key,practice);
+  const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked);
   status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+(practice?' — 無敵練習・記録しません':' — 記録は保存しません')):'指定した敵が見つかりません';
   renderBalance();
  }
@@ -45,6 +45,8 @@
  });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
+ $('devSkinEffects').checked=params.get('skinEffects')!=='0';
+ if(window.ParryProgression.SKINS.some(skin=>skin.id===params.get('skin')))$('devSkin').value=params.get('skin');
  const sfxVolume=$('devSfxVolume'),sfxValue=$('devSfxVolumeValue');
  function setSfxVolume(percent){
   const value=engine.setSfxVolume(percent);sfxVolume.value=String(value);sfxValue.textContent=value+'%';
@@ -74,6 +76,11 @@
  }
  let lastMusicKey='';
  function updateMusic(){
+  const skinState=engine.skinState?.();
+  if(skinState){const skin=window.ParryProgression.SKINS.find(s=>s.id===skinState.id);
+   const text=(skin?.name||'通常')+' · '+(skinState.effects?'効果ON':'外見のみ')+' · HP×'+skinState.hpMultiplier+' / パリィ ±'+skinState.parryWindow+'ms / ジャスト ±'+skinState.justWindow+'ms'+(skinState.id==='spacetime'?' / 遭遇BPM補正 '+(skinState.tempoOffset>0?'+':'')+skinState.tempoOffset:'');
+   if($('devSkinStatus').textContent!==text)$('devSkinStatus').textContent=text;
+  }
   const state=engine.musicState?.();if(!state)return;
   const key=[state.active,state.audition,state.id,state.bpm,state.bar,state.beat].join(':');if(key===lastMusicKey)return;lastMusicKey=key;
   const name=musicThemes.find(t=>t.id===state.id)?.name||'';

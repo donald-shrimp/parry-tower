@@ -14,7 +14,7 @@
  const reverseTurn=-Math.PI*2;
  // A brief white crescent flashes at the enemy's front, suggesting an instant
  // ranged cut without a slowly travelling projectile. Uses the counter phase.
- function counterSlash(ctx,{kind,phase,origin,target,scale=1}){
+ function counterSlash(ctx,{kind,phase,origin,target,scale=1,tint=null}){
   if(!['parry','just'].includes(kind)||!origin||!target||!(phase>.30&&phase<272/240))return false;
   const just=kind==='just',fade=smooth((phase-.30)/.045)*(1-smooth((phase-212/240)/.25));
   const dx=target.x-origin.x,dy=target.y-origin.y,distance=Math.hypot(dx,dy);
@@ -23,20 +23,34 @@
   const offset=depth+8*scale*(1-smooth((phase-.30)/.12));
   const position={x:target.x-Math.cos(angle)*offset,y:target.y-Math.sin(angle)*offset};
   ctx.save();ctx.translate(position.x,position.y);ctx.rotate(angle);ctx.lineCap='round';
-  ctx.globalAlpha*=opacity;ctx.fillStyle='#efffff';ctx.shadowColor='#528dff';ctx.shadowBlur=(just?12:8)*scale;
+  ctx.globalAlpha*=opacity;ctx.fillStyle=tint?.fill||'#efffff';ctx.shadowColor=tint?.glow||'#528dff';ctx.shadowBlur=(just?12:8)*scale;
   ctx.beginPath();ctx.moveTo(-depth,-height);
   ctx.bezierCurveTo(depth*1.65,-height*.64,depth*1.65,height*.64,-depth,height);
   ctx.bezierCurveTo(depth*.55,height*.53,depth*.55,-height*.53,-depth,-height);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#89b9ff';ctx.lineWidth=(just?2:1.4)*scale;ctx.stroke();
-  ctx.shadowBlur=0;ctx.strokeStyle='#f7ffff';ctx.lineWidth=(just?1.6:1)*scale;
+  ctx.strokeStyle=tint?.edge||'#89b9ff';ctx.lineWidth=(just?2:1.4)*scale;ctx.stroke();
+  ctx.shadowBlur=0;ctx.strokeStyle=tint?.core||'#f7ffff';ctx.lineWidth=(just?1.6:1)*scale;
   ctx.beginPath();ctx.moveTo(-depth,-height);ctx.bezierCurveTo(depth*1.65,-height*.64,depth*1.65,height*.64,-depth,height);ctx.stroke();
   ctx.restore();
   const hit=smooth((phase-.33)/.045)*(1-smooth((phase-.50)/.18));
   if(hit>0){
-   ctx.save();ctx.globalAlpha*=(just?.65:.45)*hit;ctx.strokeStyle=just?'#d4fcff':'#c2dcff';ctx.lineWidth=(just?3:2)*scale;ctx.lineCap='round';
+   ctx.save();ctx.globalAlpha*=(just?.65:.45)*hit;ctx.strokeStyle=tint?.edge||(just?'#d4fcff':'#c2dcff');ctx.lineWidth=(just?3:2)*scale;ctx.lineCap='round';
    ctx.beginPath();ctx.moveTo(target.x-12*scale,target.y-22*scale);ctx.lineTo(target.x+12*scale,target.y+22*scale);ctx.stroke();ctx.restore();
   }
   return {position,tip:{x:position.x+Math.cos(angle)*depth,y:position.y+Math.sin(angle)*depth},target,opacity,size:{height,depth}};
+ }
+ // Pure cosmetic drawing: fixed counts and time-based paths keep combat RNG untouched.
+ function comboAura(ctx,{now=0,combo=0,x=0,y=0,scale=1}){
+  if(![now,combo,x,y,scale].every(Number.isFinite)||scale<=0)return false;
+  const tier=combo>=50?3:combo>=25?2:combo>=10?1:0;if(!tier)return false;
+  const alpha=ctx.globalAlpha,color=['','#92dfff','#bc9dff','#ffe49b'][tier],pulse=.5+.5*Math.sin(now/220);
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=5;
+  ctx.globalAlpha*=.18+tier*.035;ctx.lineWidth=1.1+tier*.3;ctx.beginPath();ctx.ellipse(0,1,37+tier*6+pulse*2,5+tier,0,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<4+tier*3;i++){
+   const phase=((now/1700+i*.618)%1+1)%1,px=Math.sin(i*2.4+now/900)*(20+tier*6),py=-phase*(75+tier*15);
+   ctx.globalAlpha=alpha*(.13+tier*.035)*Math.sin(Math.PI*phase);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(px,py+9);ctx.quadraticCurveTo(px-4,py+4,px+2,py-4);ctx.stroke();
+   ctx.fillRect(px-1,py-2,2,2);
+  }
+  ctx.restore();return {tier,count:4+tier*3};
  }
  function rareAura(ctx,{e,now=0,x=0,y=0,scale=1,height=140,width=46},front=false){
   if(!e?.rare)return false;
@@ -295,5 +309,5 @@
   ctx.restore();return ok;
  }
  if(root?.document&&/(?:^|[?&])art=impact(?:&|$)/.test(root.location?.search||''))preload();
- return Object.freeze({PROFILES,profile,layout,timeline,swordPhrase,bladeRibbon,counterSlash,eliteAura,rareAura,heroJoints,heroTip,knightContact,knightJoints,knightTip,preload,readyFor,drawHero,drawEnemy});
+ return Object.freeze({PROFILES,profile,layout,timeline,swordPhrase,bladeRibbon,counterSlash,comboAura,eliteAura,rareAura,heroJoints,heroTip,knightContact,knightJoints,knightTip,preload,readyFor,drawHero,drawEnemy});
 });
