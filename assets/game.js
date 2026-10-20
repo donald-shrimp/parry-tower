@@ -83,7 +83,7 @@ function syncArtMode(){
  if(useIllustratedArt())KNIGHT_PUPPET?.preloadSources?.();
 }
 syncArtMode();
-let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items',skinPreview='normal';
+let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items';
 const SYNERGIES=[
  {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
  {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
@@ -393,16 +393,14 @@ function bonusNavigation(){
 }
 function renderSkinPicker(){
  for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
- const selected=PR.SKINS.find(skin=>skin.id===skinPreview)||PR.SKINS[0];
- const equipped=PR.SKINS.find(skin=>skin.id===permanent.equippedSkin)||PR.SKINS[0];
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">1着ずつ個別購入。購入後は無料で着替えられ、次の挑戦から外見と効果を適用します。開発初期モードとは同時使用できません。</p><p class="skin-preview-status">装備中：'+equipped.name+'</p><p class="skin-preview-status" role="status">プレビュー：'+selected.name+'</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const chosen=skin.id===selected.id,owned=PR.ownsSkin(permanent,skin.id),wearing=skin.id===equipped.id;
+ return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">購入後は無料で着替えられ、次の挑戦から外見と効果を適用します。開発初期モードとは同時使用できません。</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
+  const owned=PR.ownsSkin(permanent,skin.id),wearing=skin.id===permanent.equippedSkin;
   const price=skin.cost===0?'無料':skin.cost.toLocaleString('ja-JP')+' 欠片';
-  const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong><span>'+(owned?'購入済み':'個別販売')+'</span></div>';
+  const sale='<div class="skin-sale"><strong class="skin-price">'+price+'</strong></div>';
   const action=owned?'skin-equip':'skin-buy';
-  const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(wearing?'装備中':owned?'装備する':price+'で購入して装備')+'</button>';
+  const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':'購入する')+'</button>';
   const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0};
-  return '<article class="skin-card '+(chosen?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span><span class="skin-ready">'+(wearing?'装備中':'効果あり')+'</span></div><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><p class="skin-look">自己記録：'+r.bestFloor+'F / '+r.bestCombo+' COMBO</p>'+sale+'<div class="skin-actions">'+buy+'<button type="button" class="upgrade-buy" data-action="skin-preview" data-key="'+skin.id+'" aria-pressed="'+chosen+'">'+(chosen?'✓ プレビュー中':'選んで見る')+'</button><a class="upgrade-buy" href="./skin-preview.html?skin='+skin.id+'">モーションを見る ↗</a><a class="upgrade-buy" href="./dev.html?floor=5&amp;enemy=guardian&amp;skin='+skin.id+'&amp;skinEffects=1">効果を試す ↗</a></div></article>';
+  return '<article class="skin-card '+(wearing?'selected':'')+'" style="--skin-color:'+skin.color+'"><div class="skin-card-top"><span class="skin-tag">'+skin.tag+'</span></div><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><p class="skin-look">自己記録：'+r.bestFloor+'F / '+r.bestCombo+' COMBO</p>'+sale+'<div class="skin-actions">'+buy+'</div></article>';
  }).join('')+'</div>';
 }
 function renderUpgradeScreen(){
@@ -474,7 +472,7 @@ function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
  if(action==='skin-equip'){
   const next=PR.equipSkin(permanent,key,SKILLS);if(!next)return;
-  permanent=next;skinPreview=key;savePermanent();syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);renderUpgradeScreen();return;
+  permanent=next;savePermanent();syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);renderUpgradeScreen();return;
  }
  if(action==='bonus-toggle'){
   const next=PR.toggleExtra(permanent,key,!PR.extraEnabled(permanent,key),SKILLS);if(!next)return;
@@ -494,7 +492,7 @@ function buyUpgrade(action,key){
  }else if(action==='skin-buy'){
   const skin=PR.SKINS.find(s=>s.id===key);
   if(skin&&Number.isFinite(skin.cost)&&!PR.ownsSkin(permanent,key)){
-   cost=skin.cost;apply=()=>{permanent.unlockedSkins.push(key);permanent=PR.equipSkin(permanent,key,SKILLS);skinPreview=key;syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);};
+   cost=skin.cost;apply=()=>{permanent.unlockedSkins.push(key);permanent=PR.equipSkin(permanent,key,SKILLS);syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);};
   }
  }else if(action==='bonus-buy'){
   const item=PR.EXTRAS.find(item=>item.id===key);
@@ -1762,8 +1760,6 @@ $('upgradeList').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-action]');
  if(btn?.dataset.action==='bonus-section'){
   if(upgradeTab==='bonus'&&['items','skins'].includes(btn.dataset.key)){bonusView=btn.dataset.key;renderUpgradeScreen();}
- }else if(btn?.dataset.action==='skin-preview'){
-  if(upgradeTab==='bonus'&&bonusView==='skins'&&PR.SKINS.some(skin=>skin.id===btn.dataset.key)){skinPreview=btn.dataset.key;renderUpgradeScreen();}
  }else if(btn)buyUpgrade(btn.dataset.action,btn.dataset.key);
 });
 $('upgradeList').addEventListener('change',e=>{
@@ -1832,5 +1828,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.3-10',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.3-11',window.__parryV05);requestAnimationFrame(frame);
 })();
