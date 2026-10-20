@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const BUILD='v0.9.3-3';
+const BUILD='v0.9.3-4';
 const source=fs.readFileSync('assets/diagnostics.js','utf8');
 
 function diagnosticPage(page='index.html',options={}){
@@ -81,10 +81,10 @@ function diagnosticPage(page='index.html',options={}){
 }
 test('HTML, game marker and asset query versions are identical in both entrypoints',()=>{
  const required=['style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js',
-  'relics.js','routes.js','events.js','game.js'];
+  'relics.js','routes.js','events.js','combat-sfx.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
-  assert.match(s,/<meta name="parry-build" content="v0\.9\.3-3">/);
+  assert.match(s,/<meta name="parry-build" content="v0\.9\.3-4">/);
   assert.match(s,/v0\.9\.3/);
   for(const name of required)assert.ok(s.includes('./assets/'+name+'?v='+BUILD),name+' in '+file);
   for(const asset of [...s.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)]){
@@ -93,7 +93,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   assert.ok(s.indexOf('assets/diagnostics.js')<s.indexOf('assets/game.js'),'guard loads before game');
  }
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.3-3',window.__parryV05)"));
+ assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.3-4',window.__parryV05)"));
 });
 test('healthy game reports technical status and correct floor-specific route with no warning',()=>{
  const p=diagnosticPage();
@@ -158,7 +158,7 @@ test('missing module, stale URL and script load failure each trigger a warning',
  assert.equal(missing.api.status().status,'mismatch');
  assert.ok(missing.api.status().issues.some(x=>x.includes('必要なゲームモジュール')));
  const stale=diagnosticPage('index.html',{assetEntries:[]});
- assert.equal(stale.api.status().staleAssets.length,9);
+ assert.equal(stale.api.status().staleAssets.length,10);
  assert.equal(stale.api.status().status,'mismatch');
  const failed=diagnosticPage('index.html',{failedAsset:'./assets/game.js?v='+BUILD});
  assert.equal(failed.api.status().status,'mismatch');

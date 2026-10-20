@@ -2,39 +2,27 @@
 
 ## 現在の目的と承認
 
-ユーザーが主人公モーション/連打対策/金属音の提案を了承し「遊べる版」を依頼。`codex/shield-feedback-playtest` に実装・検証済み（`9af3408`）。続く「出先から確認する手段が欲しい」で専用HTTPS一時プレビューを公開。次はユーザーの体感レビュー。今回の改善はmainへ未マージ、GitHubへのpush/本番更新はしていない。
+ユーザーが高音抑制後のジャスト音を「いい感じ。これで実装頼む」と最終了承。試遊で了承された主人公モーション・連打対策・効果音を本編へ採用し、ビルドを **v0.9.3-4** に更新して最終検証済み。現在は `codex/shield-feedback-playtest` の採用コミットをローカルmainへマージする段階。今回の改善はGitHubへ未push、Pagesは前回公開のv0.9.3-3。
 
-最新依頼：添付「剣で打ち合う2」をパリィ、「剣で打ち合う3」を少し速めた音をジャストの参考に模倣する。「盾で防御」も添付。3音の共振/時間変化を解析して参考音版v3として再合成。操作/モーション/連打対策は前回好評のまま。外部URL末尾に `&sound=reference3` を付けて新しく開き、上部「参考音版 v3」の3ボタンで確認してもらう。既存タブではAudioBufferが残るため再読込が必要。
+## 採用内容と正本
 
-参考音版v3は「いい感じ」と了承後に音量調整。現在の再生ゲインはガード0.294/パリィ0.301（初回70%）、ジャスト0.2464（初回56%）。最新の「高音が耳キーンとなる」を受け、ジャスト専用で4.5kHz付近を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振だけの早い減衰を追加。EQ後の音量を自動で戻さない。速度/入力/BGMは保持し、ガード/パリィの生成波形も不変。外部URLは `&sound=softjust`。既存タブは再読込が必要。
+- 剣腕はパリィ/ジャスト成功時だけ反撃。盾は肩から起こして前に出し、構え切った接触位置を保持。ガードには衝突の反動、被弾には別の反動。
+- 再パリィは受理入力後300ms＋全指/キーを120ms離す両条件。成功時は接触で300ms回復を解除。拒否入力でも100ms保持すればガード。入力源全体で共有する。判定窓/敵時計/ダメージは変更していない。
+- `assets/combat-sfx.js` が添付「打ち合う2」/「3」/「盾で防御」の共振・粗い時間包絡を基準に独自波形を合成。ジャストは1.15倍速相当。再生ゲインはガード0.294/パリィ0.301/ジャスト0.2464。ジャストは4.5kHz周辺を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振を早く減衰させる。EQ後に音量を戻さない。3音をBGMの拍原点確定前に準備し、接触時に一度、同じAudioContextで再生。BGM/ミュートを保持。
+- devには任意の敵の無敵練習・3音の個別試聴。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子をv0.9.3-4へ統一し、combat-sfxも必須アセットとして確認する。
+- 了承済みの全画像/配色/確定ポーズ/敵モーション/0.2秒白い反撃/精鋭とレア演出は保持。`assets/character-art/` と `character-art-defaults.js` はmainから差分なし。`studio-project.json` updatedAt **1792426370286** のまま。王は `approved/endking/` の手塗り正本。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。
 
-前回了承済みのドット立ち絵/モーションはmainへ導入・公開済み。機能 `29cc47a`、マージ `c899839`、公開記録 `2aed84b`。CI/Pages成功と公開 `v0.9.3-3` を確認済み。公開先 <https://donald-shrimp.github.io/parry-tower/> は前回版。
+## 最終検証
 
-## 試遊入口と変更内容
+- **Node329件成功**。連打5ms/回復と解放の境界/複数入力/全26敵で各16連続成功/剣腕と盾の幾何/ガードと被弾/音の波形と減衰/初回事前準備と再利用/保存互換/診断とビルド一致を含む。`test-results/shield-adoption/node.txt`。
+- **Python画像6件成功**、全JS36ファイル構文、CIのSVG/参照PNG/Pagesリンク検証、既存ボスバランスシミュレーション成功。`test-results/shield-adoption/`。
+- 通常本編の新しい保存領域（127.0.0.1:8004）でv0.9.3-4、効果音ロード、戦闘、Space長押しGUARD（14攻撃→5ダメージ）、一時停止を確認。360pxで本文345px、横はみ出しなし。console警告/エラーなし。証跡 `main.png` / `mobile.png`。8004の試験は普段の8002の保存データに影響しない。
+- 高音抑制の解析は `test-results/just-soft/`。0.1〜0.6秒の3〜8kHzエネルギーは抑制前の約12.5%、4〜5kHzは約6%。主観的な音色/音量はユーザーが外部試遊で最終了承済み。添付MP3/解析用WAV/依存ライブラリは公開対象へ入れていない。
 
-- **外部試遊** <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1>。既存cloudflaredで専用の読み取り専用サーバー `node scripts/serve-playtest.js 8003` を公開。ルートURLも同じ無敵稽古へ転送する。PCの起動/ネット接続/両プロセスが必要で、スリープ・終了により切れる。再起動したトンネルのURLは変わる。停止/再開時は `test-results/remote-playtest/processes.json` とWin32_Processの実コマンドを照合する（作成時 server PID14380 / tunnel PID39076）。既存の8002工房サーバーは変更していない。
-- 公開対象はGit管理下のassetsとdev/credits/art-previewだけ。GET/HEAD以外は405、Git/ドキュメント/output/工房保存APIは配信しない。ログとプロセス記録は `test-results/remote-playtest/`。一時プレビューは本番Pagesと別の保存領域で、devの記録抑止も維持。
+## 起動・外部確認・次の作業
 
-- 内側リポジトリ `C:/Users/EBIHARA/Downloads/parry-tower/parry-tower`。`node scripts/serve-local.js 8002`。試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。「指定条件で開始」、短押し/Spaceでパリィ、長押しでガード。無敵のチェックを外せば通常のダメージありで試せる。devは保存を書き込まない。
-- 剣腕の反撃はパリィ/ジャスト成功後だけ。ガード/被弾は剣を回さない。盾腕を肩の支点から起こして前へ出す。上げ切った接触位置は従来と一致し、ガードには衝突の反動がある。
-- 受理した入力後300ms回復＋全キー/指を120ms離す両条件で再パリィ。成功時は衝突で300msを解除するが、120ms解放は必要。拒否した押下も100ms保持すればガードになる。全入力源で共有、重複release/複数指/blurを考慮。判定窓・ダメージ・敵の衝突時計は維持。
-- `assets/combat-sfx.js` がガード「ガン」/パリィ「ガキン！」/ジャスト「ジャキーン！」をPCM合成。同じAudioContextで衝突時1回、バッファ再利用。dev上部の3ボタンで個別試聴可能。音声OFFを尊重する。
-- 参考音版v3は接触の短い打音と、後から膨らむ不規則な鋼の共振を分けた。ガード約1.6/2.0/2.25kHz、パリィ約5.7/6.6/7.2kHz、ジャストは参考3の共振と時間変化を1.15倍速相当にして再合成。長さは0.58/0.76/1.2秒で、参照末尾の無音は含めない。添付MP3/デコード波形の埋込や配信はしない。初回衝突で合成処理が遅れないよう `ensureAudio` がBGM時計確定前に3音を準備し、その後バッファ再利用。接触時刻/入力/ダメージ/画像は維持。
-- 通常ゲーム <http://127.0.0.1:8002/> にも変更を反映。立ち絵・敵モーション・配色・精鋭/レア演出・0.2秒白い反撃・セーブ形式は保持。
-
-## 検証済み
-
-- `node --test tests/*.test.js` **326件成功**。5ms連打、299/300ms回復、119/120ms解放、複数指/キー、拒否後ガード、全26敵で各16連続成功、成功時だけ反撃、ガード/被弾反動、衝突時単発音/ミュート/試聴、未遭遇dev稽古とセーブ不変を含む。既存の時計/判定/ダメージ/育成/本編解放/原画/確定ポーズも通過。
-- Python画像検証 **6件成功**。`assets/character-art/` 全体と同期の `character-art-defaults.js` にGit差分なし。`studio-project.json` updatedAt **1792426370286** のまま。
-- 変更JS構文・空白チェック成功。実ブラウザで守護者の無敵戦闘/長押しGUARD/65HP維持、3音の試聴、OFF時の試聴抑止を確認。console警告/エラーなし。360pxで本文幅345px、横はみ出しなし。音の好みと実機の操作感はユーザー確認が必要。
-- 証跡 `test-results/shield-feedback/playable.png`、`mobile.png`。ログ `test-results/shield-feedback-full.txt` / `shield-feedback-python.txt`。初期の失敗ログは修正前の記録なので最終判定に使わない。
-- 外部配信追加後のNode全体 **328件成功**。読み取り/HEAD/転送と、POST/保存API/非公開パスの拒否を検証。実HTTPSでも画面/効果音JSが200、Git403、docs/保存API404。外部URLをブラウザで開き、無敵戦闘/試聴/描画を確認、console警告/エラーなし。証跡 `test-results/remote-playtest/external-preview.png`、ログ `tests.txt`。
-- v3の波形/バッファ再利用/事前準備/衝突直後の打音と長い金属余韻の単体試験成功。解析/試作WAVは `test-results/reference-sfx/`（公開サーバーの許可範囲外）。99%エネルギーの時間はガード0.302秒（参考0.275）、パリィ0.404秒（参考0.428）、ジャスト0.678秒（参考3の1.15倍速相当0.742）。余韻の主要ピークは1.59/5.69/4.49kHz。旧版とピーク音量同値。数値は近似の確認で、聴感の採否はユーザーが決める。
-- 最終v3でNode全 **329件成功**（`test-results/reference-sfx/tests.txt`）。実HTTPSで3音の個別再生と、再読込からの事前準備/戦闘起動/長押しガードを確認。console警告/エラーなし。証跡 `test-results/reference-sfx/preview.png`。画像/保存済みポーズは未変更。
-- 高音抑制後の音声試験3件成功。余韻の検証は「長く高く響く」から「打ち合いの余韻を残して末尾は減衰する」へ最新指示に合わせて更新。8〜192kHzのEQ出力が有限、ガード/パリィの44.1/48kHz波形不変、外部配信JSのSHA一致を確認。0.1〜0.6秒の3〜8kHz帯域エネルギーは直前版の約12.5%、4〜5kHzは約6%。解析は `test-results/just-soft/analysis.json`。耳への感じ方はユーザーの再試聴で確認する。
-
-## 正本と次の作業
-
-画像/工房の正本は前回と同じ。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。王は了承済み `assets/character-art/approved/endking/` の手塗り画像を使う。元画像や保存ポーズを再生成しない。
-
-次は参考音版v3の響きをユーザーに聴いてもらう。他の仕様は最新レビューで好評なので、追加指摘がなければ保持する。採用と公開が指示されたら、ビルド識別子/キャッシュ更新を含めて検証し、マージ/公開する。4:00予約は実行済みで再作成不要。既存 `output/` の資料/塗り分け書出しは保持し、コミット対象にしない。
+- 本編 <http://127.0.0.1:8002/>、無敵試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。`node scripts/serve-local.js 8002`。既存工房サーバーやタブは変更していない。
+- 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
+- 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
+- 公開先 <https://donald-shrimp.github.io/parry-tower/>、公開済みmainの基点は `2aed84b`。今回の最終承認は本編採用/ローカルmainマージまでとして扱う。公開指示が来たら通常pushし、CI/Pagesと公開ビルドv0.9.3-4を確認する。
+- 次の操作はローカルmainへのマージと本書のマージ結果更新。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
