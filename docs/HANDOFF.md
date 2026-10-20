@@ -2,9 +2,9 @@
 
 ## 現在の目的と承認
 
-最新依頼「めちゃくちゃいい感じなのでもう実装しちゃって」でDevの8曲を全採用し公開まで承認。現在 codex/stage-bgm-preview。1〜10Fは旧曲の発音コードを保持、11〜80Fは10階ごとのエリア専用7曲へ自動切替、81F以降も既存の巡回に従う。通常112/速い敵124/ボス136 BPM、判定時計、効果音25%、保存は保持。両エントリから stage-music.js を読み込む。Dev試聴室/通常・ボス比較/拍表示/曲指定の無敵練習も採用。詳細 [MUSIC_PREVIEW](./MUSIC_PREVIEW.md)。ビルドv0.9.3-7。
+最新依頼「めちゃくちゃいい感じなのでもう実装しちゃって」でDevの8曲を全採用し公開まで承認。採用 c92f6aa、main統合/公開 50071ec。現在main、v0.9.3-7を公開・実URL確認済み。1〜10Fは旧曲の発音コードを保持、11〜80Fは10階ごとのエリア専用7曲へ自動切替、81F以降も既存の巡回に従う。通常112/速い敵124/ボス136 BPM、判定時計、効果音25%、保存は保持。両エントリから stage-music.js を読み込む。Dev試聴室/通常・ボス比較/拍表示/曲指定の無敵練習も採用。詳細 [MUSIC_PREVIEW](./MUSIC_PREVIEW.md)。ビルドv0.9.3-7。
 
-先行Dev版はNode342件/外部ブラウザで兵舎112・礼拝堂136 BPMの再生と警告なしを確認済み。採用版はNode344件すべて成功（test-results/stage-bgm-release-final.txt）。全エリア境界/巡回/一時停止/同一判定時計/Dev通常起動の自動選曲を含む。全JS構文/差分空白確認成功。実ブラウザで21Fの自動選曲・戦闘開始・一時停止/再開と警告なしを確認済み。次はmain統合/push、CI/Pagesと公開後確認。
+先行Dev版はNode342件/外部ブラウザで兵舎112・礼拝堂136 BPMの再生と警告なしを確認済み。採用版はNode344件すべて成功（test-results/stage-bgm-release-final.txt）。全エリア境界/巡回/一時停止/同一判定時計/Dev通常起動の自動選曲を含む。全JS構文/差分空白確認成功。実ブラウザで21Fの自動選曲・戦闘開始・一時停止/再開と警告なしを確認済み。Pages 39422783766成功、Static checks 39422784887成功。公開HTML/dev/game/diagnostics/combat-sfx/stage-music/dev-tools.js/cssの8ファイルが公開コミットとSHA一致。公開実ブラウザでv0.9.3-7、41Fの工房曲自動選曲/戦闘開始、終刻の王のボス136 BPM試聴/拍表示/停止と警告なしを確認。証跡 test-results/stage-music-publication/。依頼は公開後確認まで完了。次は通常プレイでのフィードバック対応。
 
 外部試遊：<https://speaking-rico-jacket-period.trycloudflare.com/dev.html?music=barracks#devMusicRoom>。読み取り専用8003 server PID38832、tunnel PID39076。既存8002の工房サーバー/タブには操作しない。**作業中に工房由来の assets/character-art-defaults.js / assets/character-art/studio-project.json の未コミット変更が入ったため、そのまま保持してBGMコミットから除外する**。未追跡outputも保持。
 
@@ -31,7 +31,7 @@ HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子をv0.9
 - 剣腕はパリィ/ジャスト成功時だけ反撃。盾は肩から起こして前に出し、構え切った接触位置を保持。ガードには衝突の反動、被弾には別の反動。
 - 再パリィは受理入力後300ms＋全指/キーを120ms離す両条件。成功時は接触で300ms回復を解除。拒否入力でも100ms保持すればガード。入力源全体で共有する。判定窓/敵時計/ダメージは変更していない。
 - `assets/combat-sfx.js` が添付「打ち合う2」/「3」/「盾で防御」の共振・粗い時間包絡を基準に独自波形を合成。ジャストは1.15倍速相当。採用ゲインはガード0.0735/パリィ0.07525/ジャスト0.0616（v0.9.3-5の25%）。ジャストは4.5kHz周辺を6dB抑えるEQ、9.5kHzの2段ローパス、高い共振を早く減衰させる。EQ後に音量を戻さない。3音をBGMの拍原点確定前に準備し、接触時に一度、同じAudioContextで再生。BGM/ミュートを保持。
-- devには任意の敵の無敵練習・3音の個別試聴・効果音量バー。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子はv0.9.3-6、combat-sfxも必須アセットとして確認する。
+- devには任意の敵の無敵練習・3音の個別試聴・効果音量バー。通常本編は解放条件/保存を維持。`index.html` / `dev.html` / 診断/CI/テストのビルド識別子はv0.9.3-7、combat-sfxとstage-musicも必須アセットとして確認する。
 - 了承済みの全画像/配色/確定ポーズ/敵モーション/0.2秒白い反撃/精鋭とレア演出は保持。`assets/character-art/` と `character-art-defaults.js` はmainから差分なし。`studio-project.json` updatedAt **1792426370286** のまま。王は `approved/endking/` の手塗り正本。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。
 
 ## 防御改善時の検証（v0.9.3-4）
@@ -47,5 +47,5 @@ HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子をv0.9
 - 本編 <http://127.0.0.1:8002/>、無敵試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。`node scripts/serve-local.js 8002`。既存工房サーバーやタブは変更していない。
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
-- **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-6>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
-- 音量25%と先読み修正を含むmain統合/push/CI/Pages/公開確認まで完了。次は公開後のフィードバック対応。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
+- **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-7>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
+- エリアBGM・音量25%と先読み修正を含むmain統合/push/CI/Pages/公開確認まで完了。次は公開後のフィードバック対応。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
