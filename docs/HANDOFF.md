@@ -2,11 +2,14 @@
 
 ## 現在の目的と承認
 
-ユーザーが主人公モーション/連打対策/金属音の提案を了承し「遊べる版」を依頼。`codex/shield-feedback-playtest` にローカル試遊版を実装・検証済み。次はユーザーの体感レビュー。今回の改善はまだmainへマージ/push/公開していない。
+ユーザーが主人公モーション/連打対策/金属音の提案を了承し「遊べる版」を依頼。`codex/shield-feedback-playtest` に実装・検証済み（`9af3408`）。続く「出先から確認する手段が欲しい」で専用HTTPS一時プレビューを公開。次はユーザーの体感レビュー。今回の改善はmainへ未マージ、GitHubへのpush/本番更新はしていない。
 
 前回了承済みのドット立ち絵/モーションはmainへ導入・公開済み。機能 `29cc47a`、マージ `c899839`、公開記録 `2aed84b`。CI/Pages成功と公開 `v0.9.3-3` を確認済み。公開先 <https://donald-shrimp.github.io/parry-tower/> は前回版。
 
 ## 試遊入口と変更内容
+
+- **外部試遊** <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1>。既存cloudflaredで専用の読み取り専用サーバー `node scripts/serve-playtest.js 8003` を公開。ルートURLも同じ無敵稽古へ転送する。PCの起動/ネット接続/両プロセスが必要で、スリープ・終了により切れる。再起動したトンネルのURLは変わる。停止/再開時は `test-results/remote-playtest/processes.json` とWin32_Processの実コマンドを照合する（作成時 server PID14380 / tunnel PID39076）。既存の8002工房サーバーは変更していない。
+- 公開対象はGit管理下のassetsとdev/credits/art-previewだけ。GET/HEAD以外は405、Git/ドキュメント/output/工房保存APIは配信しない。ログとプロセス記録は `test-results/remote-playtest/`。一時プレビューは本番Pagesと別の保存領域で、devの記録抑止も維持。
 
 - 内側リポジトリ `C:/Users/EBIHARA/Downloads/parry-tower/parry-tower`。`node scripts/serve-local.js 8002`。試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。「指定条件で開始」、短押し/Spaceでパリィ、長押しでガード。無敵のチェックを外せば通常のダメージありで試せる。devは保存を書き込まない。
 - 剣腕の反撃はパリィ/ジャスト成功後だけ。ガード/被弾は剣を回さない。盾腕を肩の支点から起こして前へ出す。上げ切った接触位置は従来と一致し、ガードには衝突の反動がある。
@@ -20,6 +23,7 @@
 - Python画像検証 **6件成功**。`assets/character-art/` 全体と同期の `character-art-defaults.js` にGit差分なし。`studio-project.json` updatedAt **1792426370286** のまま。
 - 変更JS構文・空白チェック成功。実ブラウザで守護者の無敵戦闘/長押しGUARD/65HP維持、3音の試聴、OFF時の試聴抑止を確認。console警告/エラーなし。360pxで本文幅345px、横はみ出しなし。音の好みと実機の操作感はユーザー確認が必要。
 - 証跡 `test-results/shield-feedback/playable.png`、`mobile.png`。ログ `test-results/shield-feedback-full.txt` / `shield-feedback-python.txt`。初期の失敗ログは修正前の記録なので最終判定に使わない。
+- 外部配信追加後のNode全体 **328件成功**。読み取り/HEAD/転送と、POST/保存API/非公開パスの拒否を検証。実HTTPSでも画面/効果音JSが200、Git403、docs/保存API404。外部URLをブラウザで開き、無敵戦闘/試聴/描画を確認、console警告/エラーなし。証跡 `test-results/remote-playtest/external-preview.png`、ログ `tests.txt`。
 
 ## 正本と次の作業
 
