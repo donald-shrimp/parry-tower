@@ -65,6 +65,31 @@
  const compositeLength=distance(P.swordElbow,P.tip),compositeOffset=angle(P.swordElbow,P.tip)-IDLE_FORE;
  let image=null,layers=null,repairMask=null,status='idle',pending=null,plumeSource=null,maskStamp='',layerCrops={};
  function sourceUrl(){return new URL(root.ParryPixelArt?.source(SOURCE,assetEnemy)||SOURCE,scriptUrl||'https://invalid.local/assets/character-knight-puppet.js').href;}
+ let sourcePreload=null;
+ function preloadSources(){
+  if(sourcePreload)return sourcePreload;
+  if(typeof root?.Image!=='function')return Promise.resolve(false);
+  const urls=new Set(),add=(path,e)=>urls.add(new URL(root.ParryPixelArt?.source(path,e)||path,scriptUrl||'https://invalid.local/assets/character-knight-puppet.js').href);
+  if(root.ParryHeroPuppet)add(root.ParryHeroPuppet.SOURCE);
+  add(SOURCE);add(PLUME.source);
+  for(const e of root.ParryEncounters?.all||[]){
+   if(supports(e)){add(SOURCE,e);add(PLUME.source,e);}
+   else{const s=root.ParryEnemyData?.[e.sprite||e.id];if(s){add(s.source,e);if(s.keyPose)add(s.keyPose.source,e);}}
+  }
+  // Warm compressed image resources without retaining every decoded image or
+  // expanding the full roster into canvases. The encounter cache stays bounded.
+  const queue=[...urls];let next=0;
+  sourcePreload=Promise.all(Array.from({length:Math.min(3,queue.length)},async()=>{
+   let ok=true;
+   while(next<queue.length){
+    const url=queue[next++];
+    const loaded=await new Promise(resolve=>{const img=new root.Image();img.decoding='async';img.fetchPriority='low';
+     img.onload=()=>resolve(true);img.onerror=()=>resolve(false);img.src=url;});
+    ok=loaded&&ok;
+   }
+   return ok;
+  })).then(results=>results.every(Boolean));return sourcePreload;
+ }
  function canvas(w=WIDTH,h=HEIGHT){const c=root.document.createElement('canvas');c.width=w;c.height=h;return c;}
  function polygon(ctx,polys){for(const poly of polys){ctx.beginPath();poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();}}
  function clothMask(img){
@@ -336,6 +361,6 @@
   if(!root.ParryPixelArt?.adopted)root.ParryCombatArt?.preload();preload();
  }
  return Object.freeze({SOURCE,PLUME,WIDTH,HEIGHT,SCALE,ORIGIN,PIVOTS,MASKS,CROPS,ORDER,PRIORITY,
-  sourceUrl,preload,status:()=>status,ready:()=>status==='ready',supports,readyFor,layout,twoBone,
+  sourceUrl,preload,preloadSources,status:()=>status,ready:()=>status==='ready',supports,readyFor,layout,twoBone,
   contactAngles,pose,sample,placements,bounds,drawCutout,drawReference,compareIdle,drawParts,counterTarget,drawEnemy,drawHero,editModel});
 });

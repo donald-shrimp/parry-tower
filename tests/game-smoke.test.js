@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
 
-function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal'){
+function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
@@ -91,6 +91,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
     drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
   }
  }
+ if(artGate)window.ParryKnightPuppet=artGate;
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
  assert.match(source,/\}\)\(\);\s*$/);
@@ -173,7 +174,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  return {
   el,clickers,storage,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
   artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
-  readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);},
+  readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
   artDrawCounts:()=>({...artDrawCounts}),
   metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,
@@ -220,6 +221,45 @@ test('bestiary UI has no obsolete arena actions and practice buttons stay within
  assert.match(css,/\.codex-practice\{[^}]*width:100%/);
  assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
 });
+test('a cold start warms title assets and waits for artwork before drawing or starting the combat clock',async()=>{
+ let loaded=false,finish,warmups=0,draws=0;
+ const pending=new Promise(resolve=>{finish=resolve});
+ const art={preloadSources(){warmups++;},readyFor:()=>loaded,preload:()=>pending,
+  drawHero(){draws++;return true},drawEnemy(){draws++;return true}};
+ const g=makeHarness({},false,'','',art);assert.equal(warmups,1);
+ g.random(.5);g.press('startBtn');
+ assert.equal(g.state().mode,'loading');assert.equal(g.state().scoreActive,false);
+ const hp=g.state().hp;g.frame(20000);g.hold();g.frame(25000);g.release();
+ assert.equal(draws,0);assert.equal(g.state().hp,hp);assert.equal(g.state().guardHeld,false);
+ assert.equal(g.el.get('pauseBtn').disabled,true);
+ loaded=true;finish(true);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(g.state().mode,'combat');assert.equal(g.state().scoreActive,true);
+ assert.ok(g.state().attackAt>g.now+2000,'first attack gets a fresh full count-in');
+ g.frame(g.now+1);assert.equal(draws,2);
+});
+test('late image completion cannot revive an abandoned run or replace a newer encounter',async()=>{
+ const waiting=[];
+ const art={preloadSources(){},readyFor:()=>false,preload:()=>new Promise(resolve=>waiting.push(resolve))};
+ const g=makeHarness({},true,'','',art);
+ g.dev().launch(5,'guardian:normal');await Promise.resolve();
+ g.dev().reset();waiting.shift()(true);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(g.state().mode,'title');assert.equal(g.state().scoreActive,false);
+ g.dev().launch(5,'guardian:normal');await Promise.resolve();
+ g.dev().launch(15,'sentinel:normal');await Promise.resolve();
+ waiting.shift()(true);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(g.state().mode,'loading');assert.equal(g.state().enemy,'sentinel');
+ waiting.shift()(true);await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(g.state().mode,'combat');assert.equal(g.state().enemy,'sentinel');
+});
+test('an image failure finishes loading with a stable fallback instead of blocking combat',async()=>{
+ let draws=0;
+ const art={preloadSources(){},readyFor:()=>false,preload:()=>Promise.reject(Error('missing image')),
+  drawHero(){draws++;return true},drawEnemy(){draws++;return true}};
+ const g=makeHarness({},false,'','',art);g.press('startBtn');
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(g.state().mode,'combat');g.frame(g.now+1);assert.equal(draws,0);
+ assert.equal(g.state().scoreActive,true);
+});
 for(const variant of ['impact','illustrated','studio-edits','adopted'])test(variant+' art preserves score timing, damage, guard, progression and inputs across the roster',async()=>{
  const artMode=variant==='studio-edits'?'illustrated':variant;
  const edit=require('../assets/character-edit'),specs=require('../assets/character-enemy-data');
@@ -229,7 +269,7 @@ for(const variant of ['impact','illustrated','studio-edits','adopted'])test(vari
  const ids=['illustrated','adopted'].includes(artMode)?P.all.map(e=>e.id):['knight','slime','rogue','wraith','sentinel','duelist','cantor','clockwork','guardian','void_knight','endking'];
  for(const id of ids){
   const old=makeHarness(seed,true),improved=makeHarness(seed,true,artMode);
-  await improved.readyArt();
+  await improved.readyArt(P.byId[id]);
   assert.deepEqual(improved.artStatus(),{hero:true,knight:true});
   if(['illustrated','adopted'].includes(artMode))assert.deepEqual(improved.illustratedStatus(),{hero:true,knight:true});
   for(const g of [old,improved]){
@@ -346,8 +386,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-4"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-5"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-5"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1046,7 +1086,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-4"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-5"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1365,7 +1405,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-4"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-5"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);

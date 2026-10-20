@@ -66,6 +66,29 @@ test('one missing variant fails only that encounter and the next base enemy stil
  assert.equal(await k.preload(P.byId.guardian),true);assert.equal(k.readyFor(P.byId.guardian),true);
  assert.equal(await k.preload(P.byId.frost_priest),true);assert.equal(k.readyFor(P.byId.frost_priest),true);
 });
+test('title warmup covers every adopted source and palette without preparing the whole roster',async()=>{
+ const {w,urls}=load(),k=w.ParryKnightPuppet;await k.preload();
+ const prepared=P.all.filter(e=>w.ParryEnemyPuppet.ready(e)).map(e=>e.id);
+ urls.length=0;let active=0,maximum=0;
+ w.Image=class{set src(url){urls.push(url);active++;maximum=Math.max(maximum,active);queueMicrotask(()=>{active--;this.onload?.()});}};
+ const first=k.preloadSources();assert.equal(k.preloadSources(),first);
+ assert.equal(await first,true);assert.equal(maximum,3);
+ assert.equal(urls.length,new Set(urls).size,'shared sources are fetched once');
+ const expected=new Set(),add=(path,e)=>expected.add(w.ParryPixelArt.source(path,e));
+ add(w.ParryHeroPuppet.SOURCE);add(k.SOURCE);add(k.PLUME.source);
+ for(const e of P.all){
+  if(k.supports(e)){add(k.SOURCE,e);add(k.PLUME.source,e);}
+  else{const s=w.ParryEnemyData[e.sprite||e.id];add(s.source,e);if(s.keyPose)add(s.keyPose.source,e);}
+ }
+ assert.deepEqual(urls.map(url=>new URL(url).pathname.replace('/subpath/assets/','')).sort(),[...expected].sort());
+ assert.deepEqual(P.all.filter(e=>w.ParryEnemyPuppet.ready(e)).map(e=>e.id),prepared);
+});
+test('a failed background warmup still loads the rest of the roster',async()=>{
+ const {w,urls}=load(true,'palette-candidates/fine/endking/');await w.ParryKnightPuppet.preload();
+ assert.equal(await w.ParryKnightPuppet.preloadSources(),false);
+ assert.ok(urls.some(url=>url.endsWith(w.ParryPixelArt.source(w.ParryEnemyData.gem_slime.source,P.byId.gem_slime))));
+ assert.equal(await w.ParryKnightPuppet.preload(P.byId.guardian),true);
+});
 
 test('accepted motion defaults work without fetch, ignore older active edits, and preserve newer manual edits',()=>{
  const accepted=JSON.parse(fs.readFileSync('assets/character-art/studio-project.json','utf8'));

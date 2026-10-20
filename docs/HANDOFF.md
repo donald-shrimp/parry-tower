@@ -2,7 +2,11 @@
 
 ## 現在の目的と承認
 
-ユーザーが高音抑制後のジャスト音を最終了承。主人公モーション・連打対策・効果音を本編へ採用し、**v0.9.3-4を本番公開・実URL確認まで完了**。採用 `1247325`、mainマージ `c7768ae`、公開コミット `157c81c`。ユーザーの「本番実装」は公開・公開後確認まで含む。今後も同じ意味として扱う（`AGENTS.md` に記録）。現在のブランチはmain。
+ユーザーの「実装よろ」で、開始直後の「旧モデル→新立ち絵」の切替防止を本番へ採用・公開する。実装 `dee311d`（`codex/preload-character-art`）。タイトル時に全立ち絵/色違い/打ち込み姿勢を3並列で先読みし、出現キャラの部品準備が終わってから戦闘時計を開始。先読みで全員の部品Canvasを展開せず、既存の直近4敵キャッシュを維持する。画像待ちは `loading`、背景と読み込み文だけを描き、入力/攻撃/BGMカウントを開始しない。離脱/別戦闘への切替後は古い読み込みを無視。画像エラー時は従来表示に固定して進行可能。
+
+公開準備は **v0.9.3-5**。HTML/全アセットquery/ゲーム登録/診断/CI/テストの識別子を統一済み。公開用ビルドでもNode334件成功（`test-results/preload-release-node.txt`）、JS36ファイルの構文確認成功。ユーザーの「本番実装」は公開・公開後確認まで含む（`AGENTS.md`）。main統合・push・CI/Pages・公開ファイルと実画面の確認まで今回の承認範囲。
+
+先読み修正の検証：**Node334件成功**（`test-results/art-preload-all.txt`）、変更JS2件の構文/差分空白チェック成功。実ブラウザで通常開始、および8005のPNG応答を12秒遅延させた守護者の無敵練習でLOADING→新立ち絵→戦闘/一時停止/再開を確認。警告/エラーなし。画像正本/手動ポーズは無変更。証跡 `test-results/art-preload-ready.png`。遅延サーバーは検証後停止し、通常確認には既存8002/8004を使う。
 
 ## 採用内容と正本
 
@@ -26,4 +30,4 @@
 - 外部一時試遊 <https://speaking-rico-jacket-period.trycloudflare.com/dev.html?floor=5&enemy=guardian&practice=1&sound=softjust>。`node scripts/serve-playtest.js 8003` とcloudflaredが稼働中。GET/HEAD専用・Git管理のassets/dev/credits/art-previewだけ。Git/docs/output/工房保存APIは配信しない。PC/ネット/プロセスが必要。停止/再起動で切れ、新しいトンネルはURLが変わる。起動情報 `test-results/remote-playtest/processes.json`（作成時server PID14380 / tunnel PID39076）。停止時は実コマンドを照合する。
 - 一時QAサーバー8004はPID30644（起動情報 `test-results/shield-adoption/server.pid`）。ローカルだけ。通常本編の確認用で、外部トンネルは8003のまま。
 - **本番** <https://donald-shrimp.github.io/parry-tower/?v=v0.9.3-4>。一時トンネルや自宅PCの起動に依存せず利用できる。既存の本番タブは再読込して更新する。
-- 本編採用/mainマージ/push/CI/Pages/公開確認は完了。次は本番プレイのフィードバック対応。既存の未追跡 `output/` の資料/書出しは保持し、コミットに含めない。4:00予約は実行済みで再作成不要。
+- 防御改善の本編採用/mainマージ/push/CI/Pages/公開確認は完了。最新の先読み修正は上記ブランチでローカル確認する。未追跡 `output/` は保持し、コミットに含めない。4:00予約は実行済み、17:57予約は完了済みとして削除済み。再作成不要。
