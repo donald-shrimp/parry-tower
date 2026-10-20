@@ -5,13 +5,13 @@
  // New waveforms, using only coarse resonance/envelope measurements of the
  // user's references. No reference recording or decoded sample is embedded.
  const PROFILES=Object.freeze({
-  guard:profile({duration:.58,speed:1,noise:.55,highpass:180,lowpass:4500,body:400,level:.42,
+  guard:profile({duration:.58,speed:1,noise:.55,highpass:180,lowpass:4500,body:400,level:.294,
    modes:[634,834,1410,1594,1993,2038,2254,2427],weights:[.12,.06,.14,.64,.25,.57,.53,.09],damping:[1,3,0,0,5,1,0,4],
    envelope:[[0,0],[.01,.22],[.035,.58],[.065,.88],[.09,1],[.15,.56],[.25,.22],[.4,.04],[.56,0]]}),
-  parry:profile({duration:.76,speed:1,noise:.48,highpass:250,lowpass:6000,body:220,level:.43,
+  parry:profile({duration:.76,speed:1,noise:.48,highpass:250,lowpass:6000,body:220,level:.301,
    modes:[5691,6575,7161,7705,7446,5788,9398,2949,4503,5080,3405,2079],weights:[.62,.50,.73,.60,.53,.30,.44,.44,.23,.24,.18,.15],damping:[0,0,7,4,6,0,6,8,2,4,0,0],
    envelope:[[0,0],[.008,.12],[.025,.5],[.055,.9],[.08,1],[.14,.74],[.2,.66],[.28,.43],[.4,.18],[.55,.04],[.73,0]]}),
-  just:profile({duration:1.2,speed:1.15,noise:.82,highpass:2100,lowpass:12500,body:960,level:.44,
+  just:profile({duration:1.2,speed:1.15,noise:.82,highpass:2100,lowpass:12500,body:960,level:.308,
    modes:[3903,6341,3000,4800,8034,4846,1895,5044,4990,4285,3527,4741,1617,1985,10878,5590],weights:[.80,.69,.65,.64,.59,.57,.56,.53,.53,.42,.40,.39,.36,.36,.32,.32],damping:[0,.8,.6,1,.8,.8,1,0,.6,.2,.6,.2,.8,.8,.2,.4],
    envelope:[[0,0],[.003,.78],[.025,1],[.08,.9],[.18,.88],[.3,.77],[.45,.61],[.6,.48],[.72,.25],[.9,.12],[1.1,.025],[1.35,0]]})
  });
