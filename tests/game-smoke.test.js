@@ -53,7 +53,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    osc.frequency.setValueAtTime=(hz)=>{osc.initialFrequency=hz};
    return osc;
   }
-  createBuffer(){return {getChannelData:()=>new Float32Array(22050)}}
+  createBuffer(channels,length){return {getChannelData:()=>new Float32Array(length)}}
   createBufferSource(){return {connect:noop,start:noop,stop:noop}}
   createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
  }

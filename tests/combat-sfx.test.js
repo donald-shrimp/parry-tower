@@ -25,4 +25,17 @@ test('metal samples are cached per audio context and scheduled once without modi
  assert.equal(S.play(ac,'parry',10.1),true);assert.equal(S.play(ac,'just',10.2),true);assert.equal(made,3);
  assert.equal(S.play(ac,'miss'),false);assert.equal(starts.length,4);
  starts[0].src.onended();assert.deepEqual(disconnects,['source','gain']);
+ S.prepare(ac);assert.equal(made,3);assert.equal(starts.length,4,'warmup never plays a sound');
+ let freshMade=0;const other={...ac,createBuffer(ch,n,rate){freshMade++;return{getChannelData:()=>new Float32Array(n)};}};
+ S.prepare(other);S.prepare(other);assert.equal(freshMade,3,'each context prepares all sounds only once');
+ assert.equal(starts.length,4);assert.equal(other.currentTime,10);
+});
+
+test('reference-like steel rings after the immediate contact instead of ending as a short pitched tick',()=>{
+ const rate=48000,energy=(a,start,end)=>{let sum=0;for(let i=Math.floor(start*rate);i<Math.min(a.length,end*rate);i++)sum+=a[i]*a[i];return sum;};
+ for(const kind of ['guard','parry','just']){
+  const a=S.synthesize(kind,rate);assert.ok(energy(a,0,.005)>.001,kind+' has immediate contact');
+  assert.ok(energy(a,.08,.30)>energy(a,0,.04),kind+' keeps its irregular metal ring after the initial hit');
+ }
+ const a=S.synthesize('just',rate);assert.ok(energy(a,.35,.65)>energy(a,0,.04),'JUST keeps the longer ringing tail of reference 3');
 });
