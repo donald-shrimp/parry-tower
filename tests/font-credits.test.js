@@ -4,12 +4,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
-const build = 'v0.9.3-12';
+const build = 'v0.9.3-13';
 
 test('self-hosted subset is a valid-size WOFF2 and retains the license notice', () => {
  const font = fs.readFileSync(path.join(root, 'assets/fonts/cp-period-display.woff2'));
  assert.equal(font.subarray(0, 4).toString('ascii'), 'wOF2');
- assert.ok(font.length > 8000 && font.length < 30000, 'subset should include scene names and Latin effects');
+ assert.ok(font.length > 8000 && font.length < 100000, 'expanded UI subset should remain below 100 KB');
  assert.match(read('assets/fonts/NOTICE.txt'), /よく飛ばない鳥/);
 });
 
@@ -48,7 +48,7 @@ test('visual headlines and all RUN STATUS counters use pixel face, explanatory c
  assert.match(css, /#titleCover h2\.title-logo[^{]*\{[^}]*font-size:clamp\(46px,14vw,82px\)/);
  assert.match(css, /#titleCover h2 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
  assert.match(css, /\.brand h1 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
- assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2"\)/);
+ assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=2"\)/);
 });
 
 test('canvas battle text uses display font without changing combat effects', () => {
