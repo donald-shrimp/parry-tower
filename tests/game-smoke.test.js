@@ -397,8 +397,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-10"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-10"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-11"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-11"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1097,7 +1097,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-10"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-11"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1416,7 +1416,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-10"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-11"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2439,35 +2439,25 @@ test('equipped dye reaches the actual hero crescent and combo glow is drawn with
 });
 
 
-test('skin selection preview switches one card at a time without charging, persisting or changing bonus equipment',()=>{
- const seed={parryTowerPrototype_v1:JSON.stringify({coins:2345}),parryTowerPermanent_v1:JSON.stringify({unlockedExtras:['slashTint'],enabledExtras:['slashTint'],extraOptions:{slashTint:'jade'}})};
+test('skin shop keeps artwork previews and one purchase or equip button per card without trial controls',()=>{
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:2345}),parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['chick'],equippedSkin:'chick',unlockedExtras:['slashTint'],enabledExtras:['slashTint'],extraOptions:{slashTint:'jade'}})};
  const g=makeHarness(seed),saved=[...g.storage],initial=JSON.stringify(g.state().permanent);
- g.upgradeBuy('skin-preview','chick');g.press('upgradeOpenBtn');g.upgradeTab('bonus');
- g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：いつもの主人公/);
- assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
- assert.match(g.el.get('upgradeList').innerHTML,/class="skin-price">50 欠片/);
- assert.match(g.el.get('upgradeList').innerHTML,/data-action="skin-buy" data-key="chick" /);
- assert.match(g.el.get('upgradeList').innerHTML,/600 欠片/);
- for(const skin of PR.SKINS){
-  g.upgradeBuy('skin-preview',skin.id);const html=g.el.get('upgradeList').innerHTML;
-  assert.ok(html.includes('プレビュー：'+skin.name));
-  const picked=[...html.matchAll(/data-action="skin-preview" data-key="([^"]+)" aria-pressed="true"/g)].map(m=>m[1]);assert.deepEqual(picked,[skin.id]);
-  assert.equal(g.state().souls,2345);assert.equal(JSON.stringify(g.state().permanent),initial);assert.deepEqual([...g.storage],saved);
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');
+ const html=g.el.get('upgradeList').innerHTML,cards=[...html.matchAll(/<article class="skin-card ([^"]*)"[^>]*>([\s\S]*?)<\/article>/g)];
+ assert.equal(cards.length,4);
+ for(const [i,card]of cards.entries()){
+  const skin=PR.SKINS[i],owned=['normal','chick'].includes(skin.id),body=card[2];
+  assert.ok(body.includes('data-skin-sample="'+skin.id+'"'),'standing artwork stays visible');
+  const buttons=[...body.matchAll(/<button[^>]*data-action="([^"]+)"[^>]*>([^<]+)<\/button>/g)];
+  assert.deepEqual(buttons.map(b=>[b[1],b[2]]),[[owned?'skin-equip':'skin-buy',owned?'装備する':'購入する']]);
+  assert.equal(card[1]==='selected',skin.id==='chick','outline follows equipped skin');
+  assert.doesNotMatch(body,/<a |プレビュー|効果あり|装備中|skin-ready/);
  }
- const html=g.el.get('upgradeList').innerHTML;g.upgradeBuy('skin-preview','__proto__');assert.equal(g.el.get('upgradeList').innerHTML,html);
- g.upgradeBuy('bonus-section','invalid');assert.equal(g.el.get('upgradeList').innerHTML,html);
+ assert.match(html,/class="skin-price">50 欠片/);assert.match(html,/600 欠片/);
+ g.upgradeBuy('skin-preview','fundoshi');g.upgradeBuy('bonus-section','invalid');
+ assert.equal(g.el.get('upgradeList').innerHTML,html);
+ assert.equal(g.state().souls,2345);assert.equal(JSON.stringify(g.state().permanent),initial);assert.deepEqual([...g.storage],saved);
  g.upgradeBuy('bonus-section','items');assert.match(g.el.get('upgradeList').innerHTML,/data-action="bonus-buy"/);
- g.upgradeBuy('skin-preview','fundoshi');g.upgradeBuy('bonus-section','skins');assert.match(g.el.get('upgradeList').innerHTML,/プレビュー：時空のスキン/);
- assert.deepEqual([...g.storage],saved);
-});
-
-test('previewing planned skins leaves actual HP, incoming damage, timing and BGM unchanged',()=>{
- for(const skin of PR.SKINS){
-  const g=makeHarness({},true),control=makeHarness({},true);
-  g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');g.upgradeBuy('skin-preview',skin.id);g.press('upgradeCloseBtn');
-  for(const h of [g,control]){h.random(.5);h.dev().launch(5,'guardian:normal',true);h.frame(h.state().attackAt+1);}
-  assert.deepEqual(JSON.parse(JSON.stringify(g.state())),JSON.parse(JSON.stringify(control.state())),skin.id+' must not enable unfinished effects');assert.deepEqual(g.audioEvents(),control.audioEvents());
- }
 });
 
 test('all real Dev skin renderers preserve combat, score, damage and saves across guard, hit and counterattack',async()=>{

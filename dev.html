@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.3-10">
+<meta name="parry-build" content="v0.9.3-11">
 <title>パリィの塔 | 開発者テスト v0.9.3</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.3-10&font=4">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.3-10">
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.3-11&font=4">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.3-11">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
@@ -60,7 +60,7 @@
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ 恒久強化・装備</button></div></div></div>
+     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
@@ -85,7 +85,7 @@
        <div id="routeSkillCards" class="reward-cards"></div>
        
       </div></div>
-     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ 恒久強化</button></div></div></div>
+     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ ショップ</button></div></div></div>
      <div class="cover" id="codexCover" hidden><div class="modal codex-modal">
        <div class="modal-kicker">THE BESTIARY · PRACTICE</div><h2>📖 魔物図鑑・稽古場</h2>
        <p id="codexSummary">0 / 50 発見</p>
@@ -97,9 +97,9 @@
        
       </div></div>
      <div class="cover" id="upgradeCover" hidden><div class="modal upgrade-modal">
-       <div class="upgrade-top"><h2>恒久強化・装備</h2><button class="secondary" id="upgradeCloseBtn">戻る</button></div>
+       <div class="upgrade-top"><h2>ショップ</h2><button class="secondary" id="upgradeCloseBtn">戻る</button></div>
        <div class="upgrade-wallet">魂の欠片 <strong id="upgradeCoins">0 ✧</strong></div>
-       <div class="upgrade-tabs" id="upgradeTabs" role="group" aria-label="恒久強化の分類">
+       <div class="upgrade-tabs" id="upgradeTabs" role="group" aria-label="ショップの分類">
         <button class="upgrade-tab active" type="button" data-tab="loadout" aria-pressed="true">スキル装備</button>
         <button class="upgrade-tab" type="button" data-tab="skills" aria-pressed="false">スキル解放</button>
         <button class="upgrade-tab" type="button" data-tab="base" aria-pressed="false">基礎強化</button>
@@ -124,32 +124,32 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.3-10" defer></script>
-<script src="./assets/encounters.js?v=v0.9.3-10" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.3-10" defer></script>
-<script src="./assets/progression.js?v=v0.9.3-10" defer></script>
-<script src="./assets/relics.js?v=v0.9.3-10" defer></script>
-<script src="./assets/routes.js?v=v0.9.3-10" defer></script>
-<script src="./assets/events.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-art.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.3-10" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.3-10" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.3-10" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-style.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.3-10" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.3-10" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.3-10" defer></script>
-<script src="./assets/game.js?v=v0.9.3-10" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.3-10" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.3-11" defer></script>
+<script src="./assets/encounters.js?v=v0.9.3-11" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.3-11" defer></script>
+<script src="./assets/progression.js?v=v0.9.3-11" defer></script>
+<script src="./assets/relics.js?v=v0.9.3-11" defer></script>
+<script src="./assets/routes.js?v=v0.9.3-11" defer></script>
+<script src="./assets/events.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-art.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.3-11" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.3-11" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.3-11" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-style.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.3-11" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.3-11" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.3-11" defer></script>
+<script src="./assets/game.js?v=v0.9.3-11" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.3-11" defer></script>
 </body>
 </html>
