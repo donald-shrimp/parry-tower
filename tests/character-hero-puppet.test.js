@@ -39,8 +39,8 @@ test('source loads once and a failed hero never mixes partial characters or cont
  }
  assert.equal(bad.calls.length,0);
 });
-test('idle restores every original layer and source joint without inventing another pose',()=>{
- const {api}=load(),q=api.pose(),p=api.placements(q);
+test('fully raised guard restores every original layer and source joint at the accepted contact pose',()=>{
+ const {api}=load(),q=api.pose({lift:1}),p=api.placements(q);
  for(const [key,pivot] of [['shoulder','shoulder'],['elbow','elbow'],['hand','grip'],['tip','tip']]){
   const v=local(api,api.PIVOTS[pivot]);near(q[key].x,v.x);near(q[key].y,v.y);
  }
@@ -70,10 +70,22 @@ test('shoulder, elbow, gauntlet and blade stay rigidly attached through every mi
   assert.ok(q.tip.y<2,'the lower arc clears the floor');
   for(const key of ['frontFoot','rearFoot'])assert.deepEqual(plain(q[key]),plain(initial[key]));
   assert.deepEqual(plain(p.legs),plain(api.placements(initial).legs));
-  // World slide is compensated at the shield face: contact stays put while guarding.
-  const contact=local(api,api.PIVOTS.shieldContact);
-  near(p.shield.at.x+q.slide,contact.x);near(p.shield.at.y,contact.y);
+  // The shield arm shares its shoulder with the torso through counter recoil.
+  const anchor=local(api,api.PIVOTS.shieldShoulder),waist=local(api,api.PIVOTS.waist);
+  near(p.shield.at.x,waist.x+(anchor.x-waist.x)*Math.cos(q.lean)-(anchor.y-waist.y)*Math.sin(q.lean));
+  near(p.shield.at.y,waist.y+(anchor.x-waist.x)*Math.sin(q.lean)+(anchor.y-waist.y)*Math.cos(q.lean));
  }
+});
+
+test('guard and damage never swing the sword; the shield visibly advances and rises to the original contact point',()=>{
+ const {api}=load(),idle=api.pose({lift:0}),held=api.pose({lift:1,guardHeld:true,heldLift:1});
+ assert.ok(held.shieldContact.x-idle.shieldContact.x>8);assert.ok(idle.shieldContact.y-held.shieldContact.y>12);
+ const target=local(api,api.PIVOTS.shieldContact);near(held.shieldContact.x,target.x);near(held.shieldContact.y,target.y);
+ for(const kind of ['guard','miss'])for(const action of [1,.8,.5,.2]){
+  const q=api.pose({action,lastStrikeKind:kind,lift:1,push:.7,hurt:kind==='miss'?1:0});
+  assert.equal(q.action,0);assert.deepEqual(plain(q.angles),{shoulder:0,elbow:0,wrist:0});
+ }
+ for(const kind of ['parry','just'])assert.ok(api.pose({action:.5,lastStrikeKind:kind}).angles.shoulder>2);
 });
 test('the cut fully straightens both arm links, then folds back to the original idle pose',()=>{
  const {api}=load(),idle=api.pose(),length=dist(idle.shoulder,idle.elbow)+dist(idle.elbow,idle.wrist);

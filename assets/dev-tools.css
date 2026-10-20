@@ -1,6 +1,7 @@
 /* Only dev.html loads this sheet. No control or link is injected into index.html. */
 .dev-panel{width:min(1100px,calc(100% - 26px));margin:14px auto 12px;padding:15px 20px;background:linear-gradient(135deg,#223149,#111d30);color:#e9f3fc;border:1px solid #596b83;border-radius:14px;box-sizing:border-box;font:500 13px/1.45 system-ui,sans-serif;box-shadow:0 10px 35px #0005}
 .dev-panel *{box-sizing:border-box}
+.dev-controls .dev-toggle{grid-column:1/-1;flex-direction:row;align-items:center;font-size:13px}.dev-controls .dev-toggle input{width:18px;height:18px;padding:0;accent-color:#e5bf79}.dev-sound-controls{display:flex!important;flex-wrap:wrap;align-items:center;margin-top:12px}.dev-sound-controls button{flex:1 1 150px}
 .dev-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .dev-title strong{font-size:16px}.dev-title span{font-size:11px;color:#a8c5dd}
 .dev-controls{display:grid;grid-template-columns:minmax(105px,150px) minmax(180px,1fr) auto auto;gap:10px;align-items:end}

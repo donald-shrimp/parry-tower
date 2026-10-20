@@ -33,8 +33,9 @@
   const f=Math.max(1,Math.min(999,Math.floor(Number(floor.value)||1)));
   floor.value=String(f);
   const key=enemy.value;
-  const ok=engine.launch(f,key);
-  status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+' — 記録は保存しません'):'指定した敵が見つかりません';
+  const practice=$('devPractice').checked;
+  const ok=engine.launch(f,key,practice);
+  status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+(practice?' — 無敵練習・記録しません':' — 記録は保存しません')):'指定した敵が見つかりません';
   renderBalance();
  }
  $('devLaunch').addEventListener('click',launch);
@@ -48,6 +49,10 @@
  const requestedEnemy=params.get('enemy');
  const requestedKey=options.find(v=>v.key===requestedEnemy)?.key||options.find(v=>v.key===requestedEnemy+':normal')?.key||options.find(v=>v.key===requestedEnemy+':rare')?.key;
  if(requestedKey)enemy.value=requestedKey;
+ $('devPractice').checked=params.get('practice')==='1';
+ for(const [id,kind]of [['soundGuard','guard'],['soundParry','parry'],['soundJust','just']]){
+  $(id).addEventListener('click',()=>{status.textContent=engine.previewSound(kind)?({'guard':'ガン · ガード','parry':'ガキン！ · パリィ','just':'ジャキーン！ · ジャスト'}[kind]+' を試聴中'):'SOUND ONにしてから試してください';});
+ }
  renderBalance();
  window.__parryDevUI={launch,renderBalance,enemyCount:options.length};
 })();

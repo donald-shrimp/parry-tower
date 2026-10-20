@@ -2,27 +2,27 @@
 
 ## 現在の目的と承認
 
-ユーザーが「完璧」と全立ち絵/モーション/終刻の王の最新塗り分けを了承し、ドット3段階の一番上「細かめ」の本編導入とマージを明示依頼。実装・検証後、機能コミット `29cc47a` をローカルmainへマージ済み（`c899839`）。続く「公開して！」でmainのpushとGitHub Pages公開を明示許可。最新origin/mainを確認して通常pushし、CI/Pagesの反映と公開ビルド `v0.9.3-3` を確認する。
+ユーザーが主人公モーション/連打対策/金属音の提案を了承し「遊べる版」を依頼。`codex/shield-feedback-playtest` にローカル試遊版を実装・検証済み。次はユーザーの体感レビュー。今回の改善はまだmainへマージ/push/公開していない。
 
-## 実装の正本
+前回了承済みのドット立ち絵/モーションはmainへ導入・公開済み。機能 `29cc47a`、マージ `c899839`、公開記録 `2aed84b`。CI/Pages成功と公開 `v0.9.3-3` を確認済み。公開先 <https://donald-shrimp.github.io/parry-tower/> は前回版。
 
-- `index.html` / `dev.html` はURL指定なしで細かめ（6px・共通64色）の既存PNG加工版を使用。主人公＋敵26種の確定済みモーション、中割り/残像/踏み込み/剣腕、0.2秒の白い反撃、精鋭/レア演出を保持。
-- `assets/character-style.js` が事前加工PNGを選び、既存puppetで描画。配色IDごとの部品キャッシュで共有原画の色混入を防ぐ。敵は直近4種類、主人公と騎士は別キャッシュ。炉心は旧色相フィルタ/基本素材、他11配色は了承済み画像を使い二重変色なし。
-- `assets/character-art/studio-project.json` updatedAt **1792426370286** は変更していない。同期の `character-art-defaults.js` も同梱し、新しい手動編集を優先。工房保存時にJSONとJSを更新する。ビルド識別子は `v0.9.3-3`。
-- 王の了承済み正本は `assets/character-art/approved/endking/project.json` と両PNG。冠は黒鉄、腰布/マントの裾は紫、赤い目/金の胸飾りは維持。自動素材推測へ戻さず、このPNGからドット加工。工房開始例にも同じ手塗り範囲を反映。
-- 原画/ポーズ工房/フィルタ工房/比較3密度を残す。本編の既定のみ細かめ。手順と設計は [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。過去の制作状態は [制作記録](./character-art/DEVELOPMENT_HISTORY.md)。
+## 試遊入口と変更内容
+
+- 内側リポジトリ `C:/Users/EBIHARA/Downloads/parry-tower/parry-tower`。`node scripts/serve-local.js 8002`。試遊 <http://127.0.0.1:8002/dev.html?floor=5&enemy=guardian&practice=1>。「指定条件で開始」、短押し/Spaceでパリィ、長押しでガード。無敵のチェックを外せば通常のダメージありで試せる。devは保存を書き込まない。
+- 剣腕の反撃はパリィ/ジャスト成功後だけ。ガード/被弾は剣を回さない。盾腕を肩の支点から起こして前へ出す。上げ切った接触位置は従来と一致し、ガードには衝突の反動がある。
+- 受理した入力後300ms回復＋全キー/指を120ms離す両条件で再パリィ。成功時は衝突で300msを解除するが、120ms解放は必要。拒否した押下も100ms保持すればガードになる。全入力源で共有、重複release/複数指/blurを考慮。判定窓・ダメージ・敵の衝突時計は維持。
+- `assets/combat-sfx.js` がガード「ガン」/パリィ「ガキン！」/ジャスト「ジャキーン！」をPCM合成。同じAudioContextで衝突時1回、バッファ再利用。dev上部の3ボタンで個別試聴可能。音声OFFを尊重する。
+- 通常ゲーム <http://127.0.0.1:8002/> にも変更を反映。立ち絵・敵モーション・配色・精鋭/レア演出・0.2秒白い反撃・セーブ形式は保持。
 
 ## 検証済み
 
-- Node **316件成功**。戦闘時計/入力/音声/ダメージ/保存互換、全キャラの了承済み姿勢、色違い連続切替、欠損時の限定フォールバック、古い/新しい手動保存の優先順位、工房の保存を検証。
-- Python **6件成功**。PNGのハッシュ/寸法/二値アルファ/整数格子/共通パレット、王の原寸出力と了承済みPNGの全画素一致、原画不変を検証。全JS構文/差分空白チェック成功。
-- 実Canvasで全26敵と再訪7例、900×550/360×640の7時点、計462描画成功。全キャラQAと直接開いた実戦ページにconsole警告/エラーなし。描画呼出し中央値0.10ms/95%点0.50ms/最大5.30ms（初期展開除外、スマホ実機FPS保証ではない）。
-- 終刻の王75Fの実背景、守護者5Fの実背景、360px実ページ（本文幅345px・横はみ出しなし）を確認。証跡 `test-results/adopted-art/`、ログ `test-results/integration-*.txt`。
+- `node --test tests/*.test.js` **326件成功**。5ms連打、299/300ms回復、119/120ms解放、複数指/キー、拒否後ガード、全26敵で各16連続成功、成功時だけ反撃、ガード/被弾反動、衝突時単発音/ミュート/試聴、未遭遇dev稽古とセーブ不変を含む。既存の時計/判定/ダメージ/育成/本編解放/原画/確定ポーズも通過。
+- Python画像検証 **6件成功**。`assets/character-art/` 全体と同期の `character-art-defaults.js` にGit差分なし。`studio-project.json` updatedAt **1792426370286** のまま。
+- 変更JS構文・空白チェック成功。実ブラウザで守護者の無敵戦闘/長押しGUARD/65HP維持、3音の試聴、OFF時の試聴抑止を確認。console警告/エラーなし。360pxで本文幅345px、横はみ出しなし。音の好みと実機の操作感はユーザー確認が必要。
+- 証跡 `test-results/shield-feedback/playable.png`、`mobile.png`。ログ `test-results/shield-feedback-full.txt` / `shield-feedback-python.txt`。初期の失敗ログは修正前の記録なので最終判定に使わない。
 
-## 再開時
+## 正本と次の作業
 
-`git branch --show-current` / `git log -3 --oneline` / `git status --short` とGitHubの実行結果で公開状態を確認する。公開先は <https://donald-shrimp.github.io/parry-tower/>。ユーザーによる通常プレイと実音声/実スマホの体感確認が次のレビュー。既存の `output/` 内の資料と塗り分け書出しは保持し、公開用コミットには重複して含めない。
+画像/工房の正本は前回と同じ。詳細 [ADOPTED_ART](./ADOPTED_ART.md)、[ART_STUDIO](./ART_STUDIO.md)、[FILTER_PAINT](./FILTER_PAINT.md)。王は了承済み `assets/character-art/approved/endking/` の手塗り画像を使う。元画像や保存ポーズを再生成しない。
 
-## ローカル確認
-
-内側リポジトリ `C:/Users/EBIHARA/Downloads/parry-tower/parry-tower`。`node scripts/serve-local.js 8002`、本編 <http://127.0.0.1:8002/>、王 <http://127.0.0.1:8002/dev.html?floor=75&enemy=endking>。実行中のサーバーは既存タブの状態を変更せず静的ファイルを配信する。4:00の単発予約は実行済みで再作成不要。
+次はユーザーに試遊してもらい、盾の出方・連打対策の300/120ms・3音の響き/音量を調整。採用と公開が指示されたら、ビルド識別子/キャッシュ更新を含めて検証し、マージ/公開する。4:00予約は実行済みで再作成不要。既存 `output/` の資料/塗り分け書出しは保持し、コミット対象にしない。
