@@ -209,3 +209,17 @@ test('bonus ownership migrates old saves, rejects unknown or unowned activation 
  const equipped=P.equip({...forged,slots:1,unlockedSkills:['blood']},0,'blood',skills);assert.equal(P.extraEnabled(equipped,'legacyVisual'),true);
  assert.equal(P.EXTRAS[0].cost,1000);assert.equal(Object.isFrozen(P.EXTRAS[0]),true);
 });
+
+
+test('extra color choices require ownership, whitelist colors and survive saving and other progression changes',()=>{
+ assert.deepEqual(P.EXTRAS.map(item=>[item.id,item.cost]),[['legacyVisual',1000],['slashTint',500],['comboGlow',1200]]);
+ const raw={unlockedExtras:['slashTint','comboGlow'],enabledExtras:['slashTint'],extraOptions:{slashTint:'violet'}};
+ const p=P.normalize(raw,skills);assert.equal(P.extraOption(p,'slashTint').id,'violet');
+ assert.equal(P.setExtraOption(P.defaults(),'slashTint','jade',skills),null);
+ assert.equal(P.setExtraOption(p,'slashTint','bogus',skills),null);assert.equal(P.setExtraOption(p,'comboGlow','jade',skills),null);
+ const jade=P.setExtraOption(p,'slashTint','jade',skills);assert.equal(P.extraOption(jade,'slashTint').id,'jade');assert.equal(P.extraOption(p,'slashTint').id,'violet');
+ const off=P.toggleExtra(jade,'slashTint',false,skills);assert.equal(P.extraOption(off,'slashTint').id,'jade');
+ assert.deepEqual(P.normalize(JSON.parse(JSON.stringify(off)),skills),off);
+ for(const extraOptions of [null,[],{slashTint:'__proto__'},{slashTint:123}])assert.equal(P.extraOption(P.normalize({...raw,extraOptions},skills),'slashTint').id,'crimson');
+ const equipped=P.equip({...jade,slots:1,unlockedSkills:['blood']},0,'blood',skills);assert.equal(P.extraOption(equipped,'slashTint').id,'jade');
+});

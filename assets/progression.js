@@ -79,9 +79,23 @@
   return {bonus,mask,atRuns:newlyClaimed};
  }
  const EXTRAS=Object.freeze([
-  Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の塔へ。開発初期の主人公・敵のビジュアルに切り替えます。'})
+  Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の塔へ。開発初期の主人公・敵のビジュアルに切り替えます。'}),
+  Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。紅・紫・翠から選べます。',choices:Object.freeze([
+   Object.freeze({id:'crimson',name:'紅',fill:'#fff0f2',glow:'#f15472',edge:'#ff90ad',core:'#fff8fc'}),
+   Object.freeze({id:'violet',name:'紫',fill:'#f6eeff',glow:'#a66bff',edge:'#cf9bff',core:'#fff9ff'}),
+   Object.freeze({id:'jade',name:'翠',fill:'#effff7',glow:'#35cfaa',edge:'#84efca',core:'#f8fffc'})
+  ])}),
+  Object.freeze({id:'comboGlow',icon:'✦',name:'コンボの残光',cost:1200,description:'10・25・50コンボで足元の光と舞う残光が育ちます。'})
  ]);
  const extraEnabled=(progress,id)=>EXTRAS.some(item=>item.id===id)&&Array.isArray(progress?.unlockedExtras)&&progress.unlockedExtras.includes(id)&&Array.isArray(progress?.enabledExtras)&&progress.enabledExtras.includes(id);
+ function extraOption(progress,id){
+  const item=EXTRAS.find(item=>item.id===id);return item?.choices?.find(choice=>choice.id===progress?.extraOptions?.[id])||item?.choices?.[0]||null;
+ }
+ function setExtraOption(progress,id,option,skills=[]){
+  const p=normalize(progress,skills),item=EXTRAS.find(item=>item.id===id);
+  if(!p.unlockedExtras.includes(id)||!item?.choices?.some(choice=>choice.id===option))return null;
+  p.extraOptions[id]=option;return p;
+ }
  function toggleExtra(progress,id,enabled,skills=[]){
   const p=normalize(progress,skills);
   if(!EXTRAS.some(item=>item.id===id)||!p.unlockedExtras.includes(id)||typeof enabled!=='boolean')return null;
@@ -93,7 +107,7 @@
   return typeof value==='number'&&Number.isFinite(value)?Math.min(max,Math.max(0,Math.floor(value))):0;
  }
  function defaults(){return {version:VERSION,slots:0,unlockedSkills:[],equipped:[null,null],
-  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[]};}
+  regen:0,bossWard:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[],extraOptions:{slashTint:'crimson'}};}
  function skillPrice(skill){
   if(!skill||typeof skill.id!=='string')return Infinity;
   if(Number.isSafeInteger(skill.startCost)&&skill.startCost>=0)return skill.startCost;
@@ -105,6 +119,7 @@
   const extraIds=new Set(EXTRAS.map(item=>item.id));
   p.unlockedExtras=[...new Set((Array.isArray(raw.unlockedExtras)?raw.unlockedExtras:[]).filter(id=>extraIds.has(id)))];
   p.enabledExtras=[...new Set((Array.isArray(raw.enabledExtras)?raw.enabledExtras:[]).filter(id=>p.unlockedExtras.includes(id)))];
+  for(const item of EXTRAS)if(item.choices)p.extraOptions[item.id]=extraOption(raw,item.id).id;
   p.slots=safeLevel(raw.slots,SLOT_COSTS.length);
   for(const def of UPGRADES)p[def.id]=safeLevel(raw[def.id],def.costs.length);
   const owned=Array.isArray(raw.unlockedSkills)?raw.unlockedSkills.filter(id=>typeof id==='string'&&id.length<=80):[];
@@ -170,7 +185,7 @@
   return level===def.costs.length?Infinity:def.costs[level];
  }
  const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
-  EXTRAS,extraEnabled,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
+  EXTRAS,extraEnabled,extraOption,setExtraOption,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;
 })(typeof window!=='undefined'?window:undefined);

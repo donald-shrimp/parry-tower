@@ -226,7 +226,7 @@
     const whole=edits?.whole('hero')||{x:0,y:0,scale:1};
     const origin={x:l.heroX+(release.slide+(weapon.at.x+v.x)*whole.scale+whole.x*SCALE)*l.heroScale,
      y:l.ground+((weapon.at.y+v.y)*whole.scale+whole.y*SCALE)*l.heroScale};
-    root.ParryCombatArt?.counterSlash?.(ctx,{kind:input.lastStrikeKind,phase:counterPhase,origin,target:data.counterTarget,scale:l.heroScale});
+    root.ParryCombatArt?.counterSlash?.(ctx,{kind:input.lastStrikeKind,phase:counterPhase,origin,target:data.counterTarget,scale:l.heroScale,tint:data.counterTint});
    }
   }
   return true;

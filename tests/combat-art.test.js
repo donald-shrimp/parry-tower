@@ -273,3 +273,26 @@ test('preview and opt-in game share real renderers, locally available assets, an
  assert.match(game,/COMBAT_ART_ENABLED&&COMBAT_ART\?\.drawEnemy/);
  assert.match(game,/COMBAT_ART_ENABLED&&COMBAT_ART\?\.drawHero/);
 });
+
+
+test('purchased crescent colors preserve size, timing, geometry and canvas state',()=>{
+ const P=require('../assets/progression'),state={globalAlpha:.8,fillStyle:'before',strokeStyle:'before',shadowColor:'before',shadowBlur:0,lineWidth:1,lineCap:'butt'},stack=[],paints=[];
+ const ctx=new Proxy(state,{get:(s,k)=>k in s?s[k]:(...args)=>{if(k==='save')stack.push({...state});else if(k==='restore')Object.assign(state,stack.pop());else if(['fill','stroke'].includes(k))paints.push({...state});}});
+ const before={...state},input={kind:'just',phase:.6,origin:{x:100,y:250},target:{x:350,y:190},scale:1},base=art.counterSlash(ctx,input);
+ for(const tint of P.EXTRAS.find(item=>item.id==='slashTint').choices){
+  paints.length=0;assert.deepEqual(art.counterSlash(ctx,{...input,tint}),base);assert.ok(paints.some(p=>p.fillStyle===tint.fill));assert.ok(paints.some(p=>p.strokeStyle===tint.edge));
+  assert.deepEqual(state,before);assert.equal(stack.length,0);
+ }
+});
+
+test('combo glow grows at 10/25/50, stays bounded and deterministic, and respects incoming opacity',()=>{
+ const render=(combo,now=1234)=>{
+  const state={globalAlpha:.5,fillStyle:'old',strokeStyle:'old',shadowColor:'old',shadowBlur:0,lineWidth:1},before={...state},stack=[],calls=[];
+  const ctx=new Proxy(state,{get:(s,k)=>k in s?s[k]:(...args)=>{if(k==='save')stack.push({...state});else if(k==='restore')Object.assign(state,stack.pop());else{for(const n of args.filter(a=>typeof a==='number'))assert.ok(Number.isFinite(n));calls.push({k,args,alpha:state.globalAlpha});}}});
+  const result=art.comboAura(ctx,{now,combo,x:200,y:350,scale:.8});assert.deepEqual(state,before);assert.equal(stack.length,0);assert.ok(calls.length<90);assert.ok(calls.every(c=>c.alpha<=.5));return {result,calls};
+ };
+ for(const count of [0,9,-1])assert.deepEqual(render(count),{result:false,calls:[]});
+ for(const [count,tier]of [[10,1],[24,1],[25,2],[49,2],[50,3],[999,3]]){assert.equal(render(count).result.tier,tier);assert.deepEqual(render(count),render(count));}
+ assert.notDeepEqual(render(25).calls,render(25,1600).calls);
+ assert.equal(art.comboAura({}, {combo:50,now:NaN}),false);
+});

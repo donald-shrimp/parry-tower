@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;
+ const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -93,6 +93,9 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
     drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
   }
  }
+ if(window.ParryCombatArt){const art=window.ParryCombatArt;window.ParryCombatArt={...art,
+  counterSlash(ctx,data){const out=art.counterSlash(ctx,data);if(out)bonusArtEvents.push({kind:'slashTint',tint:data.tint?.id||null});return out;},
+  comboAura(ctx,data){const out=art.comboAura(ctx,data);if(out)bonusArtEvents.push({kind:'comboGlow',tier:out.tier,combo:data.combo});return out;}};}
  if(artGate)window.ParryKnightPuppet=artGate;
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=fs.readFileSync('assets/game.js','utf8');
@@ -181,13 +184,15 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
   readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
+  bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
   artDrawCounts:()=>({...artDrawCounts}),
   metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
-   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:()=>({dataset:{equip:String(slot)},value:id||''})}})},
+   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-equip]'?{dataset:{equip:String(slot)},value:id||''}:null}})},
+   upgradeOption(id,value){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-extra-option]'?{dataset:{extraOption:id},value}:null}})},
    relicSelect(id){el.get('relicOfferCards').listeners.click({target:{closest:()=>({dataset:{relic:id}})}})},
    relicReplace(id){el.get('relicReplaceList').listeners.click({target:{closest:()=>({dataset:{replace:id}})}})},
    routeSelect(id){el.get('routeCards').listeners.click({target:{closest:()=>({dataset:{route:id}})}})},
@@ -2403,4 +2408,31 @@ test('legacy bonus changes both renderers while preserving combat and BGM; switc
  const before=[...legacy.storage];legacy.dev().reset();legacy.press('upgradeOpenBtn');legacy.upgradeTab('bonus');legacy.upgradeBuy('bonus-toggle','legacyVisual');
  legacy.press('upgradeCloseBtn');legacy.dev().launch(5,'guardian:normal',true);await legacy.readyArt(P.byId.guardian);legacy.frame(legacy.now+1);
  assert.ok(legacy.artDrawCounts().hero>0);assert.ok(legacy.artDrawCounts().enemy>0);assert.deepEqual([...legacy.storage],before,'Dev never writes bonus preferences');
+});
+
+
+test('additional bonus purchases and color selection remain independent and persist through normal shop operations',()=>{
+ const key='parryTowerPrototype_v1',perm='parryTowerPermanent_v1',g=makeHarness({[key]:JSON.stringify({coins:2500})});
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeOption('slashTint','jade');assert.equal(g.state().permanent.extraOptions.slashTint,'crimson');
+ assert.match(g.el.get('upgradeList').innerHTML,/コンボの残光/);assert.match(g.el.get('upgradeList').innerHTML,/data-bonus-sample="slashTint"/);
+ for(const id of ['slashTint','comboGlow'])g.upgradeBuy('bonus-buy',id);assert.equal(g.state().souls,800);
+ for(const id of ['slashTint','comboGlow'])g.upgradeBuy('bonus-toggle',id);
+ g.upgradeOption('slashTint','violet');assert.equal(g.state().permanent.extraOptions.slashTint,'violet');
+ g.upgradeOption('slashTint','missing');assert.equal(g.state().permanent.extraOptions.slashTint,'violet');
+ g.upgradeBuy('bonus-toggle','slashTint');assert.deepEqual([...g.state().permanent.enabledExtras],['comboGlow']);
+ const reloaded=makeHarness(Object.fromEntries(g.storage));assert.equal(reloaded.state().permanent.extraOptions.slashTint,'violet');assert.equal(reloaded.state().souls,800);
+ assert.deepEqual(JSON.parse(g.storage.get(perm)).unlockedExtras,['slashTint','comboGlow']);
+});
+
+test('equipped dye reaches the actual hero crescent and combo glow is drawn without changing combat or audio',async()=>{
+ for(const legacy of [false,true]){
+  const active=['slashTint','comboGlow',...(legacy?['legacyVisual']:[])],perm={unlockedExtras:active,enabledExtras:active,extraOptions:{slashTint:'violet'}};
+  const g=makeHarness({parryTowerPermanent_v1:JSON.stringify(perm)},true,'adopted'),control=makeHarness({parryTowerPermanent_v1:JSON.stringify(legacy?{unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']}:{})},true,'adopted');
+  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.dev().launch(5,'guardian:normal',true);await h.readyArt(P.byId.guardian);h.bloodTest().setEnemyHp(100000);h.bloodTest().setCombo(50);const due=h.state().attackAt;h.clock(due-100);h.parry();h.frame(due+110);}
+  assert.ok(g.bonusArtEvents().some(e=>e.kind==='slashTint'&&e.tint==='violet'),legacy?'legacy wave':'painted hero wave');
+  assert.ok(g.bonusArtEvents().some(e=>e.kind==='comboGlow'&&e.tier===3));
+  assert.ok(!control.bonusArtEvents().some(e=>e.kind==='comboGlow'));
+  for(const name of ['mode','combo','hp','enemyHp','attackAt','bpm','lastStrikeKind'])assert.equal(g.state()[name],control.state()[name],name);
+  assert.deepEqual(g.audioEvents(),control.audioEvents());
+ }
 });
