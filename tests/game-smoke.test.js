@@ -16,6 +16,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   const n={
    id,hidden:false,dataset:{},style:{},innerHTML:'',textContent:'',value:id==='practiceEnemy'?'knight':id==='codexFilter'?'all':id==='devFloor'?'11':'',disabled:false,listeners:{},children:[],
    append(...children){this.children.push(...children)},appendChild(child){this.children.push(child)},
+   setAttribute(k,v){this[k]=v},
    addEventListener(k,cb){this.listeners[k]=cb;},
    getBoundingClientRect(){return {width:800,height:500}},
    querySelectorAll(selector){
@@ -45,7 +46,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   get currentTime(){return clock/1000}
   getOutputTimestamp(){return {performanceTime:clock,contextTime:clock/1000}}
   resume(){return Promise.resolve()}
-  createGain(){return {gain:para(),connect:noop}}
+  createGain(){const gain=para();gain.setTargetAtTime=value=>{gain.value=value};return {gain,connect:noop}}
   createOscillator(){
    const osc={frequency:null,initialFrequency:null,type:'sine',connect:noop,
     start(time){audioEvents.push({time,frequency:osc.initialFrequency,type:osc.type})},stop:noop};
@@ -74,7 +75,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   ResizeObserver:undefined,console,Math:math
  };
  vm.runInNewContext(fs.readFileSync('assets/combat-sfx.js','utf8'),context);
- const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when){metalEvents.push({kind,when:when??ac.currentTime});return metal.play(ac,kind,when);}};
+ const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when,destination){metalEvents.push({kind,when:when??ac.currentTime,destination});return metal.play(ac,kind,when,destination);}};
  if(artMode){
   context.URL=URL;
   window.location={search:artMode==='adopted'?'':'?art='+(artMode==='missing'?'impact':artMode==='missing-illustrated'?'illustrated':artMode)};window.document=document;window.URL=URL;window.localStorage=context.localStorage;
@@ -115,6 +116,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    return outcome;
   };
   window.__parryBloodTest={
+   mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
    clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
    hudDrawLabels:()=>hudDrawLabels.map(x=>({...x})),
@@ -386,8 +388,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-5"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-5"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-6"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-6"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -1086,7 +1088,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-5"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-6"/);
   assert.match(html,/v0\.9\.3/);
  }
  const g=makeHarness({},true);
@@ -1405,7 +1407,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-5"'),asset);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-6"'),asset);
   assert.match(html,/v0\.9\.3/);
  }
  const {g,d}=makeCrossroads(4);
@@ -1996,6 +1998,36 @@ test('metal feedback fires once at collision, respects mute, and developer sound
  const state=JSON.stringify(g.state());assert.equal(g.dev().previewSound('guard'),true);assert.equal(JSON.stringify(g.state()),state);
  g.press('audioBtn');assert.equal(g.dev().previewSound('parry'),false);const count=g.metalEvents().length;
  const next=g.state().attackAt;g.clock(next-100);g.parry();g.frame(next+1);assert.equal(g.metalEvents().length,count);
+});
+test('developer volume slider matches adopted production, updates three metal sounds live and leaves BGM and combat unchanged',()=>{
+ const g=makeHarness({},true),slider=g.el.get('devSfxVolume'),value=g.el.get('devSfxVolumeValue');
+ assert.equal(slider.value,'100');assert.equal(value.textContent,'100%');assert.equal(g.dev().getSfxVolume(),100);
+ g.dev().launch(5,'guardian:normal',true);g.dev().previewSound('parry');
+ const state=JSON.stringify(g.state()),saved=[...g.storage];
+ assert.deepEqual({...g.bloodTest().mixGains()},{bgm:.35,steel:1});
+ slider.value='27';slider.listeners.input();assert.equal(value.textContent,'27%');
+ assert.match(slider['aria-valuetext'],/^27%/);assert.equal(g.dev().getSfxVolume(),27);
+ assert.deepEqual({...g.bloodTest().mixGains()},{bgm:.35,steel:.27});
+ for(const kind of ['guard','parry','just'])assert.equal(g.dev().previewSound(kind),true);
+ const bus=g.metalEvents()[0].destination;
+ assert.ok(g.metalEvents().every(event=>event.destination===bus));assert.equal(bus.gain.value,.27);
+ const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+ assert.equal(g.metalEvents().at(-1).destination,bus,'real collision uses the audition volume');
+ assert.equal(g.state().lastStrikeKind,'just');
+ slider.value='0';slider.listeners.input();assert.equal(bus.gain.value,0);
+ g.press('devSfxOriginal');assert.equal(slider.value,'100');assert.equal(bus.gain.value,1);
+ assert.equal(g.bloodTest().mixGains().bgm,.35);
+ assert.deepEqual([...g.storage],saved);assert.equal(JSON.parse(state).scoreOrigin,g.state().scoreOrigin);
+});
+test('developer volume can be shared in a URL, survives resets and is bounded without affecting normal gameplay',()=>{
+ const g=makeHarness({},true,'','?sfxVolume=37');assert.equal(g.dev().getSfxVolume(),37);
+ g.dev().reset();assert.equal(g.dev().getSfxVolume(),37);
+ assert.equal(g.dev().setSfxVolume(-9),0);assert.equal(g.dev().setSfxVolume(999),100);
+ assert.equal(g.dev().setSfxVolume(NaN),100);
+ const normal=makeHarness();normal.random(.5);normal.press('startBtn');
+ const due=normal.state().attackAt;normal.clock(due-100);normal.parry();normal.frame(due+1);
+ assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain,undefined);
+ assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devSfxVolume/);
 });
 
 test('developer invulnerable practice permits unseen enemies but never unlocks or saves them',()=>{

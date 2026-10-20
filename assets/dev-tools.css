@@ -3,6 +3,12 @@
 .dev-panel *{box-sizing:border-box}
 .dev-controls .dev-toggle{grid-column:1/-1;flex-direction:row;align-items:center;font-size:13px}.dev-controls .dev-toggle input{width:18px;height:18px;padding:0;accent-color:#e5bf79}.dev-sound-controls{display:flex!important;flex-wrap:wrap;align-items:center;margin-top:12px}.dev-sound-controls button{flex:1 1 150px}
 .dev-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.dev-volume{margin-top:12px;padding:12px;background:#0e1c2e;border:1px solid #607388;border-radius:8px}
+.dev-volume label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:700}
+.dev-volume output{font-size:20px;color:#f1d296;font-variant-numeric:tabular-nums}
+.dev-volume-row{display:flex;align-items:center;gap:12px;margin:6px 0}
+.dev-volume input{min-width:0;flex:1;accent-color:#e5bf79;cursor:pointer}
+.dev-volume button{flex:none;border:1px solid #83a7c7;border-radius:8px;background:#2c5575;color:#effcff;padding:7px 10px;cursor:pointer;font-size:12px}
 .dev-title strong{font-size:16px}.dev-title span{font-size:11px;color:#a8c5dd}
 .dev-controls{display:grid;grid-template-columns:minmax(105px,150px) minmax(180px,1fr) auto auto;gap:10px;align-items:end}
 .dev-controls label{font-size:11px;color:#a9c2d9;display:flex;flex-direction:column;gap:5px}

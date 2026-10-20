@@ -45,6 +45,14 @@
  });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
+ const sfxVolume=$('devSfxVolume'),sfxValue=$('devSfxVolumeValue');
+ function setSfxVolume(percent){
+  const value=engine.setSfxVolume(percent);sfxVolume.value=String(value);sfxValue.textContent=value+'%';
+  sfxVolume.setAttribute('aria-valuetext',value+'%（現在の本編を100%）');
+ }
+ setSfxVolume(params.has('sfxVolume')?params.get('sfxVolume'):engine.getSfxVolume());
+ sfxVolume.addEventListener('input',()=>setSfxVolume(sfxVolume.value));
+ $('devSfxOriginal').addEventListener('click',()=>setSfxVolume(100));
  if(Number.isFinite(targetFloor)&&targetFloor>=1&&targetFloor<=999)floor.value=String(Math.floor(targetFloor));
  const requestedEnemy=params.get('enemy');
  const requestedKey=options.find(v=>v.key===requestedEnemy)?.key||options.find(v=>v.key===requestedEnemy+':normal')?.key||options.find(v=>v.key===requestedEnemy+':rare')?.key;

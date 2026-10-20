@@ -4,7 +4,7 @@
  */
 (function(root){
  'use strict';
- const BUILD='v0.9.3-5';
+ const BUILD='v0.9.3-6';
  const REQUIRED_ASSETS=[
   'style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js',
   'relics.js','routes.js','events.js','combat-sfx.js','game.js'
