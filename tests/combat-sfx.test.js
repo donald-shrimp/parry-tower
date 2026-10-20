@@ -7,7 +7,7 @@ test('three metal impacts have deterministic finite waveforms, clean boundaries,
   assert.equal(a.length,Math.ceil(p.duration*rate));assert.equal(a[0],0);assert.ok(Math.abs(a.at(-1))<1e-8);
   let peak=0,energy=0,late=0,early=0;
   for(let i=0;i<a.length;i++){assert.ok(Number.isFinite(a[i]));peak=Math.max(peak,Math.abs(a[i]));energy+=a[i]*a[i];if(i<rate*.04)early+=a[i]*a[i];if(i>a.length*.75)late+=a[i]*a[i];}
-  assert.ok(peak<=.881&&peak>.8);assert.ok(energy>1);assert.ok(late<early*.1,'impact dies away without a hard click');
+  assert.ok(peak<=.881&&peak>(kind==='just'?.25:.8));assert.ok(energy>1);assert.ok(late<early*.1,'impact dies away without a hard click');
   outputs.push(Buffer.from(a.buffer));
  }
  assert.notDeepEqual(outputs[0],outputs[1]);assert.notDeepEqual(outputs[1],outputs[2]);
@@ -37,5 +37,6 @@ test('reference-like steel rings after the immediate contact instead of ending a
   const a=S.synthesize(kind,rate);assert.ok(energy(a,0,.005)>.001,kind+' has immediate contact');
   assert.ok(energy(a,.08,.30)>energy(a,0,.04),kind+' keeps its irregular metal ring after the initial hit');
  }
- const a=S.synthesize('just',rate);assert.ok(energy(a,.35,.65)>energy(a,0,.04),'JUST keeps the longer ringing tail of reference 3');
+ const a=S.synthesize('just',rate);assert.ok(energy(a,.2,.45)>energy(a,0,.04)*.5,'JUST still has a recognizable steel tail');
+ assert.ok(energy(a,.6,.85)<energy(a,.08,.3)*.04,'late JUST ring fades instead of sustaining a whistle');
 });

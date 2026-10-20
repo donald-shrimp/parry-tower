@@ -12,7 +12,7 @@
    modes:[5691,6575,7161,7705,7446,5788,9398,2949,4503,5080,3405,2079],weights:[.62,.50,.73,.60,.53,.30,.44,.44,.23,.24,.18,.15],damping:[0,0,7,4,6,0,6,8,2,4,0,0],
    envelope:[[0,0],[.008,.12],[.025,.5],[.055,.9],[.08,1],[.14,.74],[.2,.66],[.28,.43],[.4,.18],[.55,.04],[.73,0]]}),
   just:profile({duration:1.2,speed:1.15,noise:.82,highpass:2100,lowpass:12500,body:960,level:.2464,
-   modes:[3903,6341,3000,4800,8034,4846,1895,5044,4990,4285,3527,4741,1617,1985,10878,5590],weights:[.80,.69,.65,.64,.59,.57,.56,.53,.53,.42,.40,.39,.36,.36,.32,.32],damping:[0,.8,.6,1,.8,.8,1,0,.6,.2,.6,.2,.8,.8,.2,.4],
+   modes:[3903,6341,3000,4800,8034,4846,1895,5044,4990,4285,3527,4741,1617,1985,10878,5590],weights:[.80,.69,.65,.64,.59,.57,.56,.53,.53,.42,.40,.39,.36,.36,.32,.32],damping:[2,1.6,.6,1.4,1.6,1.4,1,1.4,1.4,1.4,1.2,1.4,.8,.8,1.6,1.6],
    envelope:[[0,0],[.003,.78],[.025,1],[.08,.9],[.18,.88],[.3,.77],[.45,.61],[.6,.48],[.72,.25],[.9,.12],[1.1,.025],[1.35,0]]})
  });
  const cache=new WeakMap();
@@ -45,6 +45,21 @@
    peak=Math.max(peak,Math.abs(out[i]));
   }
   const gain=peak ? .88/peak : 0;for(let i=0;i<out.length;i++)out[i]*=gain;
+  if(kind==='just'){
+   // Tame the sustained ~4.5kHz whistle and upper fizz without adding makeup
+   // gain. The short contact and lower steel body remain audible.
+   const w=2*Math.PI*Math.min(4500,sampleRate*.2)/sampleRate,A=Math.pow(10,-6/40),q=1.1;
+   const s=Math.sin(w)/(2*q),c=-2*Math.cos(w),a0=1+s/A;
+   const b0=(1+s*A)/a0,b1=c/a0,b2=(1-s*A)/a0,a1=c/a0,a2=(1-s/A)/a0;
+   const lowAlpha=1-Math.exp(-2*Math.PI*Math.min(9500,sampleRate*.35)/sampleRate);
+   let x1=0,x2=0,y1=0,y2=0,l1=0,l2=0,filteredPeak=0;
+   for(let i=0;i<out.length;i++){
+    const x=out[i],y=b0*x+b1*x1+b2*x2-a1*y1-a2*y2;
+    x2=x1;x1=x;y2=y1;y1=y;l1+=lowAlpha*(y-l1);l2+=lowAlpha*(l1-l2);
+    out[i]=l2;filteredPeak=Math.max(filteredPeak,Math.abs(l2));
+   }
+   if(filteredPeak>.88)for(let i=0;i<out.length;i++)out[i]*=.88/filteredPeak;
+  }
   return out;
  }
  function bufferFor(ac,kind){
