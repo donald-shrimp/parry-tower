@@ -36,7 +36,7 @@ let clockPausedPhase=false;
 let preferences=PREF.normalize();try{preferences=PREF.normalize(JSON.parse(localStorage.getItem(PREF.KEY)||'{}'))}catch(e){}
 let pendingCheckpoint=null,saveFailed=false,settingsReturn='title',calibration=null,calibrationNodes=[],pendingNewTutorial=false;
 const CALIBRATION_COUNT_IN=4,CALIBRATION_SAMPLES=16;
-const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
+const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerInputOffset_v1';const LEGACY_OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0,rescueClaimMask:0};
 let meta={...baseMeta};try{
  const s=JSON.parse(localStorage.getItem(KEY)||'{}');
@@ -123,7 +123,7 @@ let pausedFrom='combat',pauseAt=0,screenOffset=0;
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-// 盾が動き始めてから刃を弾くまでの先行入力。瞬間反応ではなく、モーションを覚える設計。
+// The heard beat is the input target; shield contact follows after this fixed animation time.
 const PARRY_STARTUP=100;
 const PARRY_REARM_MS=300,PARRY_RELEASE_MS=120;
 // Guard activates after the shield is physically raised; hold to cover repeated attacks.
@@ -133,11 +133,12 @@ const GUARD_COMBO_LOSS_RATIO=.20;
 const GUARD_MIN_COMBO_LOSS=5;
 const heldGuardInputs=new Set();
 function clearGuardInput(){
+ captureImpactGuard();
  const wasHeld=heldGuardInputs.size>0||game?.guardHeld;
  heldGuardInputs.clear();
  if(game){game.guardHeld=false;game.guardStartedAt=0;if(wasHeld)game.guardReleasedAt=performance.now();}
 }
-function resetParryInput(){game.parryReadyAt=0;game.guardReleasedAt=-99999;game.parryBlockedAt=-99999;}
+function resetParryInput(){game.guardAtImpact=null;game.parryReadyAt=0;game.guardReleasedAt=-99999;game.parryBlockedAt=-99999;}
 function beginGuardInput(source){
  if(game.mode!=='combat'||heldGuardInputs.has(source))return;
  const wasHeld=heldGuardInputs.size>0;
@@ -150,11 +151,16 @@ function beginGuardInput(source){
  }
 }
 function endGuardInput(source){
+ captureImpactGuard();
  const removed=heldGuardInputs.delete(source);
  if(removed&&heldGuardInputs.size===0&&game){game.guardHeld=false;game.guardStartedAt=0;game.guardReleasedAt=performance.now();}
 }
 function guardReadyAt(impact){
  return !!game.guardHeld&&game.guardStartedAt+PARRY_STARTUP<=impact;
+}
+function captureImpactGuard(now=performance.now()){
+ if(game?.mode==='combat'&&!game.attackResolved&&now>=game.attackAt&&game.guardAtImpact==null)
+  game.guardAtImpact=guardReadyAt(game.attackAt);
 }
 function guardComboAfterHit(combo){
  return Math.max(0,combo-Math.max(GUARD_MIN_COMBO_LOSS,Math.ceil(combo*GUARD_COMBO_LOSS_RATIO)));
@@ -176,10 +182,15 @@ const MOTIONS={
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
 const motionFor=e=>MOTIONS[e.kind]||MOTIONS.knight;
-// ---- Music and combat share a Web Audio clock. Every impact is on a beat or half-beat. ----
+// ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
 const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
  get bpm(){return Math.round(60/this.beat)}};
-let latencyOffset=0;try{latencyOffset=clamp(Number(localStorage.getItem(OFFSET_KEY))||0,-180,180)}catch(e){}
+let latencyOffset=0;try{
+ const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
+ if(current!==null&&Number.isFinite(Number(current)))latencyOffset=clamp(Number(current),-180,180);
+ else if(legacy!==null&&Number.isFinite(Number(legacy)))latencyOffset=clamp(Number(legacy)-PARRY_STARTUP,-180,180);
+ // Keep the old key intact: this local candidate must not rewrite production settings.
+}catch(e){}
 $('latencySlider').value=latencyOffset;$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
 $('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
 function ensureAudio(){try{if(audioContext?.state==='closed'){audioContext=null;score.bus=null;playerSfxBus=null;}audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state!=='running')audioContext.resume().catch(()=>{});
@@ -266,11 +277,12 @@ function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
  return audioClock.sample({audio:audioContext.currentTime,perf:performance.now(),state:audioContext.state,stamp,stampError,latencyHint:((audioContext.outputLatency||0)+(audioContext.baseLatency||0))*1000});
 }
-function scoreToPerf(t,offset=latencyOffset){
+function scoreToPerf(t,offset=0){
  if(audioContext){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
  return score.visualOriginPerf+(t-score.origin)*1000+offset;
 }
-function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat);game.telegraphStart=game.attackAt-game.attackSpan}
+function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat)+PARRY_STARTUP;game.telegraphStart=game.attackAt-game.attackSpan}
+function inputTargetAt(){return game.attackAt-PARRY_STARTUP+latencyOffset}
 function musicParry(kind){
  if(!audioEnabled||!audioContext)return;
  if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
@@ -645,7 +657,7 @@ function calibrationTap(){
  if(best<0||Math.abs(error)>240||c.used.has(best))return;
  c.used.add(best);
  if(c.kind==='try'){
-  const delta=error-(c.result.candidate-PARRY_STARTUP),kind=Math.abs(delta)<=getPerfectWindow()?'just':Math.abs(delta)<=getParryWindow()?'parry':'guard';
+  const delta=error-c.result.candidate,kind=Math.abs(delta)<=getPerfectWindow()?'just':Math.abs(delta)<=getParryWindow()?'parry':'guard';
   $('calibrationStatus').textContent=(kind==='just'?'JUST!':kind==='parry'?'PARRY!':delta<0?'早め':'遅め')+' · '+Math.abs(Math.round(delta))+'ms（候補での試し打ち）';
   if(kind!=='guard')window.ParryCombatSfx?.play(audioContext,kind,audioContext.currentTime,steelDestination());
  }else{c.errors.push(error);$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';}
@@ -662,7 +674,7 @@ function updateCalibration(){
   if(!counting&&!c.ready){c.ready=true;$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';$('calibrationTap').focus?.();}
  }
  if(c.kind==='measure'&&performance.now()>scoreToPerf(c.targets.at(-1),0)+300){
-  c.kind='result';c.result=PREF.recommend(c.errors,PARRY_STARTUP);$('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
+  c.kind='result';c.result=PREF.recommend(c.errors);$('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
   $('calibrationStatus').textContent=c.result?'おすすめ '+(c.result.candidate>=0?'+':'')+c.result.candidate+'ms · '+c.result.count+'回の入力から測定'+(c.result.clamped?'（調整範囲の上限・下限に合わせています）':''):'入力が少ないか、ばらつきが大きいため測れませんでした。もう一度試してください。';
   $('calibrationTry').hidden=!c.result;$('calibrationApply').hidden=!c.result;
  }else if(c.kind==='try'&&audioContext.currentTime>c.start+3.6){c.kind='result';$('calibrationStart').disabled=false;$('calibrationTap').disabled=true;}
@@ -981,8 +993,8 @@ function beginEncounter(t){
  startScore(game.enemy);
  if(runSkinRules().randomTempo)showText(game.skinTempoOffset>0?'時空加速 ＋12':game.skinTempoOffset<0?'時空減速 −12':'時空安定 ±0',w*.5,h*.3,'#d9bcff',18);
  if(archetype.rare&&!game.practice){sound(890,.20,'sine',.08,-180);showText('✦ RARE ENCOUNTER ✦',w*.50,h*.20,'#f6d58b',20)}
- game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170;game.telegraphStart=t;
- game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;
+ game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170+PARRY_STARTUP;game.telegraphStart=t;
+ game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;
  game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;
  game.nextFloorHint=game.practice?'PRACTICE':archetype.preview?'UNKNOWN ENCOUNTER':archetype.finalBoss?'FINAL BOSS · '+floor+'F':archetype.rare?'RARE ENCOUNTER':archetype.elite?'ELITE ENCOUNTER':archetype.boss?'BOSS FLOOR':'FLOOR '+floor;
  game.nextFloorHintAt=t;syncAttackClock();syncHUD();
@@ -993,7 +1005,7 @@ function nextStrike(){
  if(e.finalBoss&&e.phase===1&&e.phaseRhythm&&e.hp>0&&e.hp<=e.maxHp*.5){
   beginFinalPhase();return;
  }
- const step=e.rhythm[e.index%e.rhythm.length];e.index++;const extra=tempoDelay(lvl('tempo'));const beats=step+extra;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
+ const step=e.rhythm[e.index%e.rhythm.length];e.index++;const extra=tempoDelay(lvl('tempo'));const beats=step+extra;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
 function beginFinalPhase(){
  const e=game.enemy;
  e.phase=2;e.rhythm=[...e.phaseRhythm];e.index=0;
@@ -1044,7 +1056,7 @@ function updateFinalPhase(now){
  game.attackSpan=FINAL_PHASE_COUNT_BEATS*beatMs;
  if(score.active)syncAttackClock();
  else{game.attackAt=now+game.attackSpan;game.telegraphStart=now;}
- game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;
+ game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
  game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null;
  // The movement title was already shown over the count-in; do not show it again
  // at the normal combo/HUD height when combat resumes.
@@ -1106,7 +1118,7 @@ function damageEnemy(n,color='#fff',label){
 }
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);const restored=Math.max(0,game.hp-a);if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);return restored}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
-function strikeResult(kind,at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=at;triggerClashFX(kind,at,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=at;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
+function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,effectAt,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
   game.relicJustStreak=0;game.justStreak=0;
   if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
    game.relicStopUsed++;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
@@ -1117,10 +1129,10 @@ function strikeResult(kind,at){tutorialResult(kind);const e=game.enemy;if(!e||ga
   if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');
 }else if(kind==='miss'){
-  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=at;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
+  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
 }else{
   game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
-  game.lastDeflectAt=at;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
+  game.lastDeflectAt=effectAt;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
   game.justStreak=perfect?(game.justStreak||0)+1:0;
   // Record success and JUST thresholds before damage can end the floor.
   if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
@@ -1398,9 +1410,9 @@ function tap(releasedEnough=true){
  if(game.mode!=='combat')return;
  const t=performance.now();syncAttackClock();
  // 衝突後に押しても次の攻撃の『早すぎ』にならない。直前の攻撃への遅れとして扱う。
- if(game.lastStrikeKind==='miss'&&t-game.lastImpactAt>=0&&t-game.lastImpactAt<220&&!game.lateReported){
+ if(game.lastStrikeKind==='miss'&&t-game.lastImpactAt>=0&&t-game.lastImpactAt<220&&!game.lateReported&&Math.abs(t-inputTargetAt())>getParryWindow()){
   game.lateReported=true;
-  feedback('遅い '+Math.round(t-(game.lastImpactAt-PARRY_STARTUP))+'ms','#f7ca8e');
+  feedback('遅い '+Math.round(t-game.lastInputTargetAt)+'ms','#f7ca8e');
   return;
  }
  if(game.attackResolved||game.inputLocked)return;
@@ -1408,11 +1420,12 @@ function tap(releasedEnough=true){
  game.parryReadyAt=t+PARRY_REARM_MS;
  // Only the press edge attempts a parry. Earlier inputs raise the shield and can
  // defend at impact IF held continuously for the full 100 ms startup.
- const delta=t-(game.attackAt-PARRY_STARTUP),perfect=getPerfectWindow(),parry=getParryWindow();
+ const delta=t-inputTargetAt(),perfect=getPerfectWindow(),parry=getParryWindow();
  game.lastAttemptDelta=delta;game.parryAnimAt=t;
  if(Math.abs(delta)<=perfect){game.pendingKind='just';game.inputLocked=true;game.parryAnimKind='just'}
  else if(Math.abs(delta)<=parry){game.pendingKind='parry';game.inputLocked=true;game.parryAnimKind='parry'}
  else game.parryAnimKind='guard';
+ if(game.pendingKind)game.pendingAt=t;
 }
 
 function populatePracticeEnemies(selected,allowUnseen=false){
@@ -1453,7 +1466,7 @@ function pauseForClock(){
 function togglePause(){
  if(game.mode==='combat'){clockPausedPhase=false;$('pauseStatus').hidden=true;clearGuardInput();pauseAt=performance.now();stopScore();setMode('pause');}
  else if(game.mode==='pause'){
-  const now=performance.now();resetParryInput();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.cuePlayed=false;game.windupPlayed=false;
+  const now=performance.now();resetParryInput();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
   $('pauseStatus').hidden=true;
   if(clockPausedPhase){clockPausedPhase=false;game.phaseStage='rumble';setMode('phase');beginFinalCountIn();}
   else{startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat');}
@@ -1598,17 +1611,25 @@ function hero(now){
   origin:{x:w*.28,y:h*.80-65*s},target:{x:w*.65,y:h*.80-65*s},scale:s,tint:PR.extraOption(permanent,'slashTint')});
 }
 function enemy(now){
- const e=game.enemy;if(!e)return;
- const m=motionFor(e),d=game.attackAt-now,span=game.attackSpan||1900;
+ let e=game.enemy;if(!e)return;
+ const m=motionFor(e);let attackAt=game.attackAt,span=game.attackSpan||1900,lastImpactAt=game.lastImpactAt;
+ // The blade follows through on time even while a corrected late input can
+ // still arrive. Project the next visual phrase without advancing gameplay.
+ const awaitingInput=game.mode==='combat'&&!game.attackResolved&&now>=attackAt;
+ if(awaitingInput){
+  lastImpactAt=attackAt;span=(e.rhythm[e.index%e.rhythm.length]+tempoDelay(lvl('tempo')))*score.beat*1000;
+  attackAt+=span;e={...e,index:e.index+1};
+ }
+ const d=attackAt-now;
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-   attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
-   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
+   attackAt,attackSpan:span,lastImpactAt,
+   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
+  attackAt,attackSpan:span,lastImpactAt,
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
  if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt:game.attackAt,attackSpan:span,lastImpactAt:game.lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))return;
+  attackAt,attackSpan:span,lastImpactAt,
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
  const prepare=Math.min(m.prepare,Math.max(m.swing+120,span-130));
@@ -1616,7 +1637,7 @@ function enemy(now){
  const p=clamp((m.swing-d)/m.swing,0,1);
  // 速度に明確な変化をつける。弾速を表示するゲージではなく、動きの重さが予兆になる。
  const dash=p*p*(1+.12*(1-p));
- const after=now-(game.lastImpactAt||-99999);
+ const after=now-(lastImpactAt||-99999);
  const rec=after>=0&&after<m.recovery?1-smooth(after/m.recovery):0;
  const contactBodyX=hitX+m.reach*scale;
  const stageX=contactBodyX+m.stage*scale;
@@ -1641,7 +1662,7 @@ function enemy(now){
  ctx.save();ctx.translate(x,y);ctx.scale(-scale,scale);
  // A physical recoil only after contact; fades before the next telegraph.
  const deflectAge=now-(game.lastDeflectAt||-99999);
- const recoilTime=Math.min(195,Math.max(75,(game.attackAt-now-145)));
+ const recoilTime=Math.min(195,Math.max(75,(attackAt-now-145)));
  const recoilPhase=clamp(deflectAge/recoilTime,0,1);
  const recoil=(deflectAge>=0&&deflectAge<recoilTime&&['just','parry'].includes(game.lastStrikeKind))
   ?Math.sin(Math.PI*recoilPhase)*(game.lastStrikeKind==='just'?1:.5):0;
@@ -1923,13 +1944,15 @@ function update(now,dt){const m=game.mode;
  }
  if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
  if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt){
-  const guarding=guardReadyAt(game.attackAt);
-  // At high Stability, the chick's wider press window can extend slightly
-  // beyond contact. Leave just that missing-input result open for the late
-  // edge; successful presses and established guards still resolve on contact.
-  const grace=runSkinRules().parry>1?Math.max(0,getParryWindow()-PARRY_STARTUP):0;
-  if(game.pendingKind||guarding||now>=game.attackAt+grace)
-   strikeResult(game.pendingKind||(guarding?'guard':'miss'),game.attackAt);
+  // Remember the guard at physical contact; releasing it during a positive
+  // input offset must not erase it, and a guard raised afterwards is too late.
+  captureImpactGuard(now);
+  // Wait for the corrected late edge before assigning guard/miss. Pending
+  // parries can resolve at contact; a late success starts fresh feedback now.
+  if(game.pendingKind||now>inputTargetAt()+getParryWindow()){
+   const effectAt=Math.max(game.attackAt,game.pendingKind?game.pendingAt:inputTargetAt()+getParryWindow());
+   strikeResult(game.pendingKind||(game.guardAtImpact?'guard':'miss'),game.attackAt,effectAt);
+  }
  }
  }else if(m==='phase')updateFinalPhase(now);
  else if(m==='victory'&&now-game.clearAt>900)showRewards();
@@ -1996,7 +2019,8 @@ $('settingsCloseBtn').addEventListener('click',closeSettings);
 for(const kind of ['bgm','sfx'])$(kind+'Volume').addEventListener('input',()=>{preferences[kind]=PREF.normalize({[kind]:Number($(kind+'Volume').value)})[kind];$(kind+'VolumeValue').textContent=preferences[kind]+'%';persistPreferences()});
 for(const [id,key]of [['screenShake','shake'],['screenFlash','flash']])$(id).addEventListener('change',()=>{preferences[key]=$(id).checked;persistPreferences()});
 $('calibrationStart').addEventListener('click',startCalibration);
-$('calibrationTap').addEventListener('click',calibrationTap);
+$('calibrationTap').addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;e.preventDefault();calibrationTap()});
+$('calibrationTap').addEventListener('click',e=>{if(!e?.detail)calibrationTap()});
 $('calibrationCancel').addEventListener('click',()=>{cancelCalibration();$('calibrationStatus').textContent='元の補正を保っています。';});
 $('calibrationTry').addEventListener('click',tryCalibration);
 $('calibrationApply').addEventListener('click',()=>{if(!calibration?.result)return;latencyOffset=calibration.result.candidate;$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){}cancelCalibration();$('calibrationStatus').textContent='補正を保存しました。';});

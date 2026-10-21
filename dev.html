@@ -117,7 +117,8 @@
       <label class="settings-volume" for="sfxVolume">効果音 <output id="sfxVolumeValue">100%</output><input id="sfxVolume" type="range" min="0" max="200" step="5" value="100"></label>
       <div class="settings-switches"><button class="secondary" id="audioBtn" type="button" aria-label="音声の切り替え">♫ SOUND ON</button><label><input id="screenShake" type="checkbox" checked>画面の揺れ</label><label><input id="screenFlash" type="checkbox" checked>フラッシュ</label></div>
       <section class="timing-calibration"><h3>タイミング調整</h3>
-       <label for="latencySlider" class="latency-title">手動補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0">
+       <label for="latencySlider" class="latency-title">入力補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0">
+       <small class="latency-note">＋：遅めの入力 / −：早めの入力</small>
        <p>音の拍に合わせて押して、おすすめの補正を測れます。</p>
        <div class="calibration-pulse" id="calibrationPulse" aria-hidden="true">♫</div>
        <div class="actionrow"><button type="button" class="secondary" id="calibrationStart">おすすめ補正を測る</button><button type="button" class="primary" id="calibrationTap" disabled>拍に合わせてタップ</button></div>
@@ -168,9 +169,9 @@
 <script src="./assets/character-rig.js?v=v0.9.5-preview-3" defer></script>
 <script src="./assets/stage-music.js?v=v0.9.5-preview-3" defer></script>
 <script src="./assets/audio-clock.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/player-settings.js?v=v0.9.5-preview-3" defer></script>
+<script src="./assets/player-settings.js?v=v0.9.5-preview-3&timing=2" defer></script>
 <script src="./assets/run-checkpoint.js?v=v0.9.5-preview-3&checkpoint=2" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-3" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-3&timing=2" defer></script>
 <script src="./assets/dev-tools.js?v=v0.9.5-preview-3" defer></script>
 </body>
 </html>

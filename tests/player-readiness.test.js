@@ -10,9 +10,10 @@ test('settings migrate safely, clamp gains and keep the approved 100% defaults',
 test('calibration requires eight consistent distinct taps, tolerates outliers and reports clamp',()=>{
  assert.equal(S.recommend([0,0,0]),null);
  assert.equal(S.recommend([-200,-150,-100,-50,0,50,100,150,200,230]),null);
- assert.equal(S.recommend([19,20,21,19,20,21,20,20,220,-200]).candidate,120);
- assert.equal(S.recommend(Array(8).fill(150)).candidate,180);assert.equal(S.recommend(Array(8).fill(150)).clamped,true);
- assert.equal(S.recommend(Array(8).fill(-110)).candidate,-10);
+ assert.equal(S.recommend([19,20,21,19,20,21,20,20,220,-200]).candidate,20);
+ assert.equal(S.recommend(Array(8).fill(230)).candidate,180);assert.equal(S.recommend(Array(8).fill(230)).clamped,true);
+ assert.equal(S.recommend(Array(8).fill(-110)).candidate,-110);
+ assert.equal(S.recommend(Array(8).fill(0)).candidate,0,'no animation startup is included');
 });
 function fixture(){const game={legacyVisual:false,tutorial:false,tutorialStep:0,tutorialFinishing:false,mode:'combat',practice:false,floor:1,maxHp:65,hp:65,shield:0,baseAtk:25,skin:'normal',skinEffects:true,bonuses:{soulGain:0,bossWard:0,regen:0,revive:0,choice4:0},lifeBonus:0,lv:{blade:1},skillBreaks:{},relicCounters:{},relics:[],polishedRelics:[],relicDiscarded:[],relicOffer:[],sealedSkillIds:[],routeSkillSet:[],currentRoom:null,eventId:null,roomStage:null,roomLocked:false,relicRewardKind:null,relicReturn:null,relicSwapTarget:null,relicMirrorTarget:null,enemy:{bookKey:'slime:normal',hp:30,maxHp:30,atk:5,burn:0,index:0,phase:1,rhythm:[2,2]},attackAt:Infinity,artLoading:true};for(const key of ['towerCoins','towerCoinsEarned','combo','peakCombo','perfects','parries','damage','charge','bossKills','rerolls','bonusSouls','misses','whiffs','guards','rawMaxHp','relicStopUsed'])game[key]=0;return game;}
 const context={skills:[{id:'blade',max:20}],relics:[{id:'rusty_crest'}],skins:['normal'],encounters:key=>key==='slime:normal'};
