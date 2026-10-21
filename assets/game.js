@@ -33,6 +33,7 @@ const EV=window.ParryEvents;if(!EV)throw Error('Missing assets/events.js');
 const PREF=window.ParryPlayerSettings,CP=window.ParryRunCheckpoint;
 let preferences=PREF.normalize();try{preferences=PREF.normalize(JSON.parse(localStorage.getItem(PREF.KEY)||'{}'))}catch(e){}
 let pendingCheckpoint=null,saveFailed=false,settingsReturn='title',calibration=null,calibrationNodes=[],pendingNewTutorial=false;
+const CALIBRATION_COUNT_IN=4,CALIBRATION_SAMPLES=16;
 const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0,rescueClaimMask:0};
 let meta={...baseMeta};try{
@@ -607,7 +608,7 @@ function cancelCalibration(){
  for(const node of calibrationNodes)try{node.stop()}catch(e){}calibrationNodes=[];calibration=null;
  $('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
  for(const id of ['calibrationTry','calibrationApply','calibrationCancel'])$(id).hidden=true;
- $('calibrationPulse').style.transform='scale(1)';
+ $('calibrationPulse').style.transform='scale(1)';$('calibrationPulse').textContent='♫';
 }
 function calibrationTone(at,frequency=880){
  const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.value=frequency;
@@ -620,28 +621,35 @@ function startCalibration(){
  if(!audioEnabled||preferences.sfx===0){$('calibrationStatus').textContent='効果音の音量を上げて、SOUND ONで測ってください。';return}
  if(!ensureAudio()){$('calibrationStatus').textContent='音を再生できません。もう一度お試しください。';return}
  const start=audioContext.currentTime+1;
- calibration={kind:'measure',start,targets:Array.from({length:16},(_,i)=>start+i*.5),used:new Set(),errors:[],result:null};
+ calibration={kind:'measure',start,targets:Array.from({length:CALIBRATION_COUNT_IN+CALIBRATION_SAMPLES},(_,i)=>start+i*.5),used:new Set(),errors:[],result:null};
  for(const [i,t]of calibration.targets.entries())calibrationTone(t,i%4===0?1046:784);
- $('calibrationTap').disabled=false;$('calibrationStart').disabled=true;$('calibrationCancel').hidden=false;
- $('calibrationStatus').textContent='最初の2拍を聴いて、その後の拍に合わせてタップ。';$('calibrationTap').focus?.();
+ $('calibrationTap').disabled=true;$('calibrationStart').disabled=true;$('calibrationCancel').hidden=false;
+ $('calibrationPulse').textContent='3';$('calibrationStatus').textContent='3 → 2 → 1 → GO';
 }
 function calibrationTap(){
  if(game.mode!=='settings'||!['measure','try'].includes(calibration?.kind))return;
  const now=performance.now(),c=calibration;
+ if(c.kind==='measure'&&now<scoreToPerf(c.targets[CALIBRATION_COUNT_IN],0))return;
  let best=-1,error=Infinity;
- for(let i=c.kind==='measure'?2:0;i<c.targets.length;i++){const delta=now-scoreToPerf(c.targets[i],0);if(Math.abs(delta)<Math.abs(error)){best=i;error=delta}}
+ for(let i=c.kind==='measure'?CALIBRATION_COUNT_IN:0;i<c.targets.length;i++){const delta=now-scoreToPerf(c.targets[i],0);if(Math.abs(delta)<Math.abs(error)){best=i;error=delta}}
  if(best<0||Math.abs(error)>240||c.used.has(best))return;
  c.used.add(best);
  if(c.kind==='try'){
   const delta=error-(c.result.candidate-PARRY_STARTUP),kind=Math.abs(delta)<=getPerfectWindow()?'just':Math.abs(delta)<=getParryWindow()?'parry':'guard';
   $('calibrationStatus').textContent=(kind==='just'?'JUST!':kind==='parry'?'PARRY!':delta<0?'早め':'遅め')+' · '+Math.abs(Math.round(delta))+'ms（候補での試し打ち）';
   if(kind!=='guard')window.ParryCombatSfx?.play(audioContext,kind,audioContext.currentTime,steelDestination());
- }else{c.errors.push(error);$('calibrationStatus').textContent=c.errors.length+' / 14 回測定';}
+ }else{c.errors.push(error);$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';}
 }
 function updateCalibration(){
  if(!calibration||game.mode!=='settings'||!audioContext)return;
  const c=calibration;if(c.kind==='result'){$('calibrationPulse').style.transform='scale(1)';return}const seconds=(performance.now()-scoreToPerf(c.start,0))/1000,beat=Math.floor(seconds/.5);
  $('calibrationPulse').style.transform='scale('+(seconds>=0?1+.18*Math.max(0,1-(seconds/.5-beat)*4):1)+')';
+ if(c.kind==='measure'){
+  const counting=beat<CALIBRATION_COUNT_IN;
+  $('calibrationPulse').textContent=counting?['3','2','1','GO'][Math.max(0,beat)]:'♫';
+  $('calibrationTap').disabled=counting;
+  if(!counting&&!c.ready){c.ready=true;$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';$('calibrationTap').focus?.();}
+ }
  if(c.kind==='measure'&&performance.now()>scoreToPerf(c.targets.at(-1),0)+300){
   c.kind='result';c.result=PREF.recommend(c.errors,PARRY_STARTUP);$('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
   $('calibrationStatus').textContent=c.result?'おすすめ '+(c.result.candidate>=0?'+':'')+c.result.candidate+'ms · '+c.result.count+'回の入力から測定'+(c.result.clamped?'（調整範囲の上限・下限に合わせています）':''):'入力が少ないか、ばらつきが大きいため測れませんでした。もう一度試してください。';

@@ -2731,10 +2731,22 @@ test('player settings use current gains at 100%, persist 0-200 independently and
 
 test('tap recommendation measures shared-clock beats, tries without changing manual offset and saves only on Apply',()=>{
  const g=makeHarness();g.press('settingsBtn');g.press('calibrationStart');const d=g.bloodTest(),targets=d.calibrationInfo().targets;
- for(const t of targets.slice(2)){g.clock(t+20);g.press('calibrationTap')}
+ assert.equal(targets.length,20);
+ assert.equal(g.el.get('calibrationTap').disabled,true);
+ for(const [i,label] of ['3','2','1','GO'].entries()){
+  g.frame(targets[i]+20);assert.equal(g.el.get('calibrationPulse').textContent,label);
+  assert.equal(g.el.get('calibrationTap').disabled,true);
+  g.press('calibrationTap');assert.equal(d.calibrationInfo().errors.length,0,'count-in taps are excluded');
+ }
+ g.frame(targets[4]-1);g.press('calibrationTap');assert.equal(d.calibrationInfo().errors.length,0,'GO is a full count-in beat');
+ g.frame(targets[4]);assert.equal(g.el.get('calibrationPulse').textContent,'♫');assert.equal(g.el.get('calibrationTap').disabled,false);
+ assert.match(g.el.get('calibrationStatus').textContent,/0 \/ 16/);
+ for(const t of targets.slice(4)){g.frame(t+20);g.press('calibrationTap')}
+ assert.equal(d.calibrationInfo().errors.length,16);assert.match(g.el.get('calibrationStatus').textContent,/16 \/ 16/);
  g.frame(targets.at(-1)+400);assert.equal(d.calibrationInfo().result.candidate,120);assert.equal(g.state().offset,0);
  g.press('calibrationTry');assert.equal(g.state().offset,0);g.clock(d.calibrationInfo().targets[0]+20);g.press('calibrationTap');assert.match(g.el.get('calibrationStatus').textContent,/JUST!/);g.press('calibrationApply');assert.equal(g.state().offset,120);assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'120');
- g.press('calibrationStart');g.press('calibrationCancel');assert.equal(g.state().offset,120);assert.equal(d.calibrationInfo(),null);
+ g.press('calibrationStart');g.frame(d.calibrationInfo().targets[3]+20);g.press('calibrationCancel');assert.equal(g.state().offset,120);assert.equal(d.calibrationInfo(),null);
+ assert.equal(g.el.get('calibrationPulse').textContent,'♫');assert.equal(g.el.get('calibrationTap').disabled,true);
 });
 
 test('local checkpoint restores combat on a fresh clock without new encounter rolls or duplicate boss shields',()=>{
