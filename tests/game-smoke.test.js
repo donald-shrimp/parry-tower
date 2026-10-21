@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
 
-function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null){
+function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
  const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
@@ -60,7 +60,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  }
  const windowListeners={},documentListeners={};
  const window={
-  ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
+  ParryPlayerSettings:require('../assets/player-settings.js'),ParryRunCheckpoint:require('../assets/run-checkpoint.js'),ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
  window.ParryStageMusic=require('../assets/stage-music');
  const document={
@@ -70,7 +70,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   addEventListener:(type,listener)=>{documentListeners[type]=listener},querySelectorAll:()=>[],hidden:false
  };
  const context={
-  window,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
+  window,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(failRunSave&&k==='parryTowerRun_v1')throw new Error('quota');storage.set(k,v)},removeItem:k=>storage.delete(k)},
   navigator:{vibrate:noop},performance:{now:()=>clock},
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console,Math:math
@@ -162,6 +162,10 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
     gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
     counters:{...game.relicCounters},boltDue:game.relicBoltDue,emperorDue:game.relicEmperorDue}),
 
+  preferences:()=>({...preferences,sfxGain:playerSfxBus?.gain.value}),
+  checkpoint:()=>{checkpoint();return readCheckpoint()},
+  tutorialInfo:()=>({active:game.tutorial,step:game.tutorialStep,finishing:game.tutorialFinishing}),
+  calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
   skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:s.desc})),
   skillCap,merchantTargets,
   setBreaks:(id,n)=>{game.skillBreaks[id]=n},
@@ -400,8 +404,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.4"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -903,7 +907,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.4/);
+  assert.match(html,/v0\.9\.5-preview/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1100,8 +1104,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.4"/);
-  assert.match(html,/v0\.9\.4/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview"/);
+  assert.match(html,/v0\.9\.5-preview/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1365,7 +1369,7 @@ test('pact from a killing GUARD is retained until the next successful parry on t
  assert.equal(g.state().hp,18,'the next parry restores 8 real HP');
  assert.equal(d.relicInfo().pactReady,false);
 });
-test('relic panel resets on title and repeated starts; relic IDs are never saved to localStorage',()=>{
+test('relic panel resets on title and repeated starts; relic ownership remains scoped to a challenge',()=>{
  const {g,d}=makeRelicFight(['duet_mask']);
  assert.equal(g.state().relics.length,1);
  assert.match(g.el.get('relicList').innerHTML,/二重奏の仮面/);
@@ -1419,8 +1423,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.4"'),asset);
-  assert.match(html,/v0\.9\.4/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview"'),asset);
+  assert.match(html,/v0\.9\.5-preview/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2038,7 +2042,7 @@ test('developer volume can be shared in a URL, survives resets and is bounded wi
  assert.equal(g.dev().setSfxVolume(NaN),100);
  const normal=makeHarness();normal.random(.5);normal.press('startBtn');
  const due=normal.state().attackAt;normal.clock(due-100);normal.parry();normal.frame(due+1);
- assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain,undefined);
+ assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain.value,1,'production effects use the player gain at its approved 100% default');
  assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devSfxVolume/);
 });
 test('Dev BGM-only playback schedules all eight themes without combat or saves, and stops cleanly',()=>{
@@ -2570,7 +2574,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.4 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.5-preview all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
@@ -2708,4 +2712,97 @@ test('tempo breakthrough adds whole musical beats at each level and double remai
   const {g,d}=makeRelicFight();d.setSkill('double',7);g.random(roll);resolveBloodParry(g,20);
   assert.equal(d.hits()[0].dealt,Math.round(25*1.012*multiplier));
  }
+});
+
+
+const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
+function reloadHarness(g,dev=false){return makeHarness(Object.fromEntries(g.storage),dev)}
+test('player settings use current gains at 100%, persist 0-200 independently and pause combat safely',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest(),due=g.state().attackAt;
+ g.press('settingsBtn');assert.equal(g.state().mode,'settings');assert.equal(g.state().scoreActive,false);
+ g.el.get('bgmVolume').value='200';g.el.get('bgmVolume').listeners.input();
+ g.el.get('sfxVolume').value='35';g.el.get('sfxVolume').listeners.input();
+ assert.deepEqual({...JSON.parse(g.storage.get(SETTINGS_KEY))},{bgm:200,sfx:35,shake:true,flash:true});
+ assert.equal(d.preferences().sfxGain,.35);g.frame(due+5000);assert.equal(g.state().hp,65);
+ g.press('settingsCloseBtn');assert.equal(g.state().mode,'pause');g.press('resumeBtn');assert.equal(d.mixGains().bgm,.7);
+ const re=reloadHarness(g);re.press('settingsBtn');assert.equal(re.el.get('bgmVolume').value,'200');assert.equal(re.el.get('sfxVolume').value,'35');
+ const dev=makeHarness({},true);dev.press('settingsBtn');dev.el.get('sfxVolume').value='0';dev.el.get('sfxVolume').listeners.input();assert.equal(dev.storage.has(SETTINGS_KEY),false);
+});
+
+test('tap recommendation measures shared-clock beats, tries without changing manual offset and saves only on Apply',()=>{
+ const g=makeHarness();g.press('settingsBtn');g.press('calibrationStart');const d=g.bloodTest(),targets=d.calibrationInfo().targets;
+ for(const t of targets.slice(2)){g.clock(t+20);g.press('calibrationTap')}
+ g.frame(targets.at(-1)+400);assert.equal(d.calibrationInfo().result.candidate,120);assert.equal(g.state().offset,0);
+ g.press('calibrationTry');assert.equal(g.state().offset,0);g.clock(d.calibrationInfo().targets[0]+20);g.press('calibrationTap');assert.match(g.el.get('calibrationStatus').textContent,/JUST!/);g.press('calibrationApply');assert.equal(g.state().offset,120);assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'120');
+ g.press('calibrationStart');g.press('calibrationCancel');assert.equal(g.state().offset,120);assert.equal(d.calibrationInfo(),null);
+});
+
+test('local checkpoint restores combat on a fresh clock without new encounter rolls or duplicate boss shields',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(5);d.setEnemyHp(10000);d.setSkill('focus',7);d.setBreaks('focus',1);
+ d.grantRelic('rusty_crest');d.checkpoint();const original=g.state(),stored=JSON.parse(g.storage.get(RUN_KEY));
+ assert.equal(stored.game.attackAt,undefined);assert.equal(stored.game.artLoading,undefined);
+ const re=reloadHarness(g);assert.equal(re.el.get('continueBtn').hidden,false);re.random(.99);re.press('continueBtn');
+ assert.equal(re.state().mode,'combat');assert.equal(re.state().encounterKey,original.encounterKey);assert.equal(re.state().shield,original.shield);assert.equal(re.state().enemyHp,10000);assert.equal(re.state().runSkills.focus,7);assert.equal(re.state().skillBreaks.focus,1);
+ assert.equal(re.state().attackBeat,4);assert.ok(re.state().attackAt>re.now);assert.equal(re.state().scoreActive,true);
+});
+
+test('saved rewards, paid merchant selections and refinement resume without rerolls, refunds or another payment',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(14);d.setTowerCoins(150);d.setSkill('blade',20);g.routeSelect('merchant');
+ buyTarget(g,'breakthrough','blade');const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().roomStage,'result');assert.equal(re.state().towerCoins,90);assert.equal(re.state().runSkills.blade,21);
+ re.roomChoose('buy:breakthrough');assert.equal(re.state().towerCoins,90);re.roomChoose('continue');re.bloodTest().setEnemyHp(1);resolveBloodParry(re,20);re.frame(re.now+950);
+ const relic=reloadHarness(re);relic.press('continueBtn');assert.equal(relic.state().mode,'relic');assert.deepEqual(Array.from(relic.state().relicOffer),Array.from(re.state().relicOffer));
+ relic.press('relicSkipBtn');const cards=relic.el.get('rewardCards').innerHTML;
+ const reward=reloadHarness(relic);reward.random(.99);reward.press('continueBtn');assert.equal(reward.state().mode,'reward');assert.equal(reward.el.get('rewardCards').innerHTML,cards);
+ const scroll=makeHarness();scroll.press('startBtn');scroll.bloodTest().jumpFloor(14);scroll.bloodTest().setTowerCoins(100);scroll.routeSelect('merchant');scroll.roomChoose('buy:skill');
+ const restore=reloadHarness(scroll);restore.press('continueBtn');assert.equal(restore.state().mode,'routeSkill');assert.equal(restore.state().towerCoins,74);assert.deepEqual(Array.from(restore.state().routeSkillSet),Array.from(scroll.state().routeSkillSet));
+});
+
+test('new challenge asks before replacing a save, death clears it, practice and Dev never overwrite it',()=>{
+ const g=makeHarness();g.press('startBtn');const before=g.storage.get(RUN_KEY),r=reloadHarness(g);r.press('startBtn');assert.equal(r.state().mode,'confirm');assert.equal(r.storage.get(RUN_KEY),before);r.press('newRunCancel');assert.equal(r.state().mode,'title');
+ r.press('startBtn');r.press('newRunConfirm');assert.equal(r.state().mode,'combat');r.bloodTest().setHp(1);r.bloodTest().incoming(100);assert.equal(r.storage.has(RUN_KEY),false);
+ const dev=makeHarness({[RUN_KEY]:before},true);dev.dev().merchant('capped');dev.roomChoose('buy:elixir');assert.equal(dev.storage.get(RUN_KEY),before);
+ const bad=makeHarness({[RUN_KEY]:'{broken'});assert.equal(bad.el.get('continueBtn').hidden,true);
+});
+
+test('first-floor tutorial survives mistakes including fundoshi, teaches guard and parry, then offers normal loot and proceeds to floor 2',()=>{
+ const save={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['fundoshi'],equippedSkin:'fundoshi'})};
+ const g=makeHarness(save);g.press('tutorialBtn');const d=g.bloodTest();assert.equal(d.tutorialInfo().active,true);assert.equal(g.state().floor,1);
+ d.setEnemyAttack(999999);d.incoming(999999);assert.equal(g.state().hp,g.state().maxHp);resolveBloodParry(g,-40);assert.equal(g.state().mode,'combat');assert.equal(d.tutorialInfo().step,1);
+ d.setEnemyHp(1);resolveBloodParry(g,20);assert.equal(d.tutorialInfo().step,2);assert.equal(g.state().mode,'combat');
+ g.press('tutorialNext');resolveBloodParry(g,20);assert.equal(g.state().mode,'victory');assert.equal(d.tutorialInfo().active,false);g.frame(g.now+950);assert.equal(g.state().mode,'reward');g.press('healBtn');assert.equal(g.state().floor,2);assert.equal(g.state().mode,'combat');
+ assert.doesNotMatch(g.el.get('titleRecords').innerHTML,/いつもの主人公|赤ふんどし/);
+});
+
+
+test('checkpoint keeps challenge modifiers fixed after shop changes and settings do not erase a suspended run',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.checkpoint();
+ const saved=g.storage.get(RUN_KEY),permanent=JSON.stringify({regen:5,bossWard:6,soulGain:5,choice4:1});
+ const re=makeHarness({...Object.fromEntries(g.storage),parryTowerPermanent_v1:permanent});re.press('settingsBtn');re.press('settingsCloseBtn');assert.equal(re.storage.get(RUN_KEY),saved);re.press('continueBtn');
+ re.bloodTest().setHp(10);re.bloodTest().setEnemyHp(1);resolveBloodParry(re,20);assert.equal(re.state().hp,10,'new shop regeneration waits until a new challenge');
+ re.frame(re.now+950);assert.equal((re.el.get('rewardCards').innerHTML.match(/data-skill=/g)||[]).length,3,'new four-choice upgrade does not alter an existing challenge');
+});
+
+
+test('paused second movement resumes with its retained phase, rhythm, counters and tempo',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(80);d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49));d.setBaseAttack(1);resolveBloodParry(g,20);
+ assert.equal(g.state().phaseStage,'rumble');g.frame(g.now+1500);g.frame(g.state().phaseCountStartAt+g.state().beat*4000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bossPhase,2);
+ const before=g.state();g.press('pauseBtn');g.press('suspendBtn');const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().bossPhase,2);assert.deepEqual(Array.from(re.state().enemyRhythm),Array.from(before.enemyRhythm));assert.equal(re.state().attackBeat,4);assert.equal(re.state().bpm,g.state().bpm);
+});
+
+
+test('route, mirror exchange and polished relic checkpoints keep their exact selection and upgraded effect',()=>{
+ const g=makeHarness();g.press('startBtn');g.bloodTest().jumpFloor(4);let re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().mode,'route');
+ re.bloodTest().jumpFloor(8);re.routeSelect('event');re.bloodTest().setEvent('mirror');re.bloodTest().grantRelic('rusty_crest');re.roomChoose('event:swap');
+ let mirror=reloadHarness(re);mirror.press('continueBtn');assert.equal(mirror.state().roomStage,'mirror');mirror.roomChoose('mirror:rusty_crest');
+ const exchange=reloadHarness(mirror);exchange.press('continueBtn');assert.equal(exchange.state().relicReturn,'mirror');assert.equal(exchange.state().relicMirrorTarget,'rusty_crest');exchange.press('relicSkipBtn');assert.equal(exchange.state().mode,'room');assert.deepEqual(Array.from(exchange.state().relics),['rusty_crest']);
+ revisitMerchant(exchange,100);buyTarget(exchange,'polish','rusty_crest');const polished=reloadHarness(exchange);polished.press('continueBtn');assert.equal(polished.state().towerCoins,64);assert.deepEqual(Array.from(polished.state().polishedRelics),['rusty_crest']);polished.roomChoose('continue');polished.bloodTest().incoming(10);assert.equal(polished.state().hp,64);
+});
+
+
+test('storage failure keeps combat playable, surfaces the failed save and removes any stale checkpoint',()=>{
+ const g=makeHarness({},false,'','',null,true);g.press('startBtn');assert.equal(g.state().mode,'combat');assert.equal(g.el.get('saveWarning').hidden,false);assert.equal(g.storage.has(RUN_KEY),false);
+});
+test('resuming an illustrated challenge retains its chosen art after legacy visual is selected in the shop',()=>{
+ const g=makeHarness();g.press('startBtn');const saved=Object.fromEntries(g.storage);
+ saved.parryTowerPermanent_v1=JSON.stringify({unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']});const re=makeHarness(saved);assert.equal(re.artMode(),'legacy');re.press('continueBtn');assert.equal(re.artMode(),'illustrated');
 });

@@ -4,22 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.4">
-<title>パリィの塔 | v0.9.4</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.4&font=4">
+<meta name="parry-build" content="v0.9.5-preview">
+<title>パリィの塔 | v0.9.5-preview</title>
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview&font=4">
 </head>
 <body>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.4</span></h1></div></div>
-  <div class="toolrow"><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♫ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview</span></h1></div></div>
+  <div class="toolrow"><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
+ <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
  <div class="layout">
   <main class="main">
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
-    <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
+    <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><div id="tutorialGuide" class="tutorial-guide" hidden><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button type="button" id="tutorialNext" hidden>次へ</button><button type="button" id="tutorialSkip">案内を終える</button></div><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
+     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
@@ -68,7 +69,23 @@
        </div>
        <div id="upgradeList" class="upgrade-list"></div>
       </div></div>
-     <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><button class="primary" id="resumeBtn">戦闘に戻る</button></div></div>
+     <div class="cover" id="settingsCover" hidden><div class="modal settings-modal">
+      <div class="upgrade-top"><h2>設定</h2><button type="button" class="secondary" id="settingsCloseBtn">閉じる</button></div>
+      <label class="settings-volume" for="bgmVolume">BGM <output id="bgmVolumeValue">100%</output><input id="bgmVolume" type="range" min="0" max="200" step="5" value="100"></label>
+      <label class="settings-volume" for="sfxVolume">効果音 <output id="sfxVolumeValue">100%</output><input id="sfxVolume" type="range" min="0" max="200" step="5" value="100"></label>
+      <div class="settings-switches"><button class="secondary" id="audioBtn" type="button" aria-label="音声の切り替え">♫ SOUND ON</button><label><input id="screenShake" type="checkbox" checked>画面の揺れ</label><label><input id="screenFlash" type="checkbox" checked>フラッシュ</label></div>
+      <section class="timing-calibration"><h3>タイミング調整</h3>
+       <label for="latencySlider" class="latency-title">手動補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0">
+       <p>音の拍に合わせて押して、おすすめの補正を測れます。</p>
+       <div class="calibration-pulse" id="calibrationPulse" aria-hidden="true">♫</div>
+       <div class="actionrow"><button type="button" class="secondary" id="calibrationStart">おすすめ補正を測る</button><button type="button" class="primary" id="calibrationTap" disabled>拍に合わせてタップ</button></div>
+       <p id="calibrationStatus" role="status">最初の2拍を聴いて、その後の拍に合わせて押してください。</p>
+       <div class="actionrow"><button type="button" class="secondary" id="calibrationTry" hidden>候補で試す</button><button type="button" class="primary" id="calibrationApply" hidden>この補正を保存</button><button type="button" class="secondary" id="calibrationCancel" hidden>やめる</button></div>
+      </section>
+      <p id="saveStatus" class="smallnote" role="status"></p>
+     </div></div>
+     <div class="cover" id="confirmCover" hidden><div class="modal"><h2>新しく挑戦する？</h2><p>今の中断データを置き換え、1Fから始めます。</p><div class="actionrow"><button type="button" class="primary" id="newRunConfirm">新しく始める</button><button type="button" class="secondary" id="newRunCancel">戻る</button></div></div></div>
+     <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><button class="primary" id="resumeBtn">戦闘に戻る</button><button class="secondary" id="suspendBtn">中断してタイトルへ</button></div></div>
     </div>
     <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b></span><span class="tower-money">🪙 塔貨 <strong id="towerCoinsLabel">0</strong></span></div></div>
    </section>
@@ -78,36 +95,38 @@
    <div class="panel"><div class="panel-title">RUN STATUS <span class="side-sub" id="runStateLabel">READY</span></div><div class="statsgrid"><div class="stat"><div class="num" id="perfectStat">0</div><div class="label">JUST PARRY</div></div><div class="stat"><div class="num" id="damageStat">0</div><div class="label">TOTAL DAMAGE</div></div><div class="stat"><div class="num" id="bestComboStat">0</div><div class="label">MAX COMBO</div></div><div class="stat"><div class="num" id="chargeStat">0 / 7</div><div class="label">奥義 CHARGE</div></div></div></div>
    <div class="panel"><div class="panel-title">BUILD <span class="side-sub" id="buildCount">0 SKILLS</span></div><div class="build-list" id="buildList"><div class="empty">スキルなし</div></div><div id="synergyList"></div><div id="combatBuffs" class="combat-buffs" role="status" aria-live="off" hidden></div></div>
    <div class="panel"><div class="panel-title">RELICS <span class="side-sub" id="relicCount">0 / 3</span></div><div class="relic-inventory" id="relicList"><div class="empty">遺物なし</div></div></div>
-   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作</span></div><div class="help"><div class="howto-brief">リズムに合わせて敵を斬れ！<br>短押しでパリィ、長押しで盾を構えてガード（<span class="key">Space</span> でも操作）</div><div class="mini-divider"></div><label for="latencySlider" class="latency-title">♫ タイミング補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0"><span class="latency-note">音と判定がずれる場合に調整</span></div></div>
+   <div class="panel"><div class="panel-title">HOW TO PLAY <span class="side-sub">操作</span></div><div class="help"><div class="howto-brief">リズムに合わせて敵を斬れ！<br>短押しでパリィ、長押しで盾を構えてガード（<span class="key">Space</span> でも操作）</div></div></div>
   </aside>
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.4" defer></script>
-<script src="./assets/encounters.js?v=v0.9.4" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.4" defer></script>
-<script src="./assets/progression.js?v=v0.9.4" defer></script>
-<script src="./assets/relics.js?v=v0.9.4" defer></script>
-<script src="./assets/routes.js?v=v0.9.4" defer></script>
-<script src="./assets/events.js?v=v0.9.4" defer></script>
-<script src="./assets/character-art.js?v=v0.9.4" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.4" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.4" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.4" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.4" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.4" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.4" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.4" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.4" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.4" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.4" defer></script>
-<script src="./assets/character-style.js?v=v0.9.4" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.4" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.4" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.4" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.4" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.4" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.4" defer></script>
-<script src="./assets/game.js?v=v0.9.4" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/encounters.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/progression.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/relics.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/routes.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/events.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-art.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-style.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/player-settings.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/run-checkpoint.js?v=v0.9.5-preview" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview" defer></script>
 </body>
 </html>
