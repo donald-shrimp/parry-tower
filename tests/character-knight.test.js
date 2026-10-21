@@ -29,7 +29,7 @@ test('only art=knight-trace selects knight art; existing art modes and hitboxes 
  assert.match(game,/knight:\{swing:270,prepare:850,reach:110,stage:130,recovery:380/);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.ok(html.includes('assets/character-knight.js?v=v0.9.5-preview'));
+  assert.ok(html.includes('assets/character-knight.js?v=v0.9.5-preview-1'));
   assert.ok(html.indexOf('assets/character-ready.js')<html.indexOf('assets/character-knight.js'));
   assert.ok(html.indexOf('assets/character-knight.js')<html.indexOf('assets/game.js'));
  }

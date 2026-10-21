@@ -404,8 +404,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -907,7 +907,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.5-preview/);
+  assert.match(html,/v0\.9\.5-preview-1/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1104,8 +1104,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview"/);
-  assert.match(html,/v0\.9\.5-preview/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-1"/);
+  assert.match(html,/v0\.9\.5-preview-1/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1423,8 +1423,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview"'),asset);
-  assert.match(html,/v0\.9\.5-preview/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-1"'),asset);
+  assert.match(html,/v0\.9\.5-preview-1/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2574,7 +2574,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.5-preview all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.5-preview-1 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
