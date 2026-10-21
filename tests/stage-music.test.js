@@ -14,7 +14,7 @@ test('eight stage scores match the tower zones, retain the original first ten fl
 });
 test('every candidate loops deterministically on the same beat grid with finite safe voices at all gameplay tempos',()=>{
  const fingerprints=[];
- for(const s of music.themes.filter(s=>!s.original))for(const bpm of [112,124,136])for(const boss of [false,true]){
+ for(const s of music.themes.filter(s=>!s.original))for(const bpm of [88,100,112,124,136,148])for(const boss of [false,true]){
   const events=[];
   for(let n=0;n<64;n++){
    const row=music.step(s.id,n,60/bpm,boss);assert.deepEqual(row,music.step(s.id,n+64,60/bpm,boss));assert.ok(row.length<=12);
