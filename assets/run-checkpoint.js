@@ -15,7 +15,7 @@
  function validate(raw,{skills,relics,encounters,skins}){
   if(!raw||raw.version!==1||!raw.game||JSON.stringify(raw).length>60000)return null;
   const g=raw.game,ids=new Set(skills.map(s=>s.id)),rids=new Set(relics.map(r=>r.id));
-  if(!MODES.includes(g.mode)||g.practice||!Number.isInteger(g.floor)||!number(g.floor,1,9999)||!number(g.maxHp,1,1e7)||!number(g.hp,1,g.maxHp)||!number(g.shield,0,1e7)||!number(g.baseAtk,1,1e7)||!skins.includes(g.skin)||typeof g.skinEffects!=='boolean')return null;
+  if(!MODES.includes(g.mode)||g.practice||!Number.isInteger(g.floor)||!number(g.floor,1,9999)||!number(g.maxHp,1,1e7)||!number(g.hp,Number.MIN_VALUE,g.maxHp)||!number(g.shield,0,1e7)||!number(g.baseAtk,1,1e7)||!skins.includes(g.skin)||typeof g.skinEffects!=='boolean')return null;
   if(!g.bonuses||typeof g.bonuses!=='object'||['soulGain','bossWard','regen','revive','choice4'].some(id=>!number(g.bonuses[id],0,1000))||!number(g.lifeBonus,0,10000))return null;
   if(![null,'rest','merchant','event','trial'].includes(g.currentRoom)||![null,'altar','mirror','traveler','chest'].includes(g.eventId)||![null,'result','mirror','target:training','target:breakthrough','target:polish'].includes(g.roomStage)||typeof g.roomLocked!=='boolean')return null;
   if(g.mode==='room'&&g.currentRoom==='event'&&!g.eventId)return null;
@@ -32,7 +32,7 @@
   if(g.polishedRelics.some(id=>!g.relics.includes(id))||g.relicDiscarded.some(id=>g.relics.includes(id)))return null;
   for(const key of ['towerCoins','towerCoinsEarned','combo','peakCombo','perfects','parries','damage','charge','bossKills','rerolls','bonusSouls','misses','whiffs','guards','rawMaxHp','relicStopUsed'])if(!number(g[key],0,key==='charge'?7:1e12))return null;
   if(!Array.isArray(raw.choices)||raw.choices.length>4||new Set(raw.choices).size!==raw.choices.length||raw.choices.some(id=>!ids.has(id)))return null;
-  if(g.mode==='combat'&&(!g.enemy||!encounters(g.enemy.bookKey)||!number(g.enemy.hp,1,g.enemy.maxHp)||!number(g.enemy.maxHp,1,1e12)||!number(g.enemy.atk,0,1e9)||!Array.isArray(g.enemy.rhythm)||!g.enemy.rhythm.length||g.enemy.rhythm.length>64||g.enemy.rhythm.some(n=>!number(n,.25,100))||!number(g.enemy.burn,0,1e12)||!Number.isInteger(g.enemy.index)||!number(g.enemy.index,0,1e9)||![1,2].includes(g.enemy.phase)))return null;
+  if(g.mode==='combat'&&(!g.enemy||!encounters(g.enemy.bookKey)||!number(g.enemy.hp,Number.MIN_VALUE,g.enemy.maxHp)||!number(g.enemy.maxHp,1,1e12)||!number(g.enemy.atk,0,1e9)||!Array.isArray(g.enemy.rhythm)||!g.enemy.rhythm.length||g.enemy.rhythm.length>64||g.enemy.rhythm.some(n=>!number(n,.25,100))||!number(g.enemy.burn,0,1e12)||!Number.isInteger(g.enemy.index)||!number(g.enemy.index,0,1e9)||![1,2].includes(g.enemy.phase)))return null;
   if(['room','route'].includes(g.mode)&&![4,8].includes(g.floor%10))return null;
   if(g.mode==='room'&&!['rest','merchant','event'].includes(g.currentRoom))return null;
   if(g.relicSwapTarget!==null&&!g.relicOffer.includes(g.relicSwapTarget))return null;
