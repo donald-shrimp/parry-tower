@@ -185,7 +185,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
-     url("./fonts/cp-period-display.woff2?v=4") format("woff2");
+     url("./fonts/cp-period-display.woff2?v=5") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
 .brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{

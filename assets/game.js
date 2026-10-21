@@ -424,7 +424,7 @@ function bonusNavigation(){
 }
 function renderSkinPicker(){
  for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3><p class="upgrade-note">購入後は無料で着替えられ、次の挑戦から外見と効果を適用します。開発初期モードとは同時使用できません。</p></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
+ return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
   const owned=PR.ownsSkin(permanent,skin.id),wearing=skin.id===permanent.equippedSkin;
   const action=owned?'skin-equip':'skin-buy';
   const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':skin.cost+' ✧')+'</button>';
