@@ -18,6 +18,7 @@ TEXT_FILES = (
     'index.html', 'dev.html', 'credits.html', 'assets/game.js',
     'assets/encounters.js', 'assets/enemy-motions.js', 'assets/progression.js',
     'assets/relics.js', 'assets/routes.js', 'assets/events.js', 'assets/stage-music.js',
+    'ending-preview.html', 'assets/ending-scene.js', 'assets/ending-preview.js',
 )
 FONT_PATH = ROOT / 'assets/fonts/cp-period-display.woff2'
 

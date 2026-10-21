@@ -185,7 +185,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
-     url("./fonts/cp-period-display.woff2?v=3") format("woff2");
+     url("./fonts/cp-period-display.woff2?v=4") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
 .brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{
@@ -262,3 +262,10 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 
 .skin-actions{display:flex;flex-direction:column;gap:6px;margin-top:auto}.skin-card .skin-actions .upgrade-buy{margin-top:0}.skin-card .skin-buy:disabled{border-color:#706143;color:#ffe19d}
 .arena .upgrade-list canvas.skin-art-sample{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:480/300;background:radial-gradient(ellipse at 60% 65%,#26364a,#101923 80%);border-radius:8px;image-rendering:pixelated;cursor:default}
+
+/* Player settings and the optional first-floor lesson. */
+.settings-modal{text-align:left;width:min(100%,600px)}.settings-volume{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:20px 0;font-size:14px;font-weight:700}.settings-volume input{width:100%;accent-color:#f4cd8b}.settings-volume output{color:#ffe0aa}.settings-switches{display:flex;gap:15px;align-items:center;flex-wrap:wrap;font-size:12px}.settings-switches label{display:flex;gap:7px;align-items:center}.timing-calibration{border-top:1px solid #42516a;margin-top:22px;padding-top:10px}.timing-calibration h3{font-size:17px;color:#f1d49f}.settings-modal p{font-size:12px;margin:10px 0}.calibration-pulse{margin:14px auto;width:44px;height:44px;display:grid;place-items:center;background:#354761;border-radius:50%;color:#f6d49b;font-size:24px}.tutorial-guide{position:absolute;top:10px;left:12px;right:12px;z-index:2;background:#101b30ed;border:1px solid #bca174;border-radius:10px;padding:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none}.tutorial-guide strong{color:#ffe0ad;font-size:14px}.tutorial-guide span{font-size:12px;color:#d5e2f3;line-height:1.6}.tutorial-guide button{pointer-events:auto;background:#293c59;border:1px solid #657a9a;color:#edf3ff;border-radius:6px;padding:6px;font-size:11px}.tutorial-guide button:last-child{margin-left:auto}#suspendBtn{margin:12px}.level{text-align:center}
+
+.settings-modal>.upgrade-top{position:sticky;top:0;background:#152038;z-index:1;padding:6px 0;border-bottom:1px solid #34425c}
+
+.save-warning{font-size:12px;color:#ffdfad;border:1px solid #947d52;background:#392c24;padding:10px;border-radius:9px}
