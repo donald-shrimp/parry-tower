@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const BUILD='v0.9.5-preview-1';
+const BUILD='v0.9.5-preview-2';
 const source=fs.readFileSync('assets/diagnostics.js','utf8');
 
 function diagnosticPage(page='index.html',options={}){
@@ -49,6 +49,7 @@ function diagnosticPage(page='index.html',options={}){
   console:logger,addEventListener(k,cb){listeners[k]=cb}
  };
  const modules={
+  ParryAudioClock:{},
   ParryEncounters:{},ParryEnemyMotions:{},ParryProgression:{},ParryRelics:{},
   ParryRoutes:{branchKind(floor){return floor%10===4?'first':floor%10===8?'second':null}},
   ParryEvents:{},ParryStageMusic:{},ParryPlayerSettings:{},ParryRunCheckpoint:{}
@@ -84,8 +85,8 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   'relics.js','routes.js','events.js','combat-sfx.js','stage-music.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
-  assert.match(s,/<meta name="parry-build" content="v0\.9\.5-preview-1">/);
-  assert.match(s,/v0\.9\.5-preview-1/);
+  assert.match(s,/<meta name="parry-build" content="v0\.9\.5-preview-2">/);
+  assert.match(s,/v0\.9\.5-preview-2/);
   for(const name of required)assert.ok(s.includes('./assets/'+name+'?v='+BUILD),name+' in '+file);
   for(const asset of [...s.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)]){
    assert.ok(asset[1].includes('?v='+BUILD),'all local assets have build query: '+asset[1]);
@@ -93,7 +94,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   assert.ok(s.indexOf('assets/diagnostics.js')<s.indexOf('assets/game.js'),'guard loads before game');
  }
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.5-preview-1',window.__parryV05)"));
+ assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.5-preview-2',window.__parryV05)"));
 });
 test('healthy game reports technical status and correct floor-specific route with no warning',()=>{
  const p=diagnosticPage();
@@ -161,7 +162,7 @@ test('missing module, stale URL and script load failure each trigger a warning',
  assert.equal(missingMusic.api.status().status,'mismatch');
  for(const name of ['ParryPlayerSettings','ParryRunCheckpoint']){const page=diagnosticPage('index.html',{missingModule:name});assert.equal(page.api.status().status,'mismatch');}
  const stale=diagnosticPage('index.html',{assetEntries:[]});
- assert.equal(stale.api.status().staleAssets.length,13);
+ assert.equal(stale.api.status().staleAssets.length,14);
  assert.equal(stale.api.status().status,'mismatch');
  const failed=diagnosticPage('index.html',{failedAsset:'./assets/game.js?v='+BUILD});
  assert.equal(failed.api.status().status,'mismatch');
@@ -189,4 +190,11 @@ test('late registering game repairs initial warning automatically',()=>{
  p.win.ParryDiagnostics.registerGame(BUILD,p.win.__parryV05);
  assert.equal(p.api.status().status,'ok');
  assert.equal(p.warning,null);
+});
+
+test('technical report includes clock recovery history without turning a fallback into a version warning',()=>{
+ const p=diagnosticPage();
+ p.healthy.clock={source:'audio',healthy:true,reason:'timestamp-drift',fallbacks:1,pauses:0,events:[{kind:'fallback',reason:'timestamp-drift',at:12000}]};
+ const report=JSON.parse(p.api.report());assert.equal(report.status,'ok');assert.deepEqual(report.clock,p.healthy.clock);
+ assert.equal(p.warning,null);assert.equal(p.writes,0);
 });

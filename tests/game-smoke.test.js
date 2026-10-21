@@ -60,6 +60,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  }
  const windowListeners={},documentListeners={};
  const window={
+  ParryAudioClock:require('../assets/audio-clock.js'),
   ParryPlayerSettings:require('../assets/player-settings.js'),ParryRunCheckpoint:require('../assets/run-checkpoint.js'),ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
  window.ParryStageMusic=require('../assets/stage-music');
@@ -121,7 +122,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   };
   window.__parryBloodTest={
    musicTheme:()=>score.music,
-   musicBus:()=>score.bus,
+   musicBus:()=>score.bus,audioContext:()=>audioContext,
    mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
    clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
@@ -404,8 +405,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-1"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-2"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-2"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -907,7 +908,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.5-preview-1/);
+  assert.match(html,/v0\.9\.5-preview-2/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1104,8 +1105,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-1"/);
-  assert.match(html,/v0\.9\.5-preview-1/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-2"/);
+  assert.match(html,/v0\.9\.5-preview-2/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1423,8 +1424,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-1"'),asset);
-  assert.match(html,/v0\.9\.5-preview-1/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-2"'),asset);
+  assert.match(html,/v0\.9\.5-preview-2/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2574,7 +2575,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.5-preview-1 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.5-preview-2 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
@@ -2717,6 +2718,67 @@ test('tempo breakthrough adds whole musical beats at each level and double remai
 
 const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
 function reloadHarness(g,dev=false){return makeHarness(Object.fromEntries(g.storage),dev)}
+test('clock recovery keeps music and attacks advancing when only the output context timestamp freezes',()=>{
+ const g=makeHarness({parryTowerAudioOffset_v05:'45'});g.random(.5);g.press('startBtn');const d=g.bloodTest(),start=g.now,before=g.state(),ac=d.audioContext();
+ const frozen=ac.currentTime;ac.getOutputTimestamp=()=>({contextTime:frozen,performanceTime:g.now});
+ for(let t=start+50;t<=start+6000;t+=50)g.frame(t);
+ const after=g.state();assert.equal(after.mode,'combat');assert.equal(after.scoreActive,true);
+ assert.ok(after.attackBeat>4);assert.ok(after.hp<before.hp);assert.equal(after.clock.source,'audio');assert.ok(after.clock.fallbacks>=1);
+ assert.equal(after.encounterKey,before.encounterKey);assert.ok(g.audioEvents().length>20);
+ assert.equal(after.offset,45);assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'45');
+ assert.ok(after.attackAt-g.now<after.attackSpan+200,'attack deadline does not keep escaping');
+});
+test('clock recovery tolerates throwing, nonfinite or entirely frozen output samples during combat',()=>{
+ for(const mode of ['throw','invalid','frozen']){
+  const g=makeHarness();g.random(.5);g.press('startBtn');const ac=g.bloodTest().audioContext(),start=g.now;
+  ac.getOutputTimestamp=()=>{if(mode==='throw')throw Error('output unavailable');return mode==='invalid'?{contextTime:NaN,performanceTime:Infinity}:{contextTime:start/1000,performanceTime:start};};
+  for(let t=start+100;t<=start+4000;t+=100)g.frame(t);
+  assert.equal(g.state().mode,'combat');assert.ok(g.state().attackBeat>4);assert.ok(Number.isFinite(g.state().attackAt));assert.equal(g.state().clock.source,'audio');
+ }
+});
+test('clock recovery pauses a stalled audio clock before damage and resumes the same encounter with four beats',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest(),ac=d.audioContext(),start=g.now,before=g.state();
+ Object.defineProperty(ac,'currentTime',{configurable:true,get:()=>start/1000});
+ for(let t=start+200;t<=start+1400;t+=200)g.frame(t);
+ const paused=g.state();assert.equal(paused.mode,'pause');assert.equal(paused.scoreActive,false);assert.equal(paused.hp,before.hp);
+ assert.equal(paused.clock.reason,'audio-stalled');assert.equal(paused.clock.pauses,1);assert.equal(g.el.get('pauseStatus').hidden,false);
+ Object.defineProperty(ac,'currentTime',{configurable:true,get:()=>g.now/1000});g.press('resumeBtn');
+ const resumed=g.state();assert.equal(resumed.mode,'combat');assert.equal(resumed.attackBeat,4);assert.ok(resumed.attackAt>g.now+2000);
+ for(const key of ['hp','enemyHp','shield','encounterKey','bpm','souls','towerCoins','skinTempoOffset'])assert.equal(resumed[key],before[key],key);
+ assert.equal(g.el.get('pauseStatus').hidden,true);
+});
+test('clock recovery safely pauses interrupted or closed contexts and recreates a closed context on resume',()=>{
+ for(const state of ['interrupted','closed']){
+  const g=makeHarness();g.press('startBtn');const ac=g.bloodTest().audioContext(),hp=g.state().hp;ac.state=state;g.frame(g.now+50);
+  assert.equal(g.state().mode,'pause');assert.equal(g.state().hp,hp);
+  if(state==='interrupted')ac.state='running';g.press('resumeBtn');
+  assert.equal(g.state().mode,'combat');assert.ok(g.state().attackAt>g.now+2000);
+  if(state==='closed')assert.notEqual(g.bloodTest().audioContext(),ac);
+ }
+});
+test('clock recovery preserves second-movement boss state and restarts its count-in',()=>{
+ const g=makeHarness({},true),d=g.bloodTest();g.dev().launch(80,'endking:elite');d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);resolveBloodParry(g,20);
+ g.frame(g.now+1501);assert.equal(g.state().phaseStage,'countin');const before=g.state(),ac=d.audioContext();ac.state='interrupted';g.frame(g.now+1);
+ assert.equal(g.state().mode,'pause');ac.state='running';g.press('resumeBtn');assert.equal(g.state().mode,'phase');assert.equal(g.state().phaseStage,'countin');
+ assert.equal(g.state().bossPhase,2);assert.equal(g.state().enemyHp,before.enemyHp);assert.equal(g.state().hp,before.hp);
+ assert.deepEqual(Array.from(g.state().enemyRhythm),Array.from(before.enemyRhythm));
+ g.frame((g.state().scoreOrigin+4*g.state().beat)*1000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().attackBeat,8);
+});
+test('clock recovery cancels measurement safely when audio stops and leaves the manual offset unchanged',()=>{
+ const g=makeHarness({parryTowerAudioOffset_v05:'45'});g.press('settingsBtn');g.press('calibrationStart');const d=g.bloodTest(),ac=d.audioContext(),start=g.now;
+ Object.defineProperty(ac,'currentTime',{configurable:true,get:()=>start/1000});
+ for(let t=start+100;t<=start+1500;t+=100)g.frame(t);
+ assert.equal(d.calibrationInfo(),null);assert.equal(g.state().offset,45);assert.equal(g.el.get('calibrationPulse').textContent,'♫');
+ assert.match(g.el.get('calibrationStatus').textContent,/中断/);assert.equal(g.storage.get('parryTowerAudioOffset_v05'),'45');
+});
+test('wallet shows independent tower coins and total soul fragments through purchases and defeat rewards',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({coins:200})});assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),200);
+ g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');g.upgradeBuy('skin-buy','chick');
+ assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),150);g.press('upgradeCloseBtn');g.press('startBtn');g.bloodTest().setTowerCoins(37);
+ assert.equal(Number(g.el.get('towerCoinsLabel').textContent),37);assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),150);
+ g.bloodTest().setHp(1);g.frame(g.state().attackAt+1);assert.equal(g.state().mode,'gameover');
+ assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),g.state().souls);assert.ok(g.state().souls>150);
+});
 test('player settings use current gains at 100%, persist 0-200 independently and pause combat safely',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest(),due=g.state().attackAt;
  g.press('settingsBtn');assert.equal(g.state().mode,'settings');assert.equal(g.state().scoreActive,false);
