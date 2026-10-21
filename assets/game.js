@@ -497,7 +497,7 @@ function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
  upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
 }
-function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records();}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');}
 function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
  if(action==='skin-equip'){

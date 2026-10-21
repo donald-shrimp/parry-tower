@@ -2503,7 +2503,7 @@ test('skin purchases charge approved prices once, preserve currency on failure, 
  g.upgradeBuy('skin-buy','chick');assert.equal(g.state().souls,1250);
  g.upgradeBuy('skin-buy','fundoshi');assert.equal(g.state().souls,650);g.upgradeBuy('skin-buy','spacetime');assert.equal(g.state().souls,50);
  assert.equal(g.state().permanent.equippedSkin,'spacetime');assert.deepEqual(Array.from(g.state().permanent.unlockedSkins),['chick','fundoshi','spacetime']);
- g.press('upgradeCloseBtn');assert.match(g.el.get('titleRecords').innerHTML,/時空のスキン/);g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');
+ g.press('upgradeCloseBtn');assert.doesNotMatch(g.el.get('titleRecords').innerHTML,/時空のスキン/);assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>0F<\/b>/);g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');
  const saved=[...g.storage];g.upgradeBuy('skin-buy','__proto__');assert.deepEqual([...g.storage],saved);
  const reload=makeHarness(Object.fromEntries(g.storage));assert.equal(reload.state().permanent.equippedSkin,'spacetime');
  assert.equal(reload.state().permanent.skinRecords.normal.bestFloor,12,'old record migrated');
