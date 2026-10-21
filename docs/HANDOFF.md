@@ -1,10 +1,10 @@
 # 継続状態（2026-10-21）
 
-## 最新：iPhoneの連打による文字選択対策（公開作業中）
+## 最新：iPhoneの連打による文字選択対策（公開済み）
 
 ゲームの.app内に標準/Safari用user-select:none、touch-callout:noneと透明なtap-highlightを追加。入力欄/textarea/contenteditable=trueは選択と長押しを許可し、既存のタッチ操作やスクロール指定は変更していない。AppleのSafari CSS Referenceを確認。ブラウザで見出しのダブルクリック後に選択なし、設定音量100→105→100%の操作、プレビューcanvasのtouch-action:autoと戦闘canvasのnoneを確認。警告なし、UI既存2件/diff検査成功。iPhone実機の連打は未確認。ユーザーの「じっそうして」で本番反映を開始。codex/ios-tap-selectionでmainからCSS対策だけを取り込み、v0.9.5-preview-3へ識別子とキャッシュqueryを統一。盾の候補3a5d70bは元のブランチに保管し、今回の公開には含めない。直前の終了画面の不要項目はユーザーの特定待ちで変更していない。
 
-公開前検証：Node全406件成功（test-results/ios-selection-release/node.txt、163.8秒）。Python画像8件/実フォント2件、JS43ファイル構文、CIのSVG/Pages参照、diff検査成功。ビルド識別子以外のコード差分はCSS3行のみで、主人公モーション/手動ポーズはmainと一致。ローカル本編でv0.9.5-preview-3、ダブルクリック後の選択なし、警告なしを確認。次はmain統合・push・CI/Pages・公開ファイルとGUI確認。
+公開前検証：Node全406件成功（test-results/ios-selection-release/node.txt、163.8秒）。Python画像8件/実フォント2件、JS43ファイル構文、CIのSVG/Pages参照、diff検査成功。ビルド識別子以外のコード差分はCSS3行のみで、主人公モーション/手動ポーズはmainと一致。ローカル本編でv0.9.5-preview-3、ダブルクリック後の選択なし、警告なしを確認。v0.9.5-preview-3をmainへ統合・push済み（実装90da5bf、公開222bc4f）。Pages 39620902231 success。公開7ファイルがコミットと完全一致（test-results/ios-selection-release/live-assets.json）。公開GUIで新ビルド・ダブルクリック後の選択なし・設定の開閉/入力欄の選択許可・警告なしを確認（live.png）。通常セーブ/中断は操作せず保持。今回のSHAにStatic checksの新規実行はAPIで見つからず、ローカル全406件と画像/フォント/構文/参照検証を証拠とする。次はiPhone実機で連打による青い表示の再発有無を確認。公開先：https://donald-shrimp.github.io/parry-tower/?v=v0.9.5-preview-3 。
 
 ## 最新：主人公の盾を振り抜く動き（ローカル候補）
 
