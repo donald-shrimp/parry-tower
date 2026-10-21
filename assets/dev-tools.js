@@ -34,7 +34,7 @@
   floor.value=String(f);
   const key=enemy.value;
   const practice=$('devPractice').checked;
-  const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked);
+  const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked,Number($('devTempo').value));
   status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+(practice?' — 無敵練習・記録しません':' — 記録は保存しません')):'指定した敵が見つかりません';
   renderBalance();
  }
@@ -49,6 +49,7 @@
  });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
+ $('devTempo').value=String(Math.min(6,Math.max(0,Math.floor(Number(params.get('tempo'))||0))));
  $('devSkinEffects').checked=params.get('skinEffects')!=='0';
  if(window.ParryProgression.SKINS.some(skin=>skin.id===params.get('skin')))$('devSkin').value=params.get('skin');
  const sfxVolume=$('devSfxVolume'),sfxValue=$('devSfxVolumeValue');

@@ -16,6 +16,7 @@
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
   <label for="devSkin">主人公の外見<select id="devSkin"><option value="normal">いつもの主人公</option><option value="chick">ひよこちゃん</option><option value="fundoshi">赤ふんどし</option><option value="spacetime">時空のスキン</option></select></label>
+  <label for="devTempo">緩慢の呪い<select id="devTempo"><option value="0">なし</option><option value="1">Lv.1 / −2 BPM</option><option value="2">Lv.2 / −4 BPM</option><option value="3">Lv.3 / −6 BPM</option><option value="4">Lv.4 / −8 BPM</option><option value="5">Lv.5 / −10 BPM</option><option value="6">Lv.6 / −12 BPM</option></select></label>
   <button type="button" id="devLaunch">▶ 指定条件で開始</button>
   <button type="button" id="devReset">↻ タイトルに戻る</button>
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
@@ -170,8 +171,8 @@
 <script src="./assets/stage-music.js?v=v0.9.5-preview-3" defer></script>
 <script src="./assets/audio-clock.js?v=v0.9.5-preview-3" defer></script>
 <script src="./assets/player-settings.js?v=v0.9.5-preview-3&timing=2" defer></script>
-<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-3&checkpoint=2" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-3&timing=2" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.5-preview-3" defer></script>
+<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-3&checkpoint=2&tempo=1" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-3&timing=2&tempo=1" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.5-preview-3&tempo=1" defer></script>
 </body>
 </html>

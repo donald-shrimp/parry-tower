@@ -407,7 +407,7 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
  assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-3"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-3"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-3&tempo=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -2704,12 +2704,68 @@ test('Dev merchant buttons launch meaningful presets without saving, and ordinar
 });
 
 
-test('tempo breakthrough adds whole musical beats at each level and double remains below certainty',()=>{
- for(const [level,extra]of [[0,0],[1,1],[2,1],[3,2],[4,2],[5,3],[6,4]]){
-  const {g,d}=makeRelicFight();d.setSkill('tempo',level);const initial=g.state().attackBeat;
-  resolveBloodParry(g,20);assert.equal(g.state().attackBeat-initial,P.byId.slime.rhythm[0]+extra);
-  assert.ok(Number.isInteger(g.state().attackBeat));
+test('tempo levels lower the shared BPM by two each without adding beats to the rhythm',()=>{
+ for(const [enemy,base]of [['knight',112],['rogue',124],['guardian',136]])for(let level=0;level<=6;level++){
+  const g=makeHarness({},true);g.dev().launch(5,enemy+':normal',true,'normal',true,level);
+  const before=g.state();assert.equal(before.bpm,base-level*2);assert.ok(Math.abs(before.attackSpan-4*60000/before.bpm)<1e-6);
+  assert.equal(g.dev().skinState().tempoReduction,level*2);
+  assert.match(g.el.get('trackLabel').textContent,new RegExp(before.bpm+' BPM'));
+  for(const step of P.byId[enemy].rhythm){
+   const beat=g.state().attackBeat;resolveBloodParry(g,20);
+   assert.equal(g.state().attackBeat-beat,step,'the original rhythm stays intact');
+   assert.ok(Math.abs(g.state().attackSpan-step*60000/before.bpm)<1e-6);
+  }
  }
+});
+
+
+test('tempo stacks with each spacetime roll once and freezes until the next enemy',()=>{
+ for(const [roll,shift]of [[.1,12],[.5,0],[.9,-12]]){
+  const g=makeHarness({},true);g.random(roll);g.dev().launch(5,'guardian:normal',true,'spacetime',true,6);
+  assert.equal(g.state().bpm,136+shift-12);assert.equal(g.dev().skinState().tempoOffset,shift);
+  g.bloodTest().setSkill('tempo',1);g.random(.99);g.press('pauseBtn');g.frame(g.now+1500);g.press('resumeBtn');
+  assert.equal(g.state().bpm,136+shift-12,'resume must not reapply or change the encounter reduction');
+  g.el.get('practiceEnemy').value='knight:normal';g.el.get('practiceEnemy').listeners.change();
+  assert.equal(g.state().bpm,112-12-2,'the next enemy uses the current skill, without accumulating old reductions');
+ }
+});
+
+test('tempo preserves its shared clock through the boss second movement and keeps audition independent',()=>{
+ const g=makeHarness({},true);g.dev().launch(80,'endking:elite',false,'normal',true,6);
+ const d=g.bloodTest();d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);resolveBloodParry(g,20);
+ assert.equal(g.state().phaseStage,'rumble');g.frame(g.now+1501);
+ assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,124);
+ g.frame(g.state().phaseCountStartAt+4*g.state().beat*1000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,124);
+ assert.equal(g.state().attackSpan,4*60000/124);
+ g.dev().previewMusic('crypt','boss');assert.equal(g.state().bpm,136,'BGM-only audition uses the original tempo');
+});
+
+test('tempo checkpoint restores the frozen reduction and upgrades old checkpoints without it',()=>{
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.setSkill('tempo',6);d.setBreaks('tempo',2);d.jumpFloor(5);
+ assert.equal(g.state().bpm,124);g.press('pauseBtn');g.press('suspendBtn');
+ const saved=g.storage.get(RUN_KEY);assert.equal(JSON.parse(saved).game.tempoBpmReduction,12);
+ for(const legacy of [false,true]){
+  const record=JSON.parse(saved);if(legacy)delete record.game.tempoBpmReduction;
+  g.storage.set(RUN_KEY,JSON.stringify(record));const re=reloadHarness(g);re.press('continueBtn');
+  assert.equal(re.state().bpm,124);assert.equal(re.state().runSkills.tempo,6);assert.equal(re.state().attackSpan,4*60000/124);
+ }
+ for(const invalid of [-2,1,14]){
+  const record=JSON.parse(saved);record.game.tempoBpmReduction=invalid;g.storage.set(RUN_KEY,JSON.stringify(record));
+  assert.equal(reloadHarness(g).el.get('continueBtn').hidden,true);
+ }
+});
+
+test('Dev tempo selector presets and launches every level without saving',()=>{
+ const g=makeHarness({},true,'','?floor=5&enemy=guardian&practice=1&tempo=6'),before=JSON.stringify([...g.storage]);
+ assert.equal(g.el.get('devTempo').value,'6');g.press('devLaunch');assert.equal(g.state().bpm,124);assert.equal(g.state().runSkills.tempo,6);assert.equal(g.state().skillBreaks.tempo,2);
+ g.el.get('devTempo').value='0';g.press('devLaunch');assert.equal(g.state().bpm,136);assert.equal(g.state().runSkills.tempo,undefined);
+ assert.equal(JSON.stringify([...g.storage]),before);
+ const equipped=makeHarness({parryTowerPermanent_v1:JSON.stringify({slots:1,unlockedSkills:['tempo'],equipped:['tempo',null]})},true,'','?floor=5&enemy=guardian&tempo=0');
+ equipped.dev().launch(5,'guardian:normal');assert.equal(equipped.state().bpm,134,'API callers without an override retain equipped skills');
+ equipped.press('devLaunch');assert.equal(equipped.state().bpm,136,'the explicit None selection overrides an equipped curse');
+});
+
+test('double remains below certainty at its breakthrough cap',()=>{
  for(const [roll,multiplier]of [[.769,2],[.77,1],[.99,1]]){
   const {g,d}=makeRelicFight();d.setSkill('double',7);g.random(roll);resolveBloodParry(g,20);
   assert.equal(d.hits()[0].dealt,Math.round(25*1.012*multiplier));

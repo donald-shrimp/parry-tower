@@ -21,6 +21,7 @@
   if(g.mode==='room'&&g.currentRoom==='event'&&!g.eventId)return null;
   if(![null,'first','boss5','boss10','special'].includes(g.relicRewardKind)||![null,'room','mirror'].includes(g.relicReturn))return null;
   if(![-12,0,12].includes(g.skinTempoOffset??0))return null;
+  if(g.tempoBpmReduction!==undefined&&![0,2,4,6,8,10,12].includes(g.tempoBpmReduction))return null;
   if(typeof g.legacyVisual!=='boolean'||typeof g.tutorial!=='boolean'||typeof g.tutorialFinishing!=='boolean'||!Number.isInteger(g.tutorialStep)||!number(g.tutorialStep,0,2)||(g.tutorial&&g.floor!==1))return null;
   for(const key of ['lv','skillBreaks','relicCounters'])if(!g[key]||typeof g[key]!=='object'||Array.isArray(g[key]))return null;
   for(const [id,n]of Object.entries(g.relicCounters))if(!rids.has(id)||!Number.isInteger(n)||!number(n,0,1000))return null;

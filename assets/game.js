@@ -63,7 +63,7 @@ const SKILLS=[
 {id:'stability',icon:'🍀',name:'静かな呼吸',rarity:'common',max:6,desc:l=>`通常パリィを ±${31+l*3}ms に拡張`,hint:'操作補助'},
 {id:'ember',icon:'☄️',name:'灼熱',rarity:'common',max:10,desc:l=>`パリィで炎の継続ダメージ +${l*7}`,hint:'処刑と共鳴'},
 {id:'execute',icon:'💀',name:'処刑人',rarity:'rare',max:6,desc:l=>`残HP35%以下の敵への攻撃 +${l*23}%`,hint:'炎と共鳴'},
-{id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`敵の攻撃間隔 +${tempoDelay(l)}拍（初撃・再開直後を除く）`,hint:'テンポ操作'},
+{id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`BGMと敵のBPM −${tempoReduction(l)}`,hint:'テンポ操作'},
 {id:'pulse',icon:'🌟',name:'共鳴波',rarity:'rare',max:6,desc:l=>`${8}コンボごとに衝撃波 +${l*42} ダメージ`,hint:'コンボ特化'},
 {id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${l*45}`,hint:'集中と共鳴'},
 {id:'gamble',icon:'🥀',name:'背水',rarity:'rare',max:6,desc:l=>`自分のHPが半分未満なら攻撃 +${l*30}%`,hint:'危険な火力'},
@@ -76,7 +76,7 @@ const SKILLS=[
  {id:'frost',icon:'❄️',name:'氷結',rarity:'rare',max:6,startCost:90,desc:l=>`4パリィで氷の加護。次の被攻撃 -${frostReduction(l)}%`,hint:'被ダメージ軽減'},
  {id:'king',icon:'👑',name:'王の一撃',rarity:'epic',max:4,startCost:300,desc:l=>`10コンボごとに基礎攻撃 ${2+l}倍 の追撃`,hint:'コンボ特化'}
 ];
-function tempoDelay(level){return Math.ceil(Math.min(4,level)*.5)+Math.max(0,level-4)}
+function tempoReduction(level){return Math.min(6,Math.max(0,Math.floor(Number(level)||0)))*2}
 function frostReduction(level){return Math.min(85,15+10*Math.min(6,level)+5*Math.max(0,level-6))}
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
@@ -271,7 +271,14 @@ function playMusicStep(n,t){
 function stopScore(){score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
  const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
 }}
-function startScore(enemy){score.beat=60/((enemy.boss?136:enemy.kind==='rogue'?124:112)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0));if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=STAGE_MUSIC?.get(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function encounterBpm(enemy){
+ const base=enemy.boss?136:enemy.kind==='rogue'?124:112;
+ if(devMusicAudition)return base;
+ // Freeze once per enemy, including checkpoints written before the rework.
+ game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
+ return base+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
+}
+function startScore(enemy){score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=STAGE_MUSIC?.get(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
@@ -709,7 +716,7 @@ function start(practice=false,practiceKey=null,devOptions=null){
  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=STAGE_MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.merchant){
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss'};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.merchant){
  stopScore();game.sealedSkillIds=[];
  const levels=devOptions.merchant==='capped'?{blade:20,focus:6,stability:6,frost:6,double:5}:{blade:3,focus:2,heal:3,thunder:2};
  game.lv={...levels};game.rawMaxHp=65+PR.baseValue(meta,'life')+15*lvl('heal');adjustRelicMaxHp();game.hp=game.maxHp;
@@ -970,6 +977,7 @@ function spawnEnemy(t){
  game.phaseStage=null;game.phaseStartedAt=0;game.phaseCountStartAt=0;
  if(archetype.boss&&!game.practice)game.shield+=runBonus('bossWard');
  game.skinTempoOffset=runSkinRules().randomTempo?[12,0,-12][Math.min(2,Math.floor(Math.random()*3))]:0;
+ game.tempoBpmReduction=tempoReduction(lvl('tempo'));
  prepareEncounterArt(t);syncHUD();
 }
 function prepareEncounterArt(t){
@@ -1005,7 +1013,7 @@ function nextStrike(){
  if(e.finalBoss&&e.phase===1&&e.phaseRhythm&&e.hp>0&&e.hp<=e.maxHp*.5){
   beginFinalPhase();return;
  }
- const step=e.rhythm[e.index%e.rhythm.length];e.index++;const extra=tempoDelay(lvl('tempo'));const beats=step+extra;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
+ const beats=e.rhythm[e.index%e.rhythm.length];e.index++;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
 function beginFinalPhase(){
  const e=game.enemy;
  e.phase=2;e.rhythm=[...e.phaseRhythm];e.index=0;
@@ -1026,7 +1034,7 @@ function beginFinalCountIn(){
  const e=game.enemy;
  startScore(e);
  // If the browser cannot initialize audio, the visual count-in still finishes safely.
- if(!score.active)score.beat=60/(136+(runSkinRules().randomTempo?game.skinTempoOffset||0:0));
+ if(!score.active)score.beat=60/encounterBpm(e);
  game.phaseCountStartAt=score.active?scoreToPerf(score.origin):performance.now()+170;
  if(score.active){
   // Four low drum strokes on the same AudioContext clock; only the first is accented.
@@ -1617,7 +1625,7 @@ function enemy(now){
  // still arrive. Project the next visual phrase without advancing gameplay.
  const awaitingInput=game.mode==='combat'&&!game.attackResolved&&now>=attackAt;
  if(awaitingInput){
-  lastImpactAt=attackAt;span=(e.rhythm[e.index%e.rhythm.length]+tempoDelay(lvl('tempo')))*score.beat*1000;
+  lastImpactAt=attackAt;span=e.rhythm[e.index%e.rhythm.length]*score.beat*1000;
   attackAt+=span;e={...e,index:e.index+1};
  }
  const d=attackAt-now;
@@ -2063,12 +2071,12 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
  if(DEV_MODE)window.__parryDev=Object.freeze({
-  launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false){
+  launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false,tempoLevel=null){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
    devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
    const key=practice?(enemyKey||P.encounterForFloor(f,()=>.5).bookKey):null;
-   start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects});
+   start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects,tempoLevel});
    return true;
   },
   merchant(profile='growing',skin='normal',skinEffects=true){
@@ -2077,7 +2085,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
    start(false,null,{floor:14,merchant:profile,skinEffects});return true;
   },
   previewSkin(){return devPreviewSkin},
-  skinState(){return {id:visualSkin(),effects:!!game.skinEffects,hpMultiplier:runSkinRules().hp,parryWindow:getParryWindow(),justWindow:getPerfectWindow(),tempoOffset:game.skinTempoOffset||0}},
+  skinState(){return {id:visualSkin(),effects:!!game.skinEffects,hpMultiplier:runSkinRules().hp,parryWindow:getParryWindow(),justWindow:getPerfectWindow(),tempoOffset:game.skinTempoOffset||0,tempoReduction:game.tempoBpmReduction||0}},
   reset(){title()},
   musicList(){return STAGE_MUSIC?.themes||[]},
   previewMusic(id,variant='normal'){
