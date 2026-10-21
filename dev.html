@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.5-preview-3">
-<title>パリィの塔 | 開発者テスト v0.9.5-preview-3</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview-3&font=5">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.5-preview-3">
+<meta name="parry-build" content="v0.9.5-preview-4">
+<title>パリィの塔 | 開発者テスト v0.9.5-preview-4</title>
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview-4&font=5">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.5-preview-4">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
- <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.9.5-preview-3 / 本編と別URL</span></div>
+ <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.9.5-preview-4 / 本編と別URL</span></div>
  <div class="dev-controls">
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
@@ -22,7 +22,7 @@
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
   <label for="devSkinEffects" class="dev-toggle"><input id="devSkinEffects" type="checkbox" checked> スキン効果を有効にする</label>
  </div>
- <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v0.9.5-preview-3 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
+ <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v0.9.5-preview-4 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
  <p id="devStatus" role="status">フロアと敵を選び、開始ボタンを押してください。</p>
  <div class="dev-controls dev-sound-controls" aria-label="金属音を試聴">
@@ -36,7 +36,7 @@
  <p class="dev-note">押すと盾を前へ、長押しでガード。空振り後は盾を戻し、ボタンを少し離してから再パリィ。成功時だけ剣で反撃します。</p>
  <p id="devSkinStatus" class="dev-note" role="status"></p>
  <p class="dev-note">設定を変えたら「指定条件で開始」。無敵練習中はふんどしでも死にません。効果をOFFにすると外見だけを比較できます。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
- <p class="dev-note"><a href="./ending-preview.html?v=v0.9.5-preview-3" style="color:#e4cb99">エンディングの演出を確認する ↗</a> · <a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
+ <p class="dev-note"><a href="./ending-preview.html?v=v0.9.5-preview-4" style="color:#e4cb99">エンディングの演出を確認する ↗</a> · <a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
  <p class="dev-note">開発者向けの検証ページです。魂の欠片・図鑑・恒久育成・音声補正は保存しません。公開URLを知っている人は開けるため、認証付き管理画面ではありません。</p>
 </section>
 <section id="devMusicRoom" class="dev-panel dev-music" aria-label="ステージBGM試聴室">
@@ -54,7 +54,7 @@
 </section>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview-3 DEV</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview-4 DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
@@ -144,35 +144,35 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/encounters.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/progression.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/relics.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/routes.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/events.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-art.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-style.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/audio-clock.js?v=v0.9.5-preview-3" defer></script>
-<script src="./assets/player-settings.js?v=v0.9.5-preview-3&timing=2" defer></script>
-<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-3&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-3&timing=2&tempo=1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.5-preview-3&tempo=1" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/encounters.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/progression.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/relics.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/routes.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/events.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-art.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-style.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/audio-clock.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/player-settings.js?v=v0.9.5-preview-4&timing=2" defer></script>
+<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-4&checkpoint=2&tempo=1" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-4&timing=2&tempo=1" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.5-preview-4&tempo=1" defer></script>
 </body>
 </html>
