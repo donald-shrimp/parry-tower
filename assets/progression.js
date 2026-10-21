@@ -81,7 +81,7 @@
  // Individual prices: chick 50, fundoshi and spacetime 600 each.
  const SKINS=Object.freeze([
   Object.freeze({id:'normal',cost:0,name:'いつもの主人公',icon:'⚔',tag:'STANDARD',color:'#93c7ff',look:'いつもの剣、いつもの盾。何だかんだで、この格好が落ち着く。',rule:'いつものルールで塔に挑戦。'}),
-  Object.freeze({id:'chick',cost:50,name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'失敗したって、まだひよこ。相棒と一緒に、ぴよっとリベンジ！',rule:'HP1.5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
+  Object.freeze({id:'chick',cost:50,name:'ひよこちゃん',icon:'🐣',tag:'やさしい',color:'#ffe184',look:'か、かわいい〜〜〜！！敵もうっとりのかわいさ。',rule:'HP1.5倍・通常パリィ判定3倍・ジャスト判定2倍。'}),
   Object.freeze({id:'fundoshi',cost:600,name:'赤ふんどし',icon:'🔥',tag:'一発勝負',color:'#ff9c9c',look:'漢なら一発勝負！お前の実力を見せてみろ！！',rule:'敵の攻撃がガード・被弾なら即死。障壁・軽減・復活も無効。'}),
   Object.freeze({id:'spacetime',cost:600,name:'時空のスキン',icon:'⌛',tag:'変則リズム',color:'#d4b0ff',look:'時計だって気分屋だ。気まぐれなテンポを乗りこなせ！',rule:'遭遇ごとにBPM＋12・0・−12を等確率で抽選。BGMと攻撃が一緒に変速。'})
  ]);
