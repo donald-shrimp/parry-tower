@@ -47,7 +47,7 @@ jobs:
         run: |
           from pathlib import Path
           html = Path('index.html').read_text(encoding='utf-8')
-          build = 'v0.9.3-14'
+          build = 'v0.9.4'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
               'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'

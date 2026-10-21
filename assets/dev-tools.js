@@ -39,6 +39,10 @@
   renderBalance();
  }
  $('devLaunch').addEventListener('click',launch);
+ for(const [id,profile]of [['devMerchantGrowing','growing'],['devMerchantCapped','capped']])$(id).addEventListener('click',()=>{
+  engine.merchant(profile,$('devSkin').value,$('devSkinEffects').checked);
+  status.textContent='行商人の試遊 · 塔貨150 / '+(profile==='capped'?'上限到達ビルド':'育成途中ビルド')+'。1品購入して次の戦闘へ。保存しません。';
+ });
  $('devReset').addEventListener('click',()=>{
   engine.reset();
   status.textContent='初期画面に戻りました。ゲーム内の保存データは変更していません。';

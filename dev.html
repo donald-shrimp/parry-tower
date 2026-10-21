@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.3-14">
-<title>パリィの塔 | 開発者テスト v0.9.3</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.3-14&font=4">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.3-14">
+<meta name="parry-build" content="v0.9.4">
+<title>パリィの塔 | 開発者テスト v0.9.4</title>
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.4&font=4">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.4">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
- <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.9.3 / 本編と別URL</span></div>
+ <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.9.4 / 本編と別URL</span></div>
  <div class="dev-controls">
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
@@ -21,6 +21,7 @@
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
   <label for="devSkinEffects" class="dev-toggle"><input id="devSkinEffects" type="checkbox" checked> スキン効果を有効にする</label>
  </div>
+ <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v0.9.4 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
  <p id="devStatus" role="status">フロアと敵を選び、開始ボタンを押してください。</p>
  <div class="dev-controls dev-sound-controls" aria-label="金属音を試聴">
@@ -52,7 +53,7 @@
 </section>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.3 DEV</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.4 DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="audioBtn" aria-label="音声の切り替え">♫ SOUND ON</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <div class="layout">
@@ -124,32 +125,32 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.3-14" defer></script>
-<script src="./assets/encounters.js?v=v0.9.3-14" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.3-14" defer></script>
-<script src="./assets/progression.js?v=v0.9.3-14" defer></script>
-<script src="./assets/relics.js?v=v0.9.3-14" defer></script>
-<script src="./assets/routes.js?v=v0.9.3-14" defer></script>
-<script src="./assets/events.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-art.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.3-14" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.3-14" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.3-14" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-style.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.3-14" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.3-14" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.3-14" defer></script>
-<script src="./assets/game.js?v=v0.9.3-14" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.3-14" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.4" defer></script>
+<script src="./assets/encounters.js?v=v0.9.4" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.4" defer></script>
+<script src="./assets/progression.js?v=v0.9.4" defer></script>
+<script src="./assets/relics.js?v=v0.9.4" defer></script>
+<script src="./assets/routes.js?v=v0.9.4" defer></script>
+<script src="./assets/events.js?v=v0.9.4" defer></script>
+<script src="./assets/character-art.js?v=v0.9.4" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.4" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.4" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.4" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.4" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.4" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.4" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.4" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.4" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.4" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.4" defer></script>
+<script src="./assets/character-style.js?v=v0.9.4" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.4" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.4" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.4" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.4" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.4" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.4" defer></script>
+<script src="./assets/game.js?v=v0.9.4" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.4" defer></script>
 </body>
 </html>

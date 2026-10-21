@@ -5,7 +5,11 @@
   Object.freeze({id:'reroll',icon:'↻',name:'運命の札',cost:12,desc:'スキル報酬の引き直し +1'}),
   Object.freeze({id:'barrier',icon:'🛡️',name:'結界の護符',cost:16,desc:'障壁 +20'}),
   Object.freeze({id:'skill',icon:'📜',name:'秘伝の巻物',cost:26,desc:'通常のスキル抽選から1つ取得'}),
-  Object.freeze({id:'relic',icon:'🏺',name:'封印された遺物箱',cost:42,desc:'風化60%・秘宝40%の遺物3択'})
+  Object.freeze({id:'relic',icon:'🏺',name:'封印された遺物箱',cost:42,desc:'風化60%・秘宝40%の遺物3択'}),
+  Object.freeze({id:'training',icon:'📖',name:'技の指南書',cost:34,desc:'所持スキルを指定して1レベル強化'}),
+  Object.freeze({id:'breakthrough',icon:'✦',name:'限界突破の秘伝書',cost:60,desc:'上限到達スキルの上限・レベルを+1（各2回まで）'}),
+  Object.freeze({id:'elixir',icon:'🔮',name:'奥義の霊薬',cost:18,desc:'奥義ゲージ+3（最大7）。次の成功パリィで発動'}),
+  Object.freeze({id:'polish',icon:'✨',name:'遺物の研磨剤',cost:36,desc:'所持遺物を指定して効果を強化（各1回まで）'})
  ]);
  const EVENTS=Object.freeze([
   Object.freeze({id:'altar',icon:'🩸',name:'血の祭壇',description:'血を捧げる者に、祭壇は新たな力を授ける。',
