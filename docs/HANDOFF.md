@@ -20,9 +20,11 @@ Node全376件成功（test-results/v094/node.txt）。新規9件は全24スキ�
 
 実ブラウザで8商品・対象選択前後の数値・無料で戻る・限界突破購入→15F戦闘→一時停止・研磨購入と所持欄の強化表示・警告なしを確認。商品から対象選択へ移る際のスクロールも先頭へ戻す（local-polish.png）。最終の入力ID検証強化について関連2件も成功（final-validation.txt）。
 
-## 残り / 次の手順
+## 公開結果 / 次の手順
 
-ブランチcodex/v094-build-expansion。差分最終確認・関連テスト後にコミット、最新mainへ統合/pushし、GitHub CI/Pagesと公開ファイル・実画面を確認する。本番公開が済むまで完了扱いにしない。
+採用ec41a1d、main統合・push 31a3e2f。v0.9.4の本番公開まで完了。GitHub Static checks 39540682745・Pages 39540682382ともに成功。公開HTML/dev/game/events/relics/dev-tools/診断/style/フォントの9ファイルが公開コミットのGit正本とSHA一致（live-assets.json）。公開実ブラウザで既存記録4F/6コンボ保持、新商品8種、無料で戻る、剛剣Lv20→21と塔貨150→90、突破済みビルド表示、警告/エラーなしを確認（live-breakthrough.png、live-purchase.png）。
+
+依頼は実装・検証・main統合・公開・公開後確認まで完了。次はユーザーの実プレイ感触に基づく価格/効果等のフィードバック対応。追加の開発や予約は不要。
 
 ## 保持する前提
 
