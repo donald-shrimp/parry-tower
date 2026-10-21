@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
-const build = 'v0.9.5-preview';
+const build = 'v0.9.5-preview-1';
 
 test('self-hosted subset is a valid-size WOFF2 and retains the license notice', () => {
  const font = fs.readFileSync(path.join(root, 'assets/fonts/cp-period-display.woff2'));
@@ -18,7 +18,7 @@ test('credits are reachable from both entrypoints', () => {
   const html = read(file);
   assert.match(html, /<footer class="site-footer">/);
   assert.match(html, /href="\.\/credits\.html"/);
-  assert.ok(html.includes('./assets/style.css?v='+build+'&font=4'));
+  assert.ok(html.includes('./assets/style.css?v='+build+'&font=5'));
   assert.doesNotMatch(html, /class="brandmark"/);
   assert.match(html, /class="title-logo">パリィ<span class="title-no">の<\/span>塔<\/h2>/);
   assert.doesNotMatch(html, /id="titleCover"[^]*?<div class="modal"><div class="modal-symbol">⚔️/);
@@ -48,7 +48,7 @@ test('visual headlines and all RUN STATUS counters use pixel face, explanatory c
  assert.match(css, /#titleCover h2\.title-logo[^{]*\{[^}]*font-size:clamp\(46px,14vw,82px\)/);
  assert.match(css, /#titleCover h2 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
  assert.match(css, /\.brand h1 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
- assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=4"\)/);
+ assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=5"\)/);
 });
 
 test('canvas battle text uses display font without changing combat effects', () => {
