@@ -20,9 +20,11 @@ Node全391件成功（test-results/v100/node-verified.txt）。新規15件で設
 
 実ブラウザで200%の音量保存、測定開始/取消、長押しでガード練習が進むこと、中断→再読み込み→続行、設定のキーボード操作、警告なしを確認。390×844相当（client幅375px）の実表示でタイトル/設定/タップ領域と横あふれなしを確認（mobile-title/settings/calibration.png）。一時サイズの確認タブは閉じ、通常1280×720の新しい確認タブへ戻した。実スマホの音声遅延・手触りはユーザー確認が必要。
 
-## 次の手順
+## 公開結果と次の手順
 
-codex/v1-readiness-previewで差分レビュー済み。コミット、main統合、先行版公開、CI/Pages/公開ファイルと実画面を確認する。完了後はエンディングのユーザーレビュー対応。公開結果はここへ追記する。
+v0.9.5-previewをmainへ統合・公開済み。実装fee52fc、統合ecf1966、小数HPの保存修正46462b1。最新のStatic checks 39586533288 / Pages 39586532745は両方success。公開15ファイルのSHA256がGitの内容と一致（test-results/v100/live-assets.json）。公開実画面で設定、エンディングの再生/停止/シーク/尺変更と警告なしを確認（live-settings.png / live-ending.png）。
+
+本編：https://donald-shrimp.github.io/parry-tower/?v=v0.9.5-preview 。演出確認：https://donald-shrimp.github.io/parry-tower/ending-preview.html?v=v0.9.5-preview 。次はエンディングのユーザーレビュー対応。確認画面の数値変更はそのページ内だけの試行で、本編や既定値には保存されない。採用前に本編のクリア分岐へ接続しない。補正の体感と音声遅延は実機で確認する。
 
 ## 維持する前提
 
