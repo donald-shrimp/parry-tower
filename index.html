@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.5-preview-1">
-<title>パリィの塔 | v0.9.5-preview-1</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview-1&font=5">
+<meta name="parry-build" content="v0.9.5-preview-2">
+<title>パリィの塔 | v0.9.5-preview-2</title>
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview-2&font=5">
 </head>
 <body>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview-1</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview-2</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
@@ -85,9 +85,9 @@
       <p id="saveStatus" class="smallnote" role="status"></p>
      </div></div>
      <div class="cover" id="confirmCover" hidden><div class="modal"><h2>新しく挑戦する？</h2><p>今の中断データを置き換え、1Fから始めます。</p><div class="actionrow"><button type="button" class="primary" id="newRunConfirm">新しく始める</button><button type="button" class="secondary" id="newRunCancel">戻る</button></div></div></div>
-     <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><button class="primary" id="resumeBtn">戦闘に戻る</button><button class="secondary" id="suspendBtn">中断してタイトルへ</button></div></div>
+     <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><p id="pauseStatus" role="status" hidden></p><button class="primary" id="resumeBtn">戦闘に戻る</button><button class="secondary" id="suspendBtn">中断してタイトルへ</button></div></div>
     </div>
-    <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b></span><span class="tower-money">🪙 塔貨 <strong id="towerCoinsLabel">0</strong></span></div></div>
+    <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b></span><span class="battle-wallet"><span class="tower-money">🪙 塔貨 <strong id="towerCoinsLabel">0</strong></span><span class="soul-money">✧ 魂の欠片 <strong id="soulFragmentsLabel">0</strong></span></span></div></div>
    </section>
    
   </main>
@@ -100,33 +100,34 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/encounters.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/progression.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/relics.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/routes.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/events.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-art.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-style.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/player-settings.js?v=v0.9.5-preview-1" defer></script>
-<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-1&checkpoint=2" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-1&shop=2" defer></script>
+<script src="./assets/diagnostics.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/encounters.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/enemy-motions.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/progression.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/relics.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/routes.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/events.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-art.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-svg.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-flat.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-trace.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-ready.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-knight.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/combat-sfx.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-art-defaults.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-edit.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/palette-candidates.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-style.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-enemy-data.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/character-rig.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/stage-music.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/audio-clock.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/player-settings.js?v=v0.9.5-preview-2" defer></script>
+<script src="./assets/run-checkpoint.js?v=v0.9.5-preview-2&checkpoint=2" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-2" defer></script>
 </body>
 </html>

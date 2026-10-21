@@ -4,14 +4,14 @@
  */
 (function(root){
  'use strict';
- const BUILD='v0.9.5-preview-1';
+ const BUILD='v0.9.5-preview-2';
  const REQUIRED_ASSETS=[
   'style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js',
-  'relics.js','routes.js','events.js','player-settings.js','run-checkpoint.js','combat-sfx.js','stage-music.js','game.js'
+  'relics.js','routes.js','events.js','audio-clock.js','player-settings.js','run-checkpoint.js','combat-sfx.js','stage-music.js','game.js'
  ];
  const MODULES={
   encounters:'ParryEncounters',motions:'ParryEnemyMotions',progression:'ParryProgression',
-  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents',stageMusic:'ParryStageMusic',settings:'ParryPlayerSettings',checkpoint:'ParryRunCheckpoint'
+  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents',stageMusic:'ParryStageMusic',settings:'ParryPlayerSettings',checkpoint:'ParryRunCheckpoint',clock:'ParryAudioClock'
  };
  let registeredBuild=null,stateGetter=null,assetFailures=[];
  let hasLoaded=false;
@@ -67,7 +67,7 @@
    status:issues.length?'mismatch':'ok',
    expectedBuild:BUILD,htmlBuild:html,gameBuild:registeredBuild,
    url:root.location?.pathname||'',devMode,
-   mode:state?.mode??null,floor,practice:state?.practice??null,
+   mode:state?.mode??null,floor,practice:state?.practice??null,clock:state?.clock??null,
    enemy:state?.enemy??null,
    towerCoins:typeof state?.towerCoins==='number'?state.towerCoins:null,
    towerCoinsEarned:typeof state?.towerCoinsEarned==='number'?state.towerCoinsEarned:null,
