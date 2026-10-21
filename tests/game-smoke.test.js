@@ -162,6 +162,9 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
     gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
     counters:{...game.relicCounters},boltDue:game.relicBoltDue,emperorDue:game.relicEmperorDue}),
 
+  skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:s.desc})),
+  skillCap,merchantTargets,
+  setBreaks:(id,n)=>{game.skillBreaks[id]=n},
   bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
   gainSkill:id=>gainSkillLevel(id),
@@ -397,8 +400,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.3-14"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.3-14"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.4"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.4"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -900,7 +903,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.3/);
+  assert.match(html,/v0\.9\.4/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1097,8 +1100,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.3-14"/);
-  assert.match(html,/v0\.9\.3/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.4"/);
+  assert.match(html,/v0\.9\.4/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1289,7 +1292,7 @@ test('legendary relic: stopped hand preserves combo on first GUARD each floor, b
  d.setCombo(10);d.setEnemyAttack(10);
  resolveBloodParry(g,-40);
  assert.equal(g.state().combo,10);
- assert.equal(d.relicInfo().stopUsed,true);
+ assert.equal(d.relicInfo().stopUsed,1);
  resolveBloodParry(g,-40);
  assert.equal(g.state().combo,5,'second guard pays the minimum 5-combo penalty');
 });
@@ -1416,8 +1419,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.3-14"'),asset);
-  assert.match(html,/v0\.9\.3/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.4"'),asset);
+  assert.match(html,/v0\.9\.4/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2558,4 +2561,151 @@ test('skin records keep normal history and per-costume attempts separate while r
  const g=makeHarness(seed);g.press('startBtn');g.frame(g.state().attackAt+1);assert.equal(g.state().mode,'gameover');
  const p=g.state().permanent;assert.equal(p.skinRecords.normal.bestFloor,12);assert.equal(p.skinRecords.normal.runs,4);assert.equal(p.skinRecords.fundoshi.runs,1);assert.equal(p.skinRecords.fundoshi.bestFloor,1);assert.ok(g.state().souls>0);
  const dev=makeHarness(seed,true);const saved=[...dev.storage];dev.dev().launch(5,'guardian:normal',false,'fundoshi',true);dev.frame(dev.state().attackAt+1);assert.deepEqual([...dev.storage],saved);
+});
+
+
+function revisitMerchant(g,coins=150){
+ const d=g.bloodTest();d.jumpFloor(14);d.setTowerCoins(coins);g.routeSelect('merchant');
+ assert.equal(g.state().mode,'room');return d;
+}
+function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
+
+test('v0.9.4 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+ const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
+ const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
+ for(const skill of catalog){
+  const {g,d}=makeCrossroads();assert.equal(skill.max,expected[skill.id]||({double:5,tempo:4,fortitude:4,heartbeat:4,overcharge:5,bloodlust:4,king:4}[skill.id]||6),skill.id);
+  d.setSkill(skill.id,skill.max);assert.equal(d.gainSkill(skill.id),false);
+  d.setTowerCoins(150);g.routeSelect('merchant');
+  for(let n=1;n<=2;n++){
+   if(n===2)revisitMerchant(g);
+   buyTarget(g,'breakthrough',skill.id);
+   assert.equal(g.state().runSkills[skill.id],skill.max+n,skill.id);
+   assert.equal(g.state().skillBreaks[skill.id],n);
+   assert.equal(d.skillCap(skill.id),skill.max+n);
+   assert.equal(g.state().towerCoins,90);assert.equal(d.gainSkill(skill.id),false);
+   g.roomChoose('target:'+skill.id);assert.equal(g.state().towerCoins,90,'duplicate click free');
+  }
+  revisitMerchant(g);buyTarget(g,'breakthrough',skill.id);
+  assert.equal(g.state().towerCoins,150);assert.equal(g.state().runSkills[skill.id],skill.max+2);
+  for(const other of catalog)d.setSkill(other.id,d.skillCap(other.id));
+  assert.deepEqual(Array.from(d.rewardPool()),[]);
+  d.setSkill(skill.id,skill.max+1);
+  assert.deepEqual(Array.from(d.rewardPool()),[skill.id],'all reward pools respect effective cap');
+  assert.equal(d.gainSkill(skill.id),true);assert.equal(d.gainSkill(skill.id),false);
+  g.dev().launch(1);assert.deepEqual({...g.state().skillBreaks},{});assert.equal(d.skillCap(skill.id),skill.max);
+ }
+});
+
+test('targeted merchant purchases cancel freely, reject stale/fake targets, recheck funds and consume one visit',()=>{
+ const {g,d}=makeCrossroads();d.setSkill('blade',3);d.setTowerCoins(60);g.routeSelect('merchant');
+ g.roomChoose('buy:training');assert.equal(g.state().towerCoins,60);
+ assert.match(g.el.get('roomActions').innerHTML,/Lv.3 → 4/);
+ for(const id of ['unknown','constructor','__proto__']){assert.equal(d.gainSkill(id),false);assert.equal(d.skillCap(id),0);}
+ g.roomChoose('target:unknown');g.roomChoose('target:thunder');assert.equal(g.state().towerCoins,60);
+ g.roomChoose('back');assert.equal(g.state().roomStage,null);g.roomChoose('buy:constructor');assert.equal(g.state().towerCoins,60);
+ g.roomChoose('buy:training');d.setTowerCoins(33);g.roomChoose('target:blade');assert.equal(g.state().runSkills.blade,3);
+ d.setTowerCoins(60);d.setSkill('blade',20);g.roomChoose('target:blade');assert.equal(g.state().towerCoins,60);
+ g.roomChoose('back');buyTarget(g,'breakthrough','blade');
+ assert.equal(g.state().runSkills.blade,21);assert.equal(g.state().towerCoins,0);
+ g.roomChoose('buy:elixir');g.roomChoose('target:blade');assert.equal(g.state().charge,0);
+ g.roomChoose('continue');assert.equal(g.state().floor,5);
+});
+
+test('training raises a chosen owned skill with HP recalculation; exhausted goods are disabled',()=>{
+ const {g,d}=makeCrossroads();d.setTowerCoins(100);g.routeSelect('merchant');
+ assert.match(g.el.get('roomActions').innerHTML,/data-room-action="buy:training" disabled/);
+ assert.match(g.el.get('roomActions').innerHTML,/data-room-action="buy:breakthrough" disabled/);
+ assert.match(g.el.get('roomActions').innerHTML,/data-room-action="buy:polish" disabled/);
+ g.roomChoose('buy:training');assert.equal(g.state().towerCoins,100);
+ d.gainSkill('heal');d.setHp(10);buyTarget(g,'training','heal');
+ assert.equal(g.state().runSkills.heal,2);assert.equal(g.state().maxHp,95);assert.equal(g.state().hp,37);assert.equal(g.state().towerCoins,66);
+});
+
+test('elixir caps at seven and waits until the next successful counter to trigger ultimate',()=>{
+ const {g,d}=makeCrossroads();d.setCharge(6);d.setTowerCoins(50);g.routeSelect('merchant');
+ g.roomChoose('buy:elixir');assert.equal(g.state().charge,7);assert.equal(g.state().towerCoins,32);
+ assert.equal(d.hits().length,0);g.roomChoose('continue');d.setEnemyHp(100000);
+ resolveBloodParry(g,20);assert.equal(d.hits().filter(x=>x.label==='奥義').length,1);assert.equal(g.state().charge,0);
+ revisitMerchant(g);d.setCharge(7);g.roomChoose('buy:elixir');assert.equal(g.state().towerCoins,150);
+});
+
+test('frost and input windows have bounded useful effects through both limit breaks, including chick late input',()=>{
+ for(const [level,percent] of [[6,75],[7,80],[8,85]]){
+  const {g,d}=makeRelicFight();d.setSkill('frost',level);d.setFrostWard(true);d.setMaxHp(1000);d.setHp(1000);d.incoming(100);
+  assert.equal(g.state().hp,1000-100+percent);assert.equal(g.state().frostWard,false);
+  assert.match(d.skillCatalog().find(s=>s.id==='frost').desc(level),new RegExp('-'+percent+'%'));
+ }
+ for(const [skin,just,parry]of [['normal',27,55],['chick',54,165]]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,skin,true);
+  const d=g.bloodTest();d.setSkill('focus',8);d.setSkill('stability',8);
+  assert.equal(g.dev().skinState().justWindow,just);assert.equal(g.dev().skinState().parryWindow,parry);
+ }
+ const late=makeHarness({},true);late.dev().launch(5,'guardian:normal',false,'chick',true);
+ late.bloodTest().setSkill('stability',8);late.bloodTest().setEnemyHp(100000);
+ const due=late.state().attackAt;late.frame(due+64);assert.equal(late.state().lastStrikeKind,'miss');
+ late.clock(due+64);late.parry();late.frame(due+66);assert.equal(late.state().lastStrikeKind,'parry');
+});
+
+test('every relic can be polished once, previews upgraded copy, survives floors and loses refinement on replacement/new run',()=>{
+ const R=require('../assets/relics.js');
+ for(const relic of R.RELICS){
+  const {g,d}=makeCrossroads();d.grantRelic(relic.id);d.setTowerCoins(100);g.routeSelect('merchant');
+  g.roomChoose('buy:polish');assert.match(g.el.get('roomActions').innerHTML,new RegExp(relic.polishedDesc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  g.roomChoose('back');assert.equal(g.state().towerCoins,100);
+  buyTarget(g,'polish',relic.id);assert.deepEqual(Array.from(g.state().polishedRelics),[relic.id]);assert.equal(g.state().towerCoins,64);
+  assert.ok(g.el.get('relicList').innerHTML.includes(relic.polishedDesc));
+  g.roomChoose('continue');assert.equal(g.state().polishedRelics[0],relic.id);
+  revisitMerchant(g);buyTarget(g,'polish',relic.id);assert.equal(g.state().towerCoins,150);
+  d.grantRelic(R.RELICS.find(r=>r.id!==relic.id).id);d.grantRelic(R.RELICS.find(r=>!g.state().relics.includes(r.id)).id);
+  d.awardPreview('boss10');g.relicSelect(g.state().relicOffer[0]);g.relicReplace(relic.id);
+  assert.equal(g.state().polishedRelics.includes(relic.id),false);
+  g.dev().launch(1);assert.deepEqual(Array.from(g.state().polishedRelics),[]);
+ }
+});
+
+function polishedFight(id){
+ const {g,d}=makeCrossroads();d.grantRelic(id);d.setTowerCoins(100);g.routeSelect('merchant');buyTarget(g,'polish',id);g.roomChoose('continue');
+ d.jumpFloor(1);d.setEnemyHp(100000);g.random(.99);return {g,d};
+}
+
+test('polished relics apply their improved damage, recovery, shields and guard rules in real combat',()=>{
+ let x=polishedFight('rusty_crest');x.d.incoming(10);assert.equal(x.g.state().hp,64);x.d.incoming(10);assert.equal(x.g.state().hp,54);
+ x=polishedFight('stardust_whetstone');resolveBloodParry(x.g,20);assert.equal(x.d.hits()[0].dealt,37);
+ x=polishedFight('conduit_stone');for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷導').dealt,18);
+ x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
+ x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
+ x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,20);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
+ x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
+ x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
+ x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
+ x=polishedFight('silver_mirror');x.d.setEnemyAttack(50);resolveBloodParry(x.g,-40);assert.equal(x.g.state().hp,54);
+ x=polishedFight('royal_banner');x.d.setCombo(9);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,15);
+ x=polishedFight('blood_pact_chalice');x.d.setHp(40);x.d.incoming(10);resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,42);
+ x=polishedFight('golden_festival_bell');x.d.jumpFloor(5);x.d.setEnemyHp(100000);resolveBloodParry(x.g,20);assert.equal(x.d.hits()[0].dealt,33);
+ x=polishedFight('stopped_hand');x.d.setCombo(10);x.d.setEnemyAttack(10);resolveBloodParry(x.g,-40);resolveBloodParry(x.g,-40);assert.equal(x.g.state().combo,10);resolveBloodParry(x.g,-40);assert.equal(x.g.state().combo,5);
+ x=polishedFight('reaper_pact');assert.equal(x.g.state().maxHp,52);resolveBloodParry(x.g,20);assert.equal(x.d.hits()[0].dealt,38);
+ x=polishedFight('duet_mask');resolveBloodParry(x.g,0);x.d.resetHits();resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='仮面').dealt,15);
+});
+
+test('Dev merchant buttons launch meaningful presets without saving, and ordinary entry exposes no merchant cheat',()=>{
+ const g=makeHarness({},true),before=JSON.stringify([...g.storage]);g.dev().launch(1);assert.equal(g.state().scoreActive,true);g.press('devMerchantGrowing');
+ assert.equal(g.state().currentRoom,'merchant');assert.equal(g.state().runSkills.blade,3);assert.equal(g.state().towerCoins,150);assert.equal(g.state().scoreActive,false);
+ buyTarget(g,'training','blade');assert.equal(g.state().runSkills.blade,4);g.roomChoose('continue');assert.equal(g.state().mode,'combat');assert.equal(g.state().scoreActive,true);
+ g.press('devMerchantCapped');buyTarget(g,'breakthrough','focus');assert.equal(g.state().runSkills.focus,7);
+ assert.equal(JSON.stringify([...g.storage]),before);
+ assert.equal(makeHarness().dev(),undefined);
+});
+
+
+test('tempo breakthrough adds whole musical beats at each level and double remains below certainty',()=>{
+ for(const [level,extra]of [[0,0],[1,1],[2,1],[3,2],[4,2],[5,3],[6,4]]){
+  const {g,d}=makeRelicFight();d.setSkill('tempo',level);const initial=g.state().attackBeat;
+  resolveBloodParry(g,20);assert.equal(g.state().attackBeat-initial,P.byId.slime.rhythm[0]+extra);
+  assert.ok(Number.isInteger(g.state().attackBeat));
+ }
+ for(const [roll,multiplier]of [[.769,2],[.77,1],[.99,1]]){
+  const {g,d}=makeRelicFight();d.setSkill('double',7);g.random(roll);resolveBloodParry(g,20);
+  assert.equal(d.hits()[0].dealt,Math.round(25*1.012*multiplier));
+ }
 });

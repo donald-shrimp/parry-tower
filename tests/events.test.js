@@ -1,9 +1,9 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const EV=require('../assets/events.js');
-test('four merchant offers have unique IDs and agreed prices',()=>{
- assert.deepEqual(EV.ITEMS.map(x=>x.id),['reroll','barrier','skill','relic']);
- assert.deepEqual(EV.ITEMS.map(x=>x.cost),[12,16,26,42]);
+test('eight merchant offers have unique IDs and agreed prices',()=>{
+ assert.deepEqual(EV.ITEMS.map(x=>x.id),['reroll','barrier','skill','relic','training','breakthrough','elixir','polish']);
+ assert.deepEqual(EV.ITEMS.map(x=>x.cost),[12,16,26,42,34,60,18,36]);
  for(const item of EV.ITEMS){
   assert.equal(EV.ITEMS_BY_ID[item.id],item);
   assert.equal(item.cost>0,true);

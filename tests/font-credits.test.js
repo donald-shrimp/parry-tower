@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
-const build = 'v0.9.3-14';
+const build = 'v0.9.4';
 
 test('self-hosted subset is a valid-size WOFF2 and retains the license notice', () => {
  const font = fs.readFileSync(path.join(root, 'assets/fonts/cp-period-display.woff2'));
@@ -48,7 +48,7 @@ test('visual headlines and all RUN STATUS counters use pixel face, explanatory c
  assert.match(css, /#titleCover h2\.title-logo[^{]*\{[^}]*font-size:clamp\(46px,14vw,82px\)/);
  assert.match(css, /#titleCover h2 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
  assert.match(css, /\.brand h1 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
- assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=2"\)/);
+ assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=3"\)/);
 });
 
 test('canvas battle text uses display font without changing combat effects', () => {
