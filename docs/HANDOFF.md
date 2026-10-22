@@ -1,5 +1,17 @@
 # 継続状態（2026-10-22）
 
+## 最新：開発本体をHDDへ移動（2026-10-22）
+
+実作業場所は **E:\Development\parry-tower\parry-tower**。以降はこのパスをworkdir/ファイルリンクに使う。D:とE:がHDD、C:とF:がSSDであることを物理ディスク/パーティション対応から確認し、空き約3.7TBのE:を選択した。外側フォルダごとコピーし、全7,572ファイル/762,391,032 bytesのSHA-256と既存の依存ライブラリjunctionの一致を確認。Gitの枝/履歴、原画、工房JSON、未追跡output/、検証素材を保持。
+
+旧 C:\Users\EBIHARA\Downloads\parry-tower\parry-tower はE:の実作業場所へのjunctionに置換。チャットが使う外側C:フォルダと旧外側リポジトリの小さなデータは残しているが、ゲームの開発本体と今後の出力はE:。親C:フォルダは実行中アプリが使用しており移動できなかったため、この構成で旧パス互換を確保した。主な723MBをSSDから移動し、C:空き約190.53GBを確認。共有ランタイム/システム側キャッシュはプロジェクト外なので従来の場所のまま。
+
+恒久削除の操作は自動承認ポリシーで拒否されたため実行せず、元コピーを **E:\Development\.parry-tower-migration\original-copy** へデータを保持したまま移動した。C:側の退避コピーは残っていない。移動証跡/ハッシュ一覧/起動ログはE:\Development\.parry-tower-migrationに保管（Git管理外）。
+
+プレビュー8002/8003/8004/8005/8006をE:のスクリプトと作業フォルダから非表示で再起動。5ポート全てでgame.jsの移動前後SHA一致。旧工房タブは操作/再読み込みせず、同一originの下書きを保持。Git HEAD 0f85670とcodex/beat-contact-reviewを引き継ぎ、移動後Node関連36件・git fsck成功（従来のdangling object通知のみ、破損なし）。ゲーム/絵/公開版は変更していない。
+
+元フォルダを掴んでいた外部確認用cloudflaredもE:から再起動したため、外部一時URLは **https://completing-olympic-carlo-thickness.trycloudflare.com** へ変更。新URLのDev表示/候補セレクタを実ブラウザで確認。拍同期レビュー用：/dev.html?floor=5&enemy=guardian&practice=1&timingMode=beat&inputOffset=0 。公開GitHub PagesのURLは変更なし。引き続き新方式の実機レビュー待ち。main統合/push/公開は未実施。
+
 ## 最新：拍と接触をそろえるDev候補（ローカルレビュー）
 
 監査後、ユーザーが100msは盾の振り上げ用ではと確認し、その意図的な遅延であると説明を訂正。そのうえで「さっきの案でいじってみて」と依頼されたため、codex/beat-contact-reviewでDev限定の新方式を追加した。公開版の方式も選択できる。通常本編/Dev既定は従来のまま。新方式はB=C、J=B+個人補正。成功パリィ時は盾を素早く上げ、接触の最初のフレームで完全に前へ出す。長押しガード100ms・判定幅・連打防止・既存の剣/敵/スキン/手動ポーズは保持。旧/新保存キーの換算や初期化を変更せず、試遊の補正は保存しない。詳細は[BEAT_CONTACT_REVIEW](./BEAT_CONTACT_REVIEW.md)。
