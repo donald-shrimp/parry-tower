@@ -10,6 +10,8 @@
 
 ## 遊び方
 
+本編・Dev・保存できる工房の入口は [作業リンク集](https://donald-shrimp.github.io/parry-tower/links.html) にまとめています。
+
 [GitHub Pagesでプレイする](https://donald-shrimp.github.io/parry-tower/)
 
 ローカルでは `node scripts/serve-local.js 8002` を実行し、`http://127.0.0.1:8002/` を開きます。BGMの再生はブラウザの制約により「開始」などのユーザー操作後に始まります。
