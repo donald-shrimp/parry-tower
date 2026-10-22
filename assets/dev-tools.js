@@ -29,18 +29,36 @@
  }
  floor.addEventListener('input',renderBalance);
  enemy.addEventListener('change',renderBalance);
+ function showPlay(){
+  for(const panel of document.querySelectorAll('.dev-foldout'))panel.open=false;
+  // Move before starting the combat clock; smooth scrolling can cost the opening beat.
+  $('devPlay').scrollIntoView({behavior:'instant',block:'start'});
+  $('devPlay').focus({preventScroll:true});
+ }
+ $('devShowPlay').addEventListener('click',showPlay);
+ $('devShowSetup').addEventListener('click',()=>{
+  // Artwork loading and the second-movement count-in cannot be paused yet.
+  if($('settingsBtn').disabled)return;
+  if(engine.state().mode==='combat')$('pauseBtn').click();
+  $('devSetup').scrollIntoView({behavior:'instant',block:'start'});
+  floor.focus({preventScroll:true});
+  status.textContent=engine.state().mode==='pause'?'一時停止中。設定を変更して開始するか、戦闘画面へ戻って再開できます。':'条件を変更して「指定条件で開始」。';
+ });
  function launch(){
   const f=Math.max(1,Math.min(999,Math.floor(Number(floor.value)||1)));
   floor.value=String(f);
   const key=enemy.value;
   const practice=$('devPractice').checked;
   const rawOffset=$('devInputOffset').value,offset=rawOffset.trim()===''?null:Number(rawOffset);
+  if(key&&!options.some(item=>item.key===key)){status.textContent='指定した敵が見つかりません';return;}
+  showPlay();
   const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked,Number($('devTempo').value),$('devTimingMode').value,offset);
   status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+(practice?' — 無敵練習・記録しません':' — 記録は保存しません')):'指定した敵が見つかりません';
   renderBalance();
  }
  $('devLaunch').addEventListener('click',launch);
  for(const [id,profile]of [['devMerchantGrowing','growing'],['devMerchantCapped','capped']])$(id).addEventListener('click',()=>{
+  showPlay();
   engine.merchant(profile,$('devSkin').value,$('devSkinEffects').checked);
   status.textContent='行商人の試遊 · 塔貨150 / '+(profile==='capped'?'上限到達ビルド':'育成途中ビルド')+'。1品購入して次の戦闘へ。保存しません。';
  });
@@ -86,6 +104,7 @@
  }
  let lastMusicKey='';
  function updateMusic(){
+  $('devShowSetup').disabled=$('settingsBtn').disabled;
   const timing=engine.timingState();
   const signed=n=>(n>=0?'+':'')+Math.round(n)+'ms';
   const cueLabel={half:'半拍前',full:'一拍前',onehalf:'1.5拍前',beat:'前のDev候補',previous:'以前（旧方式）'}[timing.mode];
@@ -114,6 +133,8 @@
  });
  $('devMusicStop').addEventListener('click',()=>{engine.stopMusic?.();updateMusic();});
  $('devMusicPractice').addEventListener('click',()=>{
+  if(!musicThemes.some(theme=>theme.id===musicTheme.value)||!['normal','boss'].includes(musicVariant.value))return;
+  showPlay();
   if(!engine.practiceMusic?.(musicTheme.value,musicVariant.value))return;
   const current=engine.state();floor.value=String(current.floor);enemy.value=current.variant;$('devPractice').checked=true;
   renderBalance();updateMusic();status.textContent='選択したBGMで無敵練習中 · 記録しません';

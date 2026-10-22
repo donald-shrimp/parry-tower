@@ -18,6 +18,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    append(...children){this.children.push(...children)},appendChild(child){this.children.push(child)},
    setAttribute(k,v){this[k]=v},
    addEventListener(k,cb){this.listeners[k]=cb;},
+   click(){this.listeners.click?.()},scrollIntoView(){},focus(){},
    getBoundingClientRect(){return {width:800,height:500}},
    querySelectorAll(selector){
     if(selector==='[data-practice]'){
@@ -414,9 +415,54 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
  assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-5"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-5&tempo=1&beat-contact=1&cue=1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-5&tempo=1&beat-contact=1&cue=1&layout=2"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
+});
+
+test('Dev moves and focuses the play area before starting the selected fight, BGM practice or merchant',()=>{
+ for(const action of ['devLaunch','devMusicPractice','devMerchantGrowing','devMerchantCapped']){
+  const g=makeHarness({},true,'','?floor=5&enemy=guardian&practice=1&skin=chick&timingMode=onehalf&inputOffset=45');
+  const calls=[];
+  g.el.get('devPlay').scrollIntoView=opts=>{assert.equal(g.state().mode,'title',action+' must move before the clock starts');assert.equal(opts.behavior,'instant');calls.push('move')};
+  g.el.get('devPlay').focus=opts=>{assert.equal(opts.preventScroll,true);calls.push('focus')};
+  g.press(action);assert.deepEqual(calls,['move','focus']);
+  if(action==='devLaunch'){
+   assert.equal(g.state().enemy,'guardian');assert.equal(g.state().floor,5);
+   assert.equal(g.dev().skinState().id,'chick');assert.equal(g.state().offset,45);assert.equal(g.state().practice,true);
+  }else if(action==='devMusicPractice')assert.equal(g.state().practice,true);
+  else assert.equal(g.state().currentRoom,'merchant');
+ }
+});
+
+test('Dev setup navigation pauses before leaving combat and returning to the play area never resumes by itself',()=>{
+ const g=makeHarness({},true);g.press('devLaunch');const before=g.state(),saved=[...g.storage];
+ g.el.get('devSetup').scrollIntoView=()=>assert.equal(g.state().mode,'pause','pause before scrolling away');
+ g.press('devShowSetup');g.press('devShowSetup');assert.equal(g.state().mode,'pause');
+ g.frame(g.now+10000);assert.equal(g.state().hp,before.hp);
+ g.press('devShowPlay');assert.equal(g.state().mode,'pause');
+ g.press('resumeBtn');assert.equal(g.state().mode,'combat');assert.ok(g.state().attackAt>g.now);
+ assert.deepEqual([...g.storage],saved);
+});
+
+test('Dev setup navigation stays on the stage during unpausable artwork loading and second movement',async()=>{
+ let loaded=false,finish;
+ const art={preloadSources(){},readyFor:()=>loaded,preload:()=>new Promise(resolve=>{finish=resolve}),drawHero:()=>false,drawEnemy:()=>false};
+ const loading=makeHarness({},true,'','?floor=5&enemy=guardian',art);
+ loading.press('devLaunch');await Promise.resolve();assert.equal(loading.state().mode,'loading');
+ loading.el.get('devSetup').scrollIntoView=()=>assert.fail('must not leave a stage that will start asynchronously');
+ loading.press('devShowSetup');loading.frame(loading.now+1);assert.equal(loading.el.get('devShowSetup').disabled,true);
+ loaded=true;finish(true);await new Promise(resolve=>setImmediate(resolve));loading.frame(loading.now+1);
+ assert.equal(loading.el.get('devShowSetup').disabled,false);
+
+ const phase=makeHarness({},true);phase.dev().launch(80,'endking:elite');
+ phase.bloodTest().setEnemyHp(Math.floor(phase.state().enemyMaxHp*.49)+100);phase.bloodTest().setBaseAttack(1);resolveBloodParry(phase,20);
+ assert.equal(phase.state().mode,'phase');
+ phase.el.get('devSetup').scrollIntoView=()=>assert.fail('must stay on stage during the count-in');
+ phase.press('devShowSetup');phase.frame(phase.now+1500);assert.equal(phase.el.get('devShowSetup').disabled,true);
+ phase.frame(phase.state().phaseCountStartAt+4*phase.state().beat*1000+1);
+ assert.equal(phase.el.get('devShowSetup').disabled,false);
+ phase.el.get('devSetup').scrollIntoView=()=>assert.equal(phase.state().mode,'pause');phase.press('devShowSetup');
 });
 test('developer page jumps to arbitrary floor and enemy without writing the public saves',()=>{
  const oldMeta=JSON.stringify({coins:27,bestFloor:12,bestCombo:3,runs:2,life:1,attack:0,ward:0});
