@@ -26,10 +26,10 @@
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
  <section class="dev-timing" aria-label="拍と接触の比較">
   <div class="dev-controls">
-   <label for="devTimingMode">タイミング方式<select id="devTimingMode"><option value="previous">公開版 · 拍の100ms後に接触</option><option value="beat">新方式 · 拍と接触を一致</option></select></label>
+   <label for="devTimingMode">振りかぶりのタイミング<select id="devTimingMode"><option value="half">半拍前</option><option value="full">一拍前</option><option value="onehalf">1.5拍前</option><option value="previous">以前（公開版）</option></select></label>
    <label for="devInputOffset">開始時の入力補正（ms）<input id="devInputOffset" type="number" min="-180" max="180" step="1" value="0"></label>
   </div>
-  <p class="dev-note">上の「指定条件で開始」で反映。まず新方式・補正0msで比較できます。入力補正は保存しません。</p>
+  <p class="dev-note">選んで「指定条件で開始」。半拍前・一拍前・1.5拍前は、初撃と2拍以上空く攻撃の振りかぶりの音・動作開始をそろえ、拍でタップ・接触。1.5拍以内の追撃は振りかぶりなし。以前は公開版どおり、接触の100ms前にタップ。入力補正は保存しません。</p>
  </section>
  <p id="devStatus" role="status">フロアと敵を選び、開始ボタンを押してください。</p>
  <div class="dev-controls dev-sound-controls" aria-label="金属音を試聴">
@@ -153,7 +153,7 @@
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
 <script src="./assets/diagnostics.js?v=v0.9.5-preview-4" defer></script>
-<script src="./assets/encounters.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/encounters.js?v=v0.9.5-preview-4&cue=1" defer></script>
 <script src="./assets/enemy-motions.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/progression.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/relics.js?v=v0.9.5-preview-4" defer></script>
@@ -165,7 +165,7 @@
 <script src="./assets/character-trace.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/character-ready.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/character-knight.js?v=v0.9.5-preview-4" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.5-preview-4" defer></script>
+<script src="./assets/combat-art.js?v=v0.9.5-preview-4&cue=1" defer></script>
 <script src="./assets/combat-sfx.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/character-art-defaults.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/character-edit.js?v=v0.9.5-preview-4" defer></script>
@@ -180,7 +180,7 @@
 <script src="./assets/audio-clock.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/player-settings.js?v=v0.9.5-preview-4&timing=2" defer></script>
 <script src="./assets/run-checkpoint.js?v=v0.9.5-preview-4&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-4&timing=2&tempo=1&beat-contact=1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.5-preview-4&tempo=1&beat-contact=1" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-4&timing=2&tempo=1&beat-contact=1&cue=1" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.5-preview-4&tempo=1&beat-contact=1&cue=1" defer></script>
 </body>
 </html>

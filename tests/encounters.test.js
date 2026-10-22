@@ -209,3 +209,22 @@ test('enemy attacks preserve 1-30F strength and ease to about 325 at 80F without
  }
  assert.equal(P.baseStats(normal,80).maxHp,91028,'80F boss HP unchanged');
 });
+
+test('attack notation classifies 1 and 1.5 beat follow-ups and keeps openings and second movement explicit',()=>{
+ for(const e of P.all){
+  const copy=P.buildEnemy(e);copy.index=0;
+  assert.deepEqual(P.attackPhrase(copy),{beats:4,windup:true});
+  for(const [phase,rhythm] of [[1,e.rhythm],...(e.phaseRhythm?[[2,e.phaseRhythm]]:[])]){
+   copy.phase=phase;copy.rhythm=[...rhythm];
+   const score=phase===2?P.ATTACK_SCORES[e.id].second:P.ATTACK_SCORES[e.id].normal;
+   assert.ok(Object.isFrozen(score));
+   for(let i=1;i<=rhythm.length*2;i++){
+    const beats=rhythm[(i-1)%rhythm.length];copy.index=i;
+    assert.deepEqual(P.attackPhrase(copy),{beats,windup:beats>1.5});
+    assert.deepEqual(P.attackPhrase(copy,i,true),{beats:4,windup:true});
+   }
+  }
+ }
+ assert.deepEqual(P.ATTACK_SCORES.rogue.normal.map(n=>n.windup),[false,false,true,true]);
+ assert.deepEqual(P.ATTACK_SCORES.knight.normal.map(n=>n.windup),[true,true,true,false]);
+});

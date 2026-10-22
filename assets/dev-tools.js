@@ -50,9 +50,10 @@
  });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
- $('devTimingMode').value=params.get('timingMode')==='beat'?'beat':'previous';
+ const requestedTiming=params.get('timingMode');
+ $('devTimingMode').value=['half','full','onehalf'].includes(requestedTiming)?requestedTiming:requestedTiming==='beat'?'half':'previous';
  const trialOffset=params.get('inputOffset');
- $('devInputOffset').value=String(trialOffset!==null&&trialOffset.trim()!==''&&Number.isFinite(Number(trialOffset))?Math.max(-180,Math.min(180,Number(trialOffset))):params.get('timingMode')==='beat'?0:engine.timingState().offset);
+ $('devInputOffset').value=String(trialOffset!==null&&trialOffset.trim()!==''&&Number.isFinite(Number(trialOffset))?Math.max(-180,Math.min(180,Number(trialOffset))):$('devTimingMode').value!=='previous'?0:engine.timingState().offset);
  $('devTempo').value=String(Math.min(6,Math.max(0,Math.floor(Number(params.get('tempo'))||0))));
  $('devSkinEffects').checked=params.get('skinEffects')!=='0';
  if(window.ParryProgression.SKINS.some(skin=>skin.id===params.get('skin')))$('devSkin').value=params.get('skin');
@@ -87,7 +88,9 @@
  function updateMusic(){
   const timing=engine.timingState();
   const signed=n=>(n>=0?'+':'')+Math.round(n)+'ms';
-  const timingText=(timing.mode==='beat'?'新方式':'公開版')+' · 接触−拍 '+signed(timing.contactDelta)+' / 判定中心−拍 '+signed(timing.inputDelta)+
+  const cueLabel={half:'半拍前',full:'一拍前',onehalf:'1.5拍前',beat:'前のDev候補',previous:'以前（公開版）'}[timing.mode];
+  const timingText=cueLabel+' · '+(timing.active&&!timing.windup?'追撃・振りかぶりなし':'振りかぶり→拍 '+(timing.windupLead==null?'—':Math.round(timing.windupLead-timing.contactDelta)+'ms'))+
+   ' / 接触−拍 '+signed(timing.contactDelta)+' / 判定中心−拍 '+signed(timing.inputDelta)+
    ' / 直近入力 '+(timing.lastInput?signed(timing.lastInput.delta):'—')+' / フレーム遅れ '+(timing.firstContactFrameMs==null?'—':signed(timing.firstContactFrameMs));
   if($('devTimingInfo').textContent!==timingText)$('devTimingInfo').textContent=timingText;
   $('devBeatPulse').dataset.active=String(timing.beatPulse);

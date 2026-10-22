@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null;const bonusArtEvents=[];
+ const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -91,7 +91,10 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   if(['illustrated','adopted'].includes(artMode)){
    const original=window.ParryKnightPuppet;
    window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};lastHeroSkin=args[1].skin;const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
-    drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok)artDrawCounts.enemy++;return ok;}};
+    drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok){artDrawCounts.enemy++;
+     const sampler=window.ParryEnemyPuppet?.supports(args[1].e)?window.ParryEnemyPuppet:original;
+     lastEnemySample=sampler.sample(args[1]);
+    }return ok;}};
   }
  }
  if(window.ParryCombatArt){const art=window.ParryCombatArt;window.ParryCombatArt={...art,
@@ -196,7 +199,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
   bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
   artDrawCounts:()=>({...artDrawCounts}),
-  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,
+  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,enemySample:()=>lastEnemySample,
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
@@ -407,7 +410,7 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
  assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-4&tempo=1&beat-contact=1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-4&tempo=1&beat-contact=1&cue=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -3095,8 +3098,8 @@ test('beat-contact logs frame quantization separately and produces feedback at t
 test('beat-contact Dev URL and comparison controls are unsaved and cannot change the main game defaults',()=>{
  const seed={parryTowerAudioOffset_v05:'120',parryTowerInputOffset_v1:'45'};
  const g=makeHarness(seed,true,'','?floor=5&enemy=guardian&practice=1&timingMode=beat&inputOffset=0');
- assert.equal(g.el.get('devTimingMode').value,'beat');assert.equal(g.el.get('devInputOffset').value,'0');
- g.press('devLaunch');const fresh=g.state();assert.equal(g.dev().timingState().mode,'beat');assert.equal(fresh.offset,0);
+ assert.equal(g.el.get('devTimingMode').value,'half');assert.equal(g.el.get('devInputOffset').value,'0');
+ g.press('devLaunch');const fresh=g.state();assert.equal(g.dev().timingState().mode,'half');assert.equal(fresh.offset,0);
  g.frame(g.now+1);assert.match(g.el.get('devTimingInfo').textContent,/接触−拍 \+0ms/);
  g.el.get('devTimingMode').value='previous';g.el.get('devInputOffset').value='45';g.press('devLaunch');
  const old=g.state();assert.equal(g.dev().timingState().mode,'previous');assert.equal(old.offset,45);
@@ -3106,11 +3109,13 @@ test('beat-contact Dev URL and comparison controls are unsaved and cannot change
 });
 
 test('beat-contact candidate keeps the final second movement and its four-beat return on the same beat',()=>{
- const g=makeHarness({},true);g.dev().launch(80,'endking:elite',false,'normal',false,6,'beat',0);
+ for(const mode of ['beat','half','full','onehalf']){
+ const g=makeHarness({},true);g.dev().launch(80,'endking:elite',false,'normal',false,6,mode,0);
  const d=g.bloodTest();d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
  const C=g.state().attackAt;g.clock(C);g.parry();g.frame(C+1);g.frame(g.now+1501);assert.equal(g.state().phaseStage,'countin');
  const count=g.state();g.frame(count.phaseCountStartAt+4*count.beat*1000+1);const resumed=g.state();assert.equal(resumed.mode,'combat');
- assert.ok(Math.abs(resumed.attackAt-(resumed.scoreOrigin+resumed.attackBeat*resumed.beat)*1000)<1e-6);assert.equal(resumed.bpm,124);
+ assert.ok(Math.abs(resumed.attackAt-(resumed.scoreOrigin+resumed.attackBeat*resumed.beat)*1000)<1e-6);assert.equal(resumed.bpm,124);assert.equal(g.dev().timingState().windup,true);
+ }
 });
 
 
@@ -3132,5 +3137,97 @@ test('beat-contact candidate combines skin rules and tempo while keeping input a
   g.dev().launch(5,'guardian:normal',true,skin.id,true,6,'beat',0);const s=g.state();assert.equal(s.bpm,skin.id==='spacetime'?136:124);
   const beat=(s.scoreOrigin+s.attackBeat*s.beat)*1000;assert.ok(Math.abs(s.attackAt-beat)<1e-6);
   g.clock(beat);g.parry();g.frame(beat+1);assert.equal(g.state().lastStrikeKind,'just');
+ }
+});
+
+test('cue comparison plays the windup at the chosen beat lead across every enemy pattern and tempo',()=>{
+ const g=makeHarness({},true);g.random(.5);
+ for(const mode of ['half','full','onehalf'])for(const e of P.all)for(const tempo of [0,6]){
+  g.dev().launch(5,e.id+(e.rare?':rare':':normal'),true,'normal',false,tempo,mode,0);
+  for(let i=0;i<e.rhythm.length*2;i++){
+   const s=g.state(),timing=g.dev().timingState(),lead=s.beat*1000*(mode==='half'?.5:mode==='full'?1:1.5),cueAt=s.attackAt-lead,hasWindup=i===0||s.attackSpan/(s.beat*1000)>1.5+1e-6;
+   assert.equal(timing.mode,mode);assert.equal(timing.windup,hasWindup);if(hasWindup)assert.ok(Math.abs(timing.windupLead-lead)<1e-6,e.id+'/'+mode);else assert.equal(timing.windupLead,null);
+   assert.ok(timing.swingLead>0&&timing.swingLead<lead);
+   assert.equal(timing.contactDelta,0);assert.ok(Math.abs(timing.targetAt-s.attackAt)<1e-6);
+   // A one-beat phrase can begin exactly on the preceding impact, which was already processed.
+   if(i===0)g.clearAudioEvents();if(cueAt-.01>=g.now)g.frame(cueAt-.01);
+   const windups=()=>g.audioEvents().filter(a=>a.frequency===(e.boss?135:195)&&a.type==='triangle'&&Math.abs(a.time*1000-cueAt)<.1);
+   if(g.now<cueAt)assert.equal(windups().length,0,e.id+' / no early cue');
+   g.frame(Math.max(g.now,cueAt+.01));assert.equal(windups().length,hasWindup?1:0,e.id+' / '+mode+' / '+tempo+' / '+i+' / score cue');
+   g.frame(g.now+.01);assert.equal(windups().length,hasWindup?1:0,e.id+' / no repeated cue');
+   g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);assert.equal(g.state().lastStrikeKind,'just',e.id);
+  }
+ }
+});
+
+test('cue comparison starts the real illustrated preparation with its sound and keeps authored contact geometry',async()=>{
+ for(const mode of ['half','full','onehalf'])for(const id of ['knight','rogue','guardian']){
+  const g=makeHarness({},true,'adopted');g.dev().launch(5,id+':normal',true,'normal',false,0,mode,0);await g.readyArt(P.byId[id]);
+  const s=g.state(),lead=g.dev().timingState().windupLead;
+  g.frame(s.attackAt-lead-1);assert.equal(g.enemySample().t.prep,0);
+  g.frame(s.attackAt-lead+1);assert.ok(g.enemySample().t.prep>0);
+  g.frame(s.attackAt-.001);const contact=g.enemySample();assert.ok(contact.t.p>.9999);assert.ok(contact.t.drive>.9999);
+  assert.ok(Math.abs(contact.x-contact.l.contactX)<.05,'actual cutout reaches the same contact position');
+  g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);assert.equal(g.heroPose().lift,1);
+  assert.ok(g.artDrawCounts().enemy>0);assert.ok(g.artDrawCounts().hero>0);
+ }
+});
+
+test('cue comparison URL, switching, correction and pause preserve production timing and saved values',()=>{
+ const seed={parryTowerInputOffset_v1:'45',parryTowerAudioOffset_v05:'145'};
+ for(const mode of ['half','full','onehalf','previous']){
+  const g=makeHarness(seed,true,'','?floor=5&enemy=guardian&practice=1&timingMode='+mode+'&inputOffset=0');
+  assert.equal(g.el.get('devTimingMode').value,mode);g.press('devLaunch');
+  let s=g.state(),t=g.dev().timingState();assert.equal(t.mode,mode);assert.equal(t.contactDelta,mode==='previous'?100:0);
+  if(mode==='previous'){assert.equal(t.windupLead,980);assert.equal(t.swingLead,360);assert.ok(Math.abs(t.contactAt-t.targetAt-100)<1e-6);}
+  const B=(s.scoreOrigin+s.attackBeat*s.beat)*1000;assert.ok(Math.abs(t.targetAt-B)<1e-6);
+  g.press('pauseBtn');g.frame(g.now+500);g.press('resumeBtn');
+  s=g.state();t=g.dev().timingState();assert.equal(t.mode,mode);assert.equal(s.attackBeat,4);
+  g.clock(t.targetAt);g.parry();g.frame(t.contactAt);assert.equal(g.state().lastStrikeKind,'just');
+  g.el.get('devTimingMode').value=mode==='half'?'full':'half';g.el.get('devInputOffset').value='45';g.press('devLaunch');
+  assert.equal(g.dev().timingState().mode,g.el.get('devTimingMode').value);assert.equal(g.dev().timingState().inputDelta,45);
+  assert.deepEqual([...g.storage],Object.entries(seed));
+ }
+ const main=makeHarness(seed);main.press('startBtn');const s=main.state();
+ assert.ok(Math.abs(s.attackAt-(s.scoreOrigin+s.attackBeat*s.beat)*1000-100)<1e-6);
+ assert.ok(!fs.readFileSync('index.html','utf8').includes('devTimingMode'));
+});
+
+test('cue comparison previews the next phrase once while miss, guard or corrected late input is unresolved',()=>{
+ for(const mode of ['onehalf'])for(const action of ['miss','guard','late']){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'chick',true,0,mode,180);
+  const s=g.state(),C=s.attackAt,beat=s.beat*1000,cueAt=C+2*beat-g.dev().timingState().windupLead;
+  if(action==='guard'){g.clock(C-200);g.hold();}
+  g.frame(C-1);g.clearAudioEvents();g.frame(cueAt+.01);
+  assert.ok(Math.abs(g.state().attackAt-C)<1e-6,'previous attack still awaits input');
+  const windups=()=>g.audioEvents().filter(a=>a.frequency===135&&a.type==='triangle');
+  assert.equal(windups().length,1,mode+'/'+action);assert.ok(Math.abs(windups()[0].time*1000-cueAt)<.02);
+  if(action==='late'){g.clock(C+250);g.parry();g.frame(C+250.01);assert.equal(g.state().lastStrikeKind,'parry');}
+  else{g.frame(C+180+g.dev().skinState().parryWindow+.01);assert.equal(g.state().lastStrikeKind,action==='guard'?'guard':'miss');}
+  g.frame(g.now+1);assert.equal(windups().length,1,'advancing to the previewed attack cannot replay its cue');
+  g.press('pauseBtn');const count=windups().length;g.frame(g.now+1000);assert.equal(windups().length,count);
+  g.press('resumeBtn');const re=g.state();g.frame(re.attackAt-g.dev().timingState().windupLead+.01);
+  assert.equal(windups().length,count+1,'new count-in has a fresh cue');
+ }
+});
+
+test('cue comparison follow-ups omit actual cutout preparation and windup sound, and resume restores an opening',async()=>{
+ for(const mode of ['half','full','onehalf'])for(const id of ['knight','rogue','guardian']){
+  const g=makeHarness({},true,'adopted');g.dev().launch(5,id+':normal',true,'normal',false,0,mode,0);await g.readyArt(P.byId[id]);
+  let count=0;
+  for(let i=0;i<P.byId[id].rhythm.length+2;i++){
+   const s=g.state(),timing=g.dev().timingState();
+   if(!timing.windup){
+    count++;g.clearAudioEvents();const t=s.attackAt-timing.swingLead-1;
+    if(t>g.now){g.frame(t);assert.equal(g.enemySample().t.prep,0);assert.equal(g.enemySample().q.charge,0);}
+    g.frame(s.attackAt-.001);
+    assert.equal(g.audioEvents().filter(a=>a.frequency===(id==='guardian'?135:195)&&a.type==='triangle').length,0,'follow-up has no low windup cue');
+    assert.equal(g.enemySample().t.prep,0);
+    g.press('pauseBtn');g.frame(g.now+100);g.press('resumeBtn');
+    assert.equal(g.dev().timingState().windup,true,'four-beat return always has an opening cue');
+    const re=g.state();g.clock(re.attackAt);g.parry();g.frame(re.attackAt+.001);
+   }else{g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);}
+  }
+  assert.ok(count>0,id+' includes a short follow-up');
  }
 });

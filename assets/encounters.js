@@ -68,6 +68,16 @@
  ];
  const all=[...monsters,...bosses,...rares];
  const byId=Object.fromEntries(all.map(e=>[e.id,e]));
+ // Attack notation shared by the Dev audio and motion trial. Short gaps are follow-ups, not new windups.
+ const notation=rhythm=>Object.freeze(rhythm.map(beats=>Object.freeze({beats,windup:beats>1.5})));
+ const ATTACK_SCORES=Object.freeze(Object.fromEntries(all.map(e=>[e.id,Object.freeze({
+  normal:notation(e.rhythm),second:e.phaseRhythm?notation(e.phaseRhythm):null
+ })])));
+ function attackPhrase(e,index=e.index||0,opening=false){
+  if(opening||index===0)return {beats:4,windup:true};
+  const score=ATTACK_SCORES[e.id],chart=e.phase===2&&score?.second?score.second:score?.normal;
+  return chart?.[(index-1)%chart.length]||{beats:e.rhythm[(index-1)%e.rhythm.length],windup:e.rhythm[(index-1)%e.rhythm.length]>1.5};
+ }
  const ZONES=[
   {name:'忘れられた地下墓地',accent:'#7addb8',boss:'guardian',
    fixed:{1:'slime',2:'knight',9:'knight'},
@@ -219,6 +229,6 @@
   book.defeated[key]={wins:Math.min(999999,(previous?.wins||0)+1),firstFloor:previous?.firstFloor||Math.max(1,Math.floor(floor))};
   return !previous;
  }
- return Object.freeze({monsters,bosses,rares,all,ZONES,byId,zoneForFloor,positionInZone,
+ return Object.freeze({monsters,bosses,rares,all,ZONES,byId,ATTACK_SCORES,attackPhrase,zoneForFloor,positionInZone,
   encounterForFloor,foreshadowTrialForFloor,FORESHADOW_RATE,enemyKey,buildEnemy,findByKey,codexEntries,baseStats,emptyBook,normalizeBook,recordEncounter,recordDefeat});
 });

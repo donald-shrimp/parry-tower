@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 let devPreviewSkin='normal';
-let devBeatContact=false,devTimingTrace={};
+let devBeatContact=false,devCueBeats=0,devTimingTrace={};
 const STAGE_MUSIC=window.ParryStageMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 // Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
@@ -183,7 +183,13 @@ const MOTIONS={
 };
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
-const motionFor=e=>MOTIONS[e.kind]||MOTIONS.knight;
+const motionFor=(e,opening=devTimingTrace.opening)=>{
+ const m=MOTIONS[e.kind]||MOTIONS.knight;
+ if(!DEV_MODE||!devCueBeats)return m;
+ // Keep each enemy's authored pose sequence; fit preparation and release into the selected beat lead.
+ const prepare=devCueBeats*score.beat*1000;
+ return {...m,prepare,swing:prepare*m.swing/m.prepare,cuePrepare:prepare,noWindup:!P.attackPhrase(e,e.index,opening).windup};
+};
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
 const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
  get bpm(){return Math.round(60/this.beat)}};
@@ -1003,7 +1009,7 @@ function beginEncounter(t){
  startScore(game.enemy);
  if(runSkinRules().randomTempo)showText(game.skinTempoOffset>0?'時空加速 ＋12':game.skinTempoOffset<0?'時空減速 −12':'時空安定 ±0',w*.5,h*.3,'#d9bcff',18);
  if(archetype.rare&&!game.practice){sound(890,.20,'sine',.08,-180);showText('✦ RARE ENCOUNTER ✦',w*.50,h*.20,'#f6d58b',20)}
- game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170+contactDelay();game.telegraphStart=t;
+ if(DEV_MODE)devTimingTrace.opening=true;game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170+contactDelay();game.telegraphStart=t;
  game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;
  game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;
  game.nextFloorHint=game.practice?'PRACTICE':archetype.preview?'UNKNOWN ENCOUNTER':archetype.finalBoss?'FINAL BOSS · '+floor+'F':archetype.rare?'RARE ENCOUNTER':archetype.elite?'ELITE ENCOUNTER':archetype.boss?'BOSS FLOOR':'FLOOR '+floor;
@@ -1015,7 +1021,7 @@ function nextStrike(){
  if(e.finalBoss&&e.phase===1&&e.phaseRhythm&&e.hp>0&&e.hp<=e.maxHp*.5){
   beginFinalPhase();return;
  }
- const beats=e.rhythm[e.index%e.rhythm.length];e.index++;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
+ const beats=e.rhythm[e.index%e.rhythm.length];e.index++;if(DEV_MODE)devTimingTrace.opening=false;game.attackBeat+=beats;game.attackSpan=beats*score.beat*1000;syncAttackClock();game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;game.lastAttemptDelta=null}
 function beginFinalPhase(){
  const e=game.enemy;
  e.phase=2;e.rhythm=[...e.phaseRhythm];e.index=0;
@@ -1062,7 +1068,7 @@ function updateFinalPhase(now){
  // immediately striking the player with an expired telegraph.
  if(now>resumeAt+beatMs){stopScore();game.phaseStage='rumble';beginFinalCountIn();return;}
  game.phaseStage=null;
- game.attackBeat=FINAL_PHASE_COUNT_BEATS*2;
+ if(DEV_MODE)devTimingTrace.opening=true;game.attackBeat=FINAL_PHASE_COUNT_BEATS*2;
  game.attackSpan=FINAL_PHASE_COUNT_BEATS*beatMs;
  if(score.active)syncAttackClock();
  else{game.attackAt=now+game.attackSpan;game.telegraphStart=now;}
@@ -1480,7 +1486,7 @@ function togglePause(){
   const now=performance.now();resetParryInput();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
   $('pauseStatus').hidden=true;
   if(clockPausedPhase){clockPausedPhase=false;game.phaseStage='rumble';setMode('phase');beginFinalCountIn();}
-  else{startScore(game.enemy);game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat');}
+  else{startScore(game.enemy);if(DEV_MODE)devTimingTrace.opening=true;game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat');}
  }
 }
 function resize(){const r=canvas.getBoundingClientRect();w=Math.max(260,r.width);h=Math.max(300,r.height);dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
@@ -1627,14 +1633,15 @@ function hero(now){
 }
 function enemy(now){
  let e=game.enemy;if(!e)return;
- const m=motionFor(e);let attackAt=game.attackAt,span=game.attackSpan||1900,lastImpactAt=game.lastImpactAt;
+ let opening=devTimingTrace.opening,attackAt=game.attackAt,span=game.attackSpan||1900,lastImpactAt=game.lastImpactAt;
  // The blade follows through on time even while a corrected late input can
  // still arrive. Project the next visual phrase without advancing gameplay.
  const awaitingInput=game.mode==='combat'&&!game.attackResolved&&now>=attackAt;
  if(awaitingInput){
   lastImpactAt=attackAt;span=e.rhythm[e.index%e.rhythm.length]*score.beat*1000;
-  attackAt+=span;e={...e,index:e.index+1};
+  attackAt+=span;e={...e,index:e.index+1};opening=false;
  }
+ const m=motionFor(e,opening);
  const d=attackAt-now;
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawEnemy(ctx,{e,m,now,width:w,height:h,
    attackAt,attackSpan:span,lastImpactAt,
@@ -1647,8 +1654,8 @@ function enemy(now){
   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
- const prepare=Math.min(m.prepare,Math.max(m.swing+120,span-130));
- const prep=smooth((prepare-d)/(prepare-m.swing));
+ const prepare=m.cuePrepare??Math.min(m.prepare,Math.max(m.swing+120,span-130));
+ const prep=m.noWindup?0:smooth((prepare-d)/(prepare-m.swing));
  const p=clamp((m.swing-d)/m.swing,0,1);
  // 速度に明確な変化をつける。弾速を表示するゲージではなく、動きの重さが予兆になる。
  const dash=p*p*(1+.12*(1-p));
@@ -1948,6 +1955,13 @@ function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h
  for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);round(p.x,p.y,p.size,p.color)}ctx.globalAlpha=1;
  for(const a of texts){const age=now-a.t,alpha=clamp(1-age/a.life,0,1);ctx.globalAlpha=alpha;ctx.shadowColor=a.color;ctx.shadowBlur=8;textDraw(a.text,a.x,a.y-age*.043,a.size,a.color);ctx.shadowBlur=0}ctx.globalAlpha=1;
 }
+function devAttackCues(now,beat,at,motion){
+ const cues=devTimingTrace.cues??=new Map(),key=score.theme+':'+beat;
+ if(!cues.has(key)){cues.set(key,{});if(cues.size>8)cues.delete(cues.keys().next().value);}
+ const played=cues.get(key);
+ if(!motion.noWindup&&!played.windup&&now>=at-motion.cuePrepare){played.windup=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);}
+ if(!played.swing&&now>=at-motion.swing){played.swing=true;sfxSwing();}
+}
 function update(now,dt){const m=game.mode;
  if(['combat','phase'].includes(m)&&score.active&&!readAudioClock().healthy){pauseForClock();return;}
  if(m==='combat'){scheduleScore();syncAttackClock();
@@ -1955,11 +1969,15 @@ function update(now,dt){const m=game.mode;
   const key=score.theme+':'+game.attackBeat;
   if(devTimingTrace.frame?.key!==key)devTimingTrace.frame={key,delay:now-game.attackAt};
  }
- if(!game.windupPlayed&&now>=game.attackAt-Math.min(motionFor(game.enemy).prepare,game.attackSpan*.83)){
+ const motion=motionFor(game.enemy);
+ if(DEV_MODE&&devCueBeats)devAttackCues(now,game.attackBeat,game.attackAt,motion);
+ else{
+ if(!game.windupPlayed&&now>=game.attackAt-Math.min(motion.prepare,game.attackSpan*.83)){
   game.windupPlayed=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);
  }
- if(!game.cuePlayed&&now>=game.attackAt-motionFor(game.enemy).swing){
+ if(!game.cuePlayed&&now>=game.attackAt-motion.swing){
   game.cuePlayed=true;sfxSwing();
+ }
  }
  if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
  if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt){
@@ -1972,6 +1990,12 @@ function update(now,dt){const m=game.mode;
    const effectAt=Math.max(game.attackAt,game.pendingKind?game.pendingAt:inputTargetAt()+getParryWindow());
    strikeResult(game.pendingKind||(game.guardAtImpact?'guard':'miss'),game.attackAt,effectAt);
   }
+ }
+ if(DEV_MODE&&devCueBeats&&game.mode==='combat'){
+  // Follow the same next-phrase projection as enemy(), even while the previous input window is open.
+  const beats=game.enemy.rhythm[game.enemy.index%game.enemy.rhythm.length];
+  devAttackCues(now,game.attackBeat,game.attackAt,motionFor(game.enemy));
+  devAttackCues(now,game.attackBeat+beats,scoreToPerf(score.origin+(game.attackBeat+beats)*score.beat),motionFor({...game.enemy,index:game.enemy.index+1},false));
  }
  }else if(m==='phase')updateFinalPhase(now);
  else if(m==='victory'&&now-game.clearAt>900)showRewards();
@@ -2085,7 +2109,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false,tempoLevel=null,timingMode='previous',inputOffset=null){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
-   devBeatContact=timingMode==='beat';devTimingTrace={};
+   devCueBeats=timingMode==='half'?.5:timingMode==='full'?1:timingMode==='onehalf'?1.5:0;
+   devBeatContact=timingMode==='beat'||devCueBeats>0;devTimingTrace={};
    if(typeof inputOffset==='number'&&Number.isFinite(inputOffset)){
     latencyOffset=clamp(inputOffset,-180,180);$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
    }
@@ -2103,7 +2128,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   skinState(){return {id:visualSkin(),effects:!!game.skinEffects,hpMultiplier:runSkinRules().hp,parryWindow:getParryWindow(),justWindow:getPerfectWindow(),tempoOffset:game.skinTempoOffset||0,tempoReduction:game.tempoBpmReduction||0}},
   timingState(){
    const active=score.active&&game.mode==='combat',beatAt=game.attackAt-contactDelay(),origin=beatAt-game.attackBeat*score.beat*1000;
-   return {mode:devBeatContact?'beat':'previous',active,offset:latencyOffset,contactDelta:contactDelay(),inputDelta:latencyOffset,
+   const motion=game.enemy?motionFor(game.enemy):null;
+   return {mode:devCueBeats===.5?'half':devCueBeats===1?'full':devCueBeats===1.5?'onehalf':devBeatContact?'beat':'previous',active,offset:latencyOffset,contactDelta:contactDelay(),inputDelta:latencyOffset,
+    cueBeats:devCueBeats||null,windup:motion?!motion.noWindup:false,windupLead:motion&&!motion.noWindup?(motion.cuePrepare??Math.min(motion.prepare,game.attackSpan*.83)):null,swingLead:motion?.swing??null,
     beatAt,contactAt:game.attackAt,targetAt:inputTargetAt(),beatPulse:active&&performance.now()>=origin&&((performance.now()-origin)%(score.beat*1000))<55,
     lastInput:devTimingTrace.input?{...devTimingTrace.input}:null,firstContactFrameMs:devTimingTrace.frame?.delay??null};
   },
