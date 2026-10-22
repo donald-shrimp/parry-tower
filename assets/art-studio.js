@@ -9,7 +9,7 @@
  for(const input of Object.values(fields))$(input).step='0.01';
  let project=E.empty(),id='sentinel',selected=null,mode='position',tool='move',keyMode=false,time=0,playing=false,loaded=false;
  let model=null,drag=null,drawing=null,region=0,view={x:0,y:0,scale:1},pan={x:0,y:0},cw=600,ch=500,last=performance.now(),lastUI=0;
- let savedAt=0,lastApplied=E.empty(),draftTimer,fieldSession=null;
+ let savedAt=0,lastApplied=E.empty(),draftTimer,fieldSession=null,panDrag=null;
  let selection=new Set(),groupPivot=null,groupValues={x:0,y:0,rotation:0},groupFieldSession=null;
  const grouped=()=>selection.size>1;
  const duration=()=>id==='hero'?240:3000;
@@ -277,7 +277,7 @@
   ['move','pivot','rotate'].forEach(k=>{$('tool'+k[0].toUpperCase()+k.slice(1)).classList.toggle('active',tool===k);$('tool'+k[0].toUpperCase()+k.slice(1)).setAttribute('aria-pressed',String(tool===k));});
   $('canvasTitle').textContent=model?.name||'';$('canvasMode').textContent=mode==='mask'?'原画の切り抜き':whole?'画像全体':part.label;
   if(multi)$('canvasMode').textContent=selection.size+'個の部品を連動';
-  $('canvasHint').textContent=mode==='mask'?(drawing?'輪郭に沿ってクリック → 右の「確定する」':part?.mask?'点をドラッグ · 線をダブルクリックで点を追加':'左で切り抜く部品を選んでください')
+  $('canvasHint').textContent=mode==='mask'?(drawing?'輪郭に沿ってクリック → 右の「確定する」':part?.mask?'点をドラッグ · 線をダブルクリックで追加 · 中ボタンドラッグで表示移動':'左で切り抜く部品を選んでください')
    :whole?'絵をドラッグして移動 · ダブルクリックで部品を選択':tool==='pivot'?'黄色い点をドラッグして、回転の中心を変更':tool==='rotate'?'絵の周りをドラッグして回転':'選んだ部品をドラッグ · 矢印キーで微調整';
   if(multi)$('canvasHint').textContent=tool==='pivot'?'共通の回転中心をドラッグ':tool==='rotate'?'選んだ部品をまとめて回転':'選んだ部品をまとめて移動 · 矢印キーで微調整';
   if(mode==='mask')refreshMaskControls();
@@ -335,7 +335,18 @@
  function setMode(next){mode=next;playing=false;drawing=null;pan={x:0,y:0};if(next==='mask'){if(!model.parts[selected]?.mask)selected=[...model.order].reverse().find(k=>model.parts[k].mask)||null;selection=new Set(selected?[selected]:[]);resetGroup();}refresh();}
  function undo(back){const from=back?history:future,to=back?future:history;if(!from.length)return;to.push(clone(project));project=from.pop();resetGroup();setRuntime();saveDraft();refresh();status(back?'ひとつ前の状態に戻しました。':'変更をやり直しました。');}
  const pointer=event=>{const r=canvas.getBoundingClientRect();return {x:event.clientX-r.left,y:event.clientY-r.top};};
+ function finishPan(event,cancel=false){
+  if(!panDrag||event&&event.pointerId!==panDrag.pointerId)return;
+  if(cancel)pan={...panDrag.start};panDrag=null;canvas.classList.remove('panning');
+ }
  canvas.addEventListener('pointerdown',event=>{
+  if(event.button===1){
+   event.preventDefault();
+   if(!loaded||drag||panDrag||mode==='position'&&$('viewMode').value==='battle')return;
+   canvas.focus();panDrag={pointerId:event.pointerId,at:pointer(event),start:{...pan}};
+   canvas.setPointerCapture(event.pointerId);canvas.classList.add('panning');return;
+  }
+  if(panDrag)return;
   if(!loaded||event.button!==0)return;event.preventDefault();canvas.focus();playing=false;const at=pointer(event),w=world(at);
   if(mode==='mask'){
    if(!model.parts[selected]?.mask)return;
@@ -360,6 +371,10 @@
   canvas.setPointerCapture(event.pointerId);refreshTimeline();
  });
  canvas.addEventListener('pointermove',event=>{
+  if(panDrag){
+   if(event.pointerId!==panDrag.pointerId)return;
+   const at=pointer(event);pan={x:panDrag.start.x+at.x-panDrag.at.x,y:panDrag.start.y+at.y-panDrag.at.y};return;
+  }
   if(!drag)return;const at=pointer(event),w=world(at);
   if(drag.kind==='groupPivot'){groupPivot=inverseWhole(w);return;}
   if(drag.kind==='group'){
@@ -385,7 +400,10 @@
   }
  });
  function finishDrag(){if(!drag)return;const old=drag;drag=null;if(old.kind==='groupPivot'){status('共通の回転中心を変更しました。');return;}if(old.kind==='group'&&!old.changed){project=old.before;setRuntime();refresh();return;}if(old.kind==='mask'){if(JSON.stringify(old.polys)===JSON.stringify(E.maskFor(id,selected,model.parts[selected].mask)))return;ensureLayer().mask=old.polys;}finishChange(old.before,old.kind==='mask'?'切り抜きの輪郭を変更しました。':old.kind==='group'?'選んだ部品をまとめて動かしました。':'ドラッグした位置を記録しました。');}
- canvas.addEventListener('pointerup',finishDrag);canvas.addEventListener('pointercancel',()=>{if(!drag)return;if(drag.kind==='groupPivot')groupPivot=drag.pivot;project=drag.before;drag=null;setRuntime();refresh();});
+ canvas.addEventListener('pointerup',event=>{if(panDrag){if(event.button===1||event.buttons===0)finishPan(event);return;}if(event.button===0)finishDrag();});
+ canvas.addEventListener('pointercancel',event=>{if(panDrag){finishPan(event,true);return;}if(!drag)return;if(drag.kind==='groupPivot')groupPivot=drag.pivot;project=drag.before;drag=null;setRuntime();refresh();});
+ canvas.addEventListener('lostpointercapture',event=>finishPan(event));
+ canvas.addEventListener('auxclick',event=>{if(event.button===1)event.preventDefault();});
  canvas.addEventListener('dblclick',event=>{
   if(!loaded||event.button!==0)return;
   if(mode==='mask'){if(!drawing&&model.parts[selected]?.mask){event.preventDefault();insertMaskPoint(world(pointer(event)));}return;}

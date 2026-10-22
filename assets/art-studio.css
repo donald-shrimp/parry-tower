@@ -2,3 +2,5 @@
 :root #viewMode{width:112px;height:30px;font-size:11px}.stage-toolbar{height:auto;min-height:58px;flex-wrap:wrap;gap:8px}.stage-toolbar .zoom-label{margin-left:0}
 .group-shortcuts{display:flex;flex-wrap:wrap;gap:6px;margin:-12px 0 18px}.group-shortcuts>.label,.group-shortcuts>p{width:100%;margin:3px 0}.group-shortcuts>button{font-size:10px;min-height:30px;padding:5px 8px}.group-check{margin:0;flex:none;width:15px;height:15px;cursor:pointer}.group-controls{background:#203a35;border:1px solid #476d60;border-radius:7px;padding:12px;margin:10px 0}.group-controls p{margin:3px 0 12px}.group-controls .field-grid{margin-bottom:10px}.group-controls select{font-size:11px}.group-controls label{color:#c3dfd6}
 @media(max-width:600px){.header-actions{flex-wrap:wrap}.guide{line-height:1.7}.field-grid label{font-size:11px}}
+
+#editorCanvas.panning{cursor:grabbing}
