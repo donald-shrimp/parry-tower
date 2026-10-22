@@ -99,6 +99,21 @@
   }return null;
  }
  function maskPolys(){if(drag?.kind==='mask')return drag.polys;return clone(E.maskFor(id,selected,model?.parts[selected]?.mask)||[]);}
+ function insertMaskPoint(point){
+  const polys=maskPolys(),poly=polys[region];if(!poly)return;
+  // Use screen pixels for hit areas, including when zoomed out. Existing handles keep their drag gesture.
+  if(poly.some(p=>Math.hypot(p[0]-point.x,p[1]-point.y)*view.scale<6))return;
+  let edge=-1,best=10/view.scale,added;
+  poly.forEach((a,i)=>{
+   const b=poly[(i+1)%poly.length],dx=b[0]-a[0],dy=b[1]-a[1],length=dx*dx+dy*dy;if(!length)return;
+   const t=Math.max(0,Math.min(1,((point.x-a[0])*dx+(point.y-a[1])*dy)/length));
+   const p=[a[0]+t*dx,a[1]+t*dy],distance=Math.hypot(point.x-p[0],point.y-p[1]);
+   if(distance<best){best=distance;edge=i;added=p;}
+  });
+  if(edge<0)return;
+  if(poly.length>=512){status('この輪郭の点は512個までです。');return;}
+  change(()=>{poly.splice(edge+1,0,added);ensureLayer().mask=polys;},'輪郭に点を追加しました。点をドラッグして調整できます。');
+ }
  function drawMask(){
   ctx.globalAlpha=.65;ctx.drawImage(model.parts[selected]?.source||model.source,0,0,model.width,model.height);ctx.globalAlpha=1;
   const polys=maskPolys();
@@ -262,7 +277,7 @@
   ['move','pivot','rotate'].forEach(k=>{$('tool'+k[0].toUpperCase()+k.slice(1)).classList.toggle('active',tool===k);$('tool'+k[0].toUpperCase()+k.slice(1)).setAttribute('aria-pressed',String(tool===k));});
   $('canvasTitle').textContent=model?.name||'';$('canvasMode').textContent=mode==='mask'?'原画の切り抜き':whole?'画像全体':part.label;
   if(multi)$('canvasMode').textContent=selection.size+'個の部品を連動';
-  $('canvasHint').textContent=mode==='mask'?(drawing?'輪郭に沿ってクリック → 右の「確定する」':part?.mask?'黄色い点をドラッグして輪郭を調整':'左で切り抜く部品を選んでください')
+  $('canvasHint').textContent=mode==='mask'?(drawing?'輪郭に沿ってクリック → 右の「確定する」':part?.mask?'点をドラッグ · 線をダブルクリックで点を追加':'左で切り抜く部品を選んでください')
    :whole?'絵をドラッグして移動 · ダブルクリックで部品を選択':tool==='pivot'?'黄色い点をドラッグして、回転の中心を変更':tool==='rotate'?'絵の周りをドラッグして回転':'選んだ部品をドラッグ · 矢印キーで微調整';
   if(multi)$('canvasHint').textContent=tool==='pivot'?'共通の回転中心をドラッグ':tool==='rotate'?'選んだ部品をまとめて回転':'選んだ部品をまとめて移動 · 矢印キーで微調整';
   if(mode==='mask')refreshMaskControls();
@@ -369,9 +384,13 @@
    setRuntime();refreshInspector();
   }
  });
- function finishDrag(){if(!drag)return;const old=drag;drag=null;if(old.kind==='groupPivot'){status('共通の回転中心を変更しました。');return;}if(old.kind==='group'&&!old.changed){project=old.before;setRuntime();refresh();return;}if(old.kind==='mask')ensureLayer().mask=old.polys;finishChange(old.before,old.kind==='mask'?'切り抜きの輪郭を変更しました。':old.kind==='group'?'選んだ部品をまとめて動かしました。':'ドラッグした位置を記録しました。');}
+ function finishDrag(){if(!drag)return;const old=drag;drag=null;if(old.kind==='groupPivot'){status('共通の回転中心を変更しました。');return;}if(old.kind==='group'&&!old.changed){project=old.before;setRuntime();refresh();return;}if(old.kind==='mask'){if(JSON.stringify(old.polys)===JSON.stringify(E.maskFor(id,selected,model.parts[selected].mask)))return;ensureLayer().mask=old.polys;}finishChange(old.before,old.kind==='mask'?'切り抜きの輪郭を変更しました。':old.kind==='group'?'選んだ部品をまとめて動かしました。':'ドラッグした位置を記録しました。');}
  canvas.addEventListener('pointerup',finishDrag);canvas.addEventListener('pointercancel',()=>{if(!drag)return;if(drag.kind==='groupPivot')groupPivot=drag.pivot;project=drag.before;drag=null;setRuntime();refresh();});
- canvas.addEventListener('dblclick',event=>{if(mode!=='position'||grouped())return;const parts=adjustedPose(rawPose()),hit=hitTest(world(pointer(event)),parts);if(hit)selectPart(hit);});
+ canvas.addEventListener('dblclick',event=>{
+  if(!loaded||event.button!==0)return;
+  if(mode==='mask'){if(!drawing&&model.parts[selected]?.mask){event.preventDefault();insertMaskPoint(world(pointer(event)));}return;}
+  if(grouped())return;const parts=adjustedPose(rawPose()),hit=hitTest(world(pointer(event)),parts);if(hit)selectPart(hit);
+ });
  canvas.addEventListener('wheel',event=>{event.preventDefault();const values=[.75,1,1.5,2],at=values.indexOf(Number($('zoom').value));$('zoom').value=String(values[Math.max(0,Math.min(3,at+(event.deltaY<0?1:-1)))]);},{passive:false});
  for(const [key,input]of Object.entries(fields)){
   const field=$(input);field.addEventListener('focus',()=>{fieldSession={input,before:clone(project)};playing=false;});
