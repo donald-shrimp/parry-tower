@@ -128,8 +128,8 @@
    impactY:(hitY-ground)/enemyScale};
  }
  function timeline(m,untilImpact,sinceImpact,span=2000){
-  const prepare=Math.min(m.prepare,Math.max(m.swing+120,span-130));
-  const prep=smooth((prepare-untilImpact)/(prepare-m.swing));
+  const prepare=m.cuePrepare??Math.min(m.prepare,Math.max(m.swing+120,span-130));
+  const prep=m.noWindup?0:smooth((prepare-untilImpact)/(prepare-m.swing));
   const p=clamp((m.swing-untilImpact)/m.swing);
   // The first part of the swing stores energy; its final third releases it.
   const drive=p*p*p;

@@ -34,7 +34,8 @@
   floor.value=String(f);
   const key=enemy.value;
   const practice=$('devPractice').checked;
-  const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked,Number($('devTempo').value));
+  const rawOffset=$('devInputOffset').value,offset=rawOffset.trim()===''?null:Number(rawOffset);
+  const ok=engine.launch(f,key,practice,$('devSkin').value,$('devSkinEffects').checked,Number($('devTempo').value),$('devTimingMode').value,offset);
   status.textContent=ok?('開始 '+f+'F / '+(key||'フロア通常抽選')+(practice?' — 無敵練習・記録しません':' — 記録は保存しません')):'指定した敵が見つかりません';
   renderBalance();
  }
@@ -49,6 +50,10 @@
  });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
+ const requestedTiming=params.get('timingMode');
+ $('devTimingMode').value=['half','full','onehalf'].includes(requestedTiming)?requestedTiming:requestedTiming==='previous'?'previous':requestedTiming==='beat'?'half':'onehalf';
+ const trialOffset=params.get('inputOffset');
+ $('devInputOffset').value=String(trialOffset!==null&&trialOffset.trim()!==''&&Number.isFinite(Number(trialOffset))?Math.max(-180,Math.min(180,Number(trialOffset))):$('devTimingMode').value!=='previous'?0:engine.timingState().offset);
  $('devTempo').value=String(Math.min(6,Math.max(0,Math.floor(Number(params.get('tempo'))||0))));
  $('devSkinEffects').checked=params.get('skinEffects')!=='0';
  if(window.ParryProgression.SKINS.some(skin=>skin.id===params.get('skin')))$('devSkin').value=params.get('skin');
@@ -81,6 +86,14 @@
  }
  let lastMusicKey='';
  function updateMusic(){
+  const timing=engine.timingState();
+  const signed=n=>(n>=0?'+':'')+Math.round(n)+'ms';
+  const cueLabel={half:'半拍前',full:'一拍前',onehalf:'1.5拍前',beat:'前のDev候補',previous:'以前（旧方式）'}[timing.mode];
+  const timingText=cueLabel+' · '+(timing.active&&!timing.windup?'追撃・振りかぶりなし':'振りかぶり→拍 '+(timing.windupLead==null?'—':Math.round(timing.windupLead-timing.contactDelta)+'ms'))+
+   ' / 接触−拍 '+signed(timing.contactDelta)+' / 判定中心−拍 '+signed(timing.inputDelta)+
+   ' / 直近入力 '+(timing.lastInput?signed(timing.lastInput.delta):'—')+' / フレーム遅れ '+(timing.firstContactFrameMs==null?'—':signed(timing.firstContactFrameMs));
+  if($('devTimingInfo').textContent!==timingText)$('devTimingInfo').textContent=timingText;
+  $('devBeatPulse').dataset.active=String(timing.beatPulse);
   const skinState=engine.skinState?.();
   if(skinState){const skin=window.ParryProgression.SKINS.find(s=>s.id===skinState.id);
    const text=(skin?.name||'通常')+' · '+(skinState.effects?'効果ON':'外見のみ')+' · HP×'+skinState.hpMultiplier+' / パリィ ±'+skinState.parryWindow+'ms / ジャスト ±'+skinState.justWindow+'ms'+(skinState.id==='spacetime'?' / 遭遇BPM補正 '+(skinState.tempoOffset>0?'+':'')+skinState.tempoOffset:'');
