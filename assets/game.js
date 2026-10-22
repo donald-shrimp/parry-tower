@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 let devPreviewSkin='normal';
+let devBeatContact=false,devTimingTrace={};
 const STAGE_MUSIC=window.ParryStageMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 // Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
@@ -123,8 +124,9 @@ let pausedFrom='combat',pauseAt=0,screenOffset=0;
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-// The heard beat is the input target; shield contact follows after this fixed animation time.
+// Held guards need preparation. The dev beat-contact candidate decouples parry presentation from this delay.
 const PARRY_STARTUP=100;
+const contactDelay=()=>DEV_MODE&&devBeatContact?0:PARRY_STARTUP;
 const PARRY_REARM_MS=300,PARRY_RELEASE_MS=120;
 // Guard activates after the shield is physically raised; hold to cover repeated attacks.
 const GUARD_DAMAGE_RATIO=.30;
@@ -288,8 +290,8 @@ function scoreToPerf(t,offset=0){
  if(audioContext){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
  return score.visualOriginPerf+(t-score.origin)*1000+offset;
 }
-function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat)+PARRY_STARTUP;game.telegraphStart=game.attackAt-game.attackSpan}
-function inputTargetAt(){return game.attackAt-PARRY_STARTUP+latencyOffset}
+function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat)+contactDelay();game.telegraphStart=game.attackAt-game.attackSpan}
+function inputTargetAt(){return game.attackAt-contactDelay()+latencyOffset}
 function musicParry(kind){
  if(!audioEnabled||!audioContext)return;
  if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
@@ -1001,7 +1003,7 @@ function beginEncounter(t){
  startScore(game.enemy);
  if(runSkinRules().randomTempo)showText(game.skinTempoOffset>0?'時空加速 ＋12':game.skinTempoOffset<0?'時空減速 −12':'時空安定 ±0',w*.5,h*.3,'#d9bcff',18);
  if(archetype.rare&&!game.practice){sound(890,.20,'sine',.08,-180);showText('✦ RARE ENCOUNTER ✦',w*.50,h*.20,'#f6d58b',20)}
- game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170+PARRY_STARTUP;game.telegraphStart=t;
+ game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.attackAt=t+game.attackSpan+170+contactDelay();game.telegraphStart=t;
  game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;game.pendingKind=null;game.inputLocked=false;
  game.lastAttemptDelta=null;game.lastStrike=0;game.feedback='';game.feedbackAt=0;
  game.nextFloorHint=game.practice?'PRACTICE':archetype.preview?'UNKNOWN ENCOUNTER':archetype.finalBoss?'FINAL BOSS · '+floor+'F':archetype.rare?'RARE ENCOUNTER':archetype.elite?'ELITE ENCOUNTER':archetype.boss?'BOSS FLOOR':'FLOOR '+floor;
@@ -1433,6 +1435,7 @@ function tap(releasedEnough=true){
  if(Math.abs(delta)<=perfect){game.pendingKind='just';game.inputLocked=true;game.parryAnimKind='just'}
  else if(Math.abs(delta)<=parry){game.pendingKind='parry';game.inputLocked=true;game.parryAnimKind='parry'}
  else game.parryAnimKind='guard';
+ if(DEV_MODE)devTimingTrace.input={delta,kind:game.pendingKind||'outside',at:t};
  if(game.pendingKind)game.pendingAt=t;
 }
 
@@ -1581,9 +1584,13 @@ function drawBackground(now){const g=ctx.createLinearGradient(0,0,0,h);g.addColo
 function hero(now){
  const s=Math.min(w/550,h/470)*1.23,x=w*.28,y=h*.80;
  const since=now-(game.parryAnimAt||-99999);
- const quickLift=clamp(since/95,0,1)*clamp((300-since)/130,0,1);
+ const beatParry=DEV_MODE&&devBeatContact&&['parry','just'].includes(game.parryAnimKind);
+ const quickLift=beatParry?clamp(since/8,0,1)*clamp((180-since)/90,0,1):clamp(since/95,0,1)*clamp((300-since)/130,0,1);
  const heldLift=game.guardHeld?clamp((now-game.guardStartedAt)/PARRY_STARTUP,0,1):0;
- const lift=Math.max(quickLift,heldLift);
+ const deflectAge=now-(game.lastDeflectAt??-99999);
+ const contactLift=DEV_MODE&&devBeatContact&&['parry','just'].includes(game.lastStrikeKind)&&deflectAge>=0?1-smooth((deflectAge-38)/100):0;
+ const pendingLift=beatParry&&game.pendingKind?clamp(since/8,0,1):0;
+ const lift=Math.max(quickLift,heldLift,contactLift,pendingLift);
  const action=['parry','just'].includes(game.lastStrikeKind)?clamp(1-(now-(game.lastDeflectAt??-99999))/240,0,1):0;
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const age=now-(game.lastImpactAt??-99999),push=(age>=0&&age<160&&game.lastStrikeKind!=='miss'?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45);
@@ -1944,6 +1951,10 @@ function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h
 function update(now,dt){const m=game.mode;
  if(['combat','phase'].includes(m)&&score.active&&!readAudioClock().healthy){pauseForClock();return;}
  if(m==='combat'){scheduleScore();syncAttackClock();
+ if(DEV_MODE&&now>=game.attackAt){
+  const key=score.theme+':'+game.attackBeat;
+  if(devTimingTrace.frame?.key!==key)devTimingTrace.frame={key,delay:now-game.attackAt};
+ }
  if(!game.windupPlayed&&now>=game.attackAt-Math.min(motionFor(game.enemy).prepare,game.attackSpan*.83)){
   game.windupPlayed=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);
  }
@@ -2071,9 +2082,13 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
  if(DEV_MODE)window.__parryDev=Object.freeze({
-  launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false,tempoLevel=null){
+  launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false,tempoLevel=null,timingMode='previous',inputOffset=null){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
+   devBeatContact=timingMode==='beat';devTimingTrace={};
+   if(typeof inputOffset==='number'&&Number.isFinite(inputOffset)){
+    latencyOffset=clamp(inputOffset,-180,180);$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
+   }
    devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
    const key=practice?(enemyKey||P.encounterForFloor(f,()=>.5).bookKey):null;
    start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects,tempoLevel});
@@ -2086,6 +2101,12 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   },
   previewSkin(){return devPreviewSkin},
   skinState(){return {id:visualSkin(),effects:!!game.skinEffects,hpMultiplier:runSkinRules().hp,parryWindow:getParryWindow(),justWindow:getPerfectWindow(),tempoOffset:game.skinTempoOffset||0,tempoReduction:game.tempoBpmReduction||0}},
+  timingState(){
+   const active=score.active&&game.mode==='combat',beatAt=game.attackAt-contactDelay(),origin=beatAt-game.attackBeat*score.beat*1000;
+   return {mode:devBeatContact?'beat':'previous',active,offset:latencyOffset,contactDelta:contactDelay(),inputDelta:latencyOffset,
+    beatAt,contactAt:game.attackAt,targetAt:inputTargetAt(),beatPulse:active&&performance.now()>=origin&&((performance.now()-origin)%(score.beat*1000))<55,
+    lastInput:devTimingTrace.input?{...devTimingTrace.input}:null,firstContactFrameMs:devTimingTrace.frame?.delay??null};
+  },
   reset(){title()},
   musicList(){return STAGE_MUSIC?.themes||[]},
   previewMusic(id,variant='normal'){

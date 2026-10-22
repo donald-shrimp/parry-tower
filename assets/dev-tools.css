@@ -28,3 +28,7 @@
 #devStatus{font-size:12px;color:#d8e4f2;margin:10px 0 3px}
 .dev-note{font-size:11px;color:#9caec4;margin:4px 0 0;line-height:1.5}
 @media(max-width:700px){.dev-panel{width:calc(100% - 14px);padding:12px}.dev-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.dev-controls label:nth-child(2){grid-column:1/-1}.dev-title{align-items:flex-start;flex-direction:column;gap:2px}.dev-controls button{font-size:11px;padding:7px 6px}}
+
+.dev-timing{margin-top:12px;padding:12px;border:1px solid #607388;border-radius:8px;background:#0e1c2e}.dev-timing .dev-controls{grid-template-columns:minmax(190px,1fr) minmax(160px,1fr)}.dev-timing-readout{display:flex;align-items:center;gap:10px;font-size:12px;line-height:1.7;font-variant-numeric:tabular-nums;margin:10px 0 0}.dev-timing-readout output{overflow-wrap:anywhere}#devBeatPulse{flex:none;display:grid;place-items:center;width:36px;height:36px;border:1px solid #607388;border-radius:8px;background:#101a2c;color:#9caec4}#devBeatPulse[data-active=true]{background:#dab96f;color:#101a2c;border-color:#ffdfa2}@media(max-width:600px){.dev-timing .dev-controls{grid-template-columns:1fr}}
+
+.app>.dev-timing-readout{padding:10px 12px;border:1px solid #607388;border-radius:8px;background:#0e1c2e;color:#e9f3fc;margin:10px 0}

@@ -7,7 +7,7 @@
 <meta name="parry-build" content="v0.9.5-preview-4">
 <title>パリィの塔 | 開発者テスト v0.9.5-preview-4</title>
 <link rel="stylesheet" href="./assets/style.css?v=v0.9.5-preview-4&font=5">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.5-preview-4">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.5-preview-4&beat-contact=1">
 </head>
 <body>
 <section class="dev-panel" aria-label="開発者テスト設定">
@@ -24,6 +24,13 @@
  </div>
  <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v0.9.5-preview-4 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
+ <section class="dev-timing" aria-label="拍と接触の比較">
+  <div class="dev-controls">
+   <label for="devTimingMode">タイミング方式<select id="devTimingMode"><option value="previous">公開版 · 拍の100ms後に接触</option><option value="beat">新方式 · 拍と接触を一致</option></select></label>
+   <label for="devInputOffset">開始時の入力補正（ms）<input id="devInputOffset" type="number" min="-180" max="180" step="1" value="0"></label>
+  </div>
+  <p class="dev-note">上の「指定条件で開始」で反映。まず新方式・補正0msで比較できます。入力補正は保存しません。</p>
+ </section>
  <p id="devStatus" role="status">フロアと敵を選び、開始ボタンを押してください。</p>
  <div class="dev-controls dev-sound-controls" aria-label="金属音を試聴">
   <span>効果音を試す · 参考音版 v3</span><button type="button" id="soundGuard">ガン · ガード</button><button type="button" id="soundParry">ガキン！ · パリィ</button><button type="button" id="soundJust">ジャキーン！ · ジャスト</button>
@@ -57,6 +64,7 @@
   <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.5-preview-4 DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
+  <p class="dev-timing-readout"><span id="devBeatPulse" aria-hidden="true">♫</span><output id="devTimingInfo">開始すると拍と接触を表示します。</output></p>
  <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
  <div class="layout">
   <main class="main">
@@ -172,7 +180,7 @@
 <script src="./assets/audio-clock.js?v=v0.9.5-preview-4" defer></script>
 <script src="./assets/player-settings.js?v=v0.9.5-preview-4&timing=2" defer></script>
 <script src="./assets/run-checkpoint.js?v=v0.9.5-preview-4&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.5-preview-4&timing=2&tempo=1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.5-preview-4&tempo=1" defer></script>
+<script src="./assets/game.js?v=v0.9.5-preview-4&timing=2&tempo=1&beat-contact=1" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.5-preview-4&tempo=1&beat-contact=1" defer></script>
 </body>
 </html>

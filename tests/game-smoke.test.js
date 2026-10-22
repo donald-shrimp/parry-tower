@@ -407,7 +407,7 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
  assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-4&tempo=1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-4&tempo=1&beat-contact=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -3036,4 +3036,101 @@ test('storage failure keeps combat playable, surfaces the failed save and remove
 test('resuming an illustrated challenge retains its chosen art after legacy visual is selected in the shop',()=>{
  const g=makeHarness();g.press('startBtn');const saved=Object.fromEntries(g.storage);
  saved.parryTowerPermanent_v1=JSON.stringify({unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']});const re=makeHarness(saved);assert.equal(re.artMode(),'legacy');re.press('continueBtn');assert.equal(re.artMode(),'illustrated');
+});
+
+
+test('beat-contact candidate puts every attack on its score beat through complete patterns and tempo changes',()=>{
+ const g=makeHarness({},true);g.random(.5);
+ for(const e of P.all)for(const tempo of [0,6]){
+  g.dev().launch(5,e.id+(e.rare?':rare':':normal'),true,'normal',false,tempo,'beat',0);
+  for(let i=0;i<e.rhythm.length*2;i++){
+   const state=g.state(),B=(state.scoreOrigin+state.attackBeat*state.beat)*1000,timing=g.dev().timingState();
+   assert.ok(Math.abs(state.attackAt-B)<1e-6,e.id+' / '+tempo+' / '+state.attackBeat);
+   assert.ok(Math.abs(timing.targetAt-B)<1e-6);assert.equal(timing.contactDelta,0);
+   g.clock(B);g.parry();g.frame(B+1);assert.equal(g.state().lastStrikeKind,'just',e.id);
+  }
+  g.press('pauseBtn');g.frame(g.now+500);g.press('resumeBtn');const re=g.state();
+  assert.ok(Math.abs(re.attackAt-(re.scoreOrigin+4*re.beat)*1000)<1e-6);
+ }
+});
+
+test('beat-contact candidate keeps corrected inclusive input windows and guard preparation independent',()=>{
+ for(const offset of [-180,0,180])for(const delta of [-31,-11,0,11,31]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'normal',false,0,'beat',offset);
+  const timing=g.dev().timingState(),C=timing.contactAt,press=timing.targetAt+delta;
+  if(press>=C){g.frame(C);g.frame(press);assert.equal(g.state().lastStrikeKind,'miss');assert.equal(g.state().combo,0);}
+  g.clock(press);g.parry();g.frame(Math.max(C,press)+1);
+  assert.equal(g.state().lastStrikeKind,Math.abs(delta)<=11?'just':'parry',offset+'/'+delta);
+ }
+ for(const [lead,expected]of [[101,'guard'],[99,'miss']]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'normal',false,0,'beat',0);
+  const C=g.state().attackAt;g.clock(C-lead);g.hold();g.frame(C+32);assert.equal(g.state().lastStrikeKind,expected);
+ }
+});
+
+test('beat-contact shield is fully presented on successful contact for all skins and relaxes without a held guard',async()=>{
+ for(const skin of PR.SKINS){
+  const g=makeHarness({},true,'adopted');g.dev().launch(5,'guardian:normal',true,skin.id,false,0,'beat',0);await g.readyArt(P.byId.guardian);
+  const C=g.state().attackAt;g.frame(C-50);assert.equal(g.heroPose().lift,0);
+  g.clock(C);g.parry();g.frame(C);assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.heroPose().lift,1,skin.id);
+  assert.equal(g.heroPose().heldLift,0);assert.equal(g.heroPose().action,1);
+  g.frame(C+180);assert.equal(g.heroPose().lift,0);assert.equal(g.state().guardHeld,false);
+ }
+ const early=makeHarness({},true,'adopted');early.dev().launch(5,'guardian:normal',true,'normal',false,0,'beat',-180);await early.readyArt(P.byId.guardian);
+ const C=early.state().attackAt;early.clock(C-180);early.parry();early.frame(C-1);assert.equal(early.heroPose().lift,1,'accepted early input keeps its shield ready');
+ early.frame(C+1);assert.equal(early.heroPose().lift,1);
+});
+
+test('beat-contact logs frame quantization separately and produces feedback at the first frame after contact',()=>{
+ for(const fps of [30,60,120])for(const skip of [0,85]){
+  const g=makeHarness({},true),step=1000/fps;g.dev().launch(5,'guardian:normal',true,'normal',false,0,'beat',0);
+  const C=g.state().attackAt;for(let t=C-200+step*.37;t<C;t+=step)g.frame(t);
+  g.clock(C);g.parry();const first=C+step*.37+skip;g.frame(first);
+  assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.dev().timingState().contactDelta,0);
+  assert.ok(Math.abs(g.dev().timingState().firstContactFrameMs-(first-C))<1e-6);
+  assert.ok(Math.abs(g.metalEvents().at(-1).when-first/1000-.003)<1e-6,'SFX generation follows the observed frame, without another 100ms');
+ }
+});
+
+test('beat-contact Dev URL and comparison controls are unsaved and cannot change the main game defaults',()=>{
+ const seed={parryTowerAudioOffset_v05:'120',parryTowerInputOffset_v1:'45'};
+ const g=makeHarness(seed,true,'','?floor=5&enemy=guardian&practice=1&timingMode=beat&inputOffset=0');
+ assert.equal(g.el.get('devTimingMode').value,'beat');assert.equal(g.el.get('devInputOffset').value,'0');
+ g.press('devLaunch');const fresh=g.state();assert.equal(g.dev().timingState().mode,'beat');assert.equal(fresh.offset,0);
+ g.frame(g.now+1);assert.match(g.el.get('devTimingInfo').textContent,/接触−拍 \+0ms/);
+ g.el.get('devTimingMode').value='previous';g.el.get('devInputOffset').value='45';g.press('devLaunch');
+ const old=g.state();assert.equal(g.dev().timingState().mode,'previous');assert.equal(old.offset,45);
+ assert.ok(Math.abs(old.attackAt-(old.scoreOrigin+old.attackBeat*old.beat)*1000-100)<1e-6);
+ assert.deepEqual([...g.storage],Object.entries(seed));
+ const normal=makeHarness(seed);normal.press('startBtn');const n=normal.state();assert.ok(Math.abs(n.attackAt-(n.scoreOrigin+n.attackBeat*n.beat)*1000-100)<1e-6);
+});
+
+test('beat-contact candidate keeps the final second movement and its four-beat return on the same beat',()=>{
+ const g=makeHarness({},true);g.dev().launch(80,'endking:elite',false,'normal',false,6,'beat',0);
+ const d=g.bloodTest();d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
+ const C=g.state().attackAt;g.clock(C);g.parry();g.frame(C+1);g.frame(g.now+1501);assert.equal(g.state().phaseStage,'countin');
+ const count=g.state();g.frame(count.phaseCountStartAt+4*count.beat*1000+1);const resumed=g.state();assert.equal(resumed.mode,'combat');
+ assert.ok(Math.abs(resumed.attackAt-(resumed.scoreOrigin+resumed.attackBeat*resumed.beat)*1000)<1e-6);assert.equal(resumed.bpm,124);
+});
+
+
+test('beat-contact candidate shares all eight music grids and trusted output latency without a contact offset',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'normal',false,0,'beat',0);
+ const ac=g.bloodTest().audioContext();let delay=0;ac.getOutputTimestamp=()=>({performanceTime:g.now,contextTime:g.now/1000-delay/1000});
+ for(const theme of g.dev().musicList())for(const variant of ['normal','boss'])for(delay of [0,50,150]){
+  g.dev().practiceMusic(theme.id,variant);const s=g.state(),audioBeat=(s.scoreOrigin+s.attackBeat*s.beat)*1000,heardBeat=audioBeat+delay;
+  assert.ok(Math.abs(s.attackAt-heardBeat)<1e-6,theme.id+'/'+variant+'/'+delay);
+  assert.ok(Math.abs(g.dev().timingState().targetAt-heardBeat)<1e-6);
+  g.clearAudioEvents();g.frame(audioBeat-100);
+  assert.ok(g.audioEvents().some(event=>Math.abs(event.time*1000-audioBeat)<1e-6));
+ }
+});
+
+test('beat-contact candidate combines skin rules and tempo while keeping input at the heard beat',()=>{
+ const g=makeHarness({},true);g.random(.1);
+ for(const skin of PR.SKINS){
+  g.dev().launch(5,'guardian:normal',true,skin.id,true,6,'beat',0);const s=g.state();assert.equal(s.bpm,skin.id==='spacetime'?136:124);
+  const beat=(s.scoreOrigin+s.attackBeat*s.beat)*1000;assert.ok(Math.abs(s.attackAt-beat)<1e-6);
+  g.clock(beat);g.parry();g.frame(beat+1);assert.equal(g.state().lastStrikeKind,'just');
+ }
 });
