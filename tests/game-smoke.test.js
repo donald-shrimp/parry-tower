@@ -170,7 +170,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   checkpoint:()=>{checkpoint();return readCheckpoint()},
   tutorialInfo:()=>({active:game.tutorial,step:game.tutorialStep,finishing:game.tutorialFinishing}),
   calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
-  timingInfo:()=>({target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
+  timingInfo:()=>({windup:!motionFor(game.enemy).noWindup,windupLead:motionFor(game.enemy).cuePrepare,parryWindow:getParryWindow(),target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
   skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:s.desc})),
   skillCap,merchantTargets,
   setBreaks:(id,n)=>{game.skillBreaks[id]=n},
@@ -231,6 +231,10 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   get now(){return clock}
  };
 }
+function settleCurrentAttack(g){
+ const timing=g.bloodTest().timingInfo();g.frame(Math.max(g.state().attackAt,timing.target+timing.parryWindow)+1);
+}
+
 test('bestiary UI has no obsolete arena actions and practice buttons stay within card layouts',()=>{
  const html=fs.readFileSync('index.html','utf8');
  const js=fs.readFileSync('assets/game.js','utf8');
@@ -321,7 +325,7 @@ for(const mode of ['missing','missing-illustrated'])test(mode+' module still pla
  const old=makeHarness(),fallback=makeHarness({},false,mode);
  for(const g of [old,fallback]){
   g.random(.5);g.press('startBtn');
-  for(let i=0;i<6&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+  for(let i=0;i<6&&g.state().mode==='combat';i++)settleCurrentAttack(g);
  }
  assert.equal(fallback.state().mode,'gameover');
  assert.deepEqual(JSON.parse(JSON.stringify(fallback.state())),JSON.parse(JSON.stringify(old.state())));
@@ -358,7 +362,7 @@ test('meeting a slime unlocks safe training even when the tower run ends without
  assert.equal(bookBefore.defeated['slime:normal'],undefined);
  for(let i=0;i<5;i++){
   const due=g.state().attackAt;
-  g.frame(due+1);  // no tap: take a hit and lose the run
+  settleCurrentAttack(g);  // no tap: wait through the complete input window, then take the hit
  }
  assert.equal(g.state().mode,'gameover');
  const beforeSouls=g.state().souls;
@@ -372,7 +376,7 @@ test('meeting a slime unlocks safe training even when the tower run ends without
  const hpBefore=g.state().hp;
  for(let i=0;i<9;i++){
   const due=g.state().attackAt;
-  g.frame(due+1);
+  settleCurrentAttack(g);
  }
  assert.equal(g.state().mode,'combat','practice is immortal');
  assert.equal(g.state().hp,hpBefore,'practice ignores incoming damage');
@@ -409,8 +413,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-4"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-4&tempo=1&beat-contact=1&cue=1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-5"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-5&tempo=1&beat-contact=1&cue=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -558,7 +562,7 @@ test('ordinary skill reward omits generic advice and actual unlock notice remain
   g.press('startBtn');
   for(let i=0;i<2;i++){
    const due=g.state().attackAt;
-   g.clock(due-100);g.parry();g.frame(due+1);
+   g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
   }
   g.frame(g.now+1000);
   assert.equal(g.state().mode,'reward');
@@ -578,7 +582,7 @@ test('death menu ignores stray parry taps for 500ms, then restores all actions',
  const g=makeHarness();
  g.press('startBtn');
  for(let i=0;i<5;i++){
-  g.frame(g.state().attackAt+1);
+  settleCurrentAttack(g);
  }
  assert.equal(g.state().mode,'gameover');
  const diedAt=g.now;
@@ -607,7 +611,7 @@ test('death menu ignores stray parry taps for 500ms, then restores all actions',
 test('retry and home work after the grace period; every new death starts a fresh lock',()=>{
  const g=makeHarness();
  function dieWithoutParries(){
-  for(let i=0;i<5;i++)g.frame(g.state().attackAt+1);
+  for(let i=0;i<5;i++)settleCurrentAttack(g);
   assert.equal(g.state().mode,'gameover');
   assert.equal(g.el.get('deathCover').inert,true);
  }
@@ -713,11 +717,11 @@ test('new survival upgrades heal each floor and grant boss-start barriers',()=>{
  const permanent={regen:3,bossWard:3};
  const g=makeHarness({'parryTowerPermanent_v1':JSON.stringify(permanent)});
  g.press('startBtn');
- g.frame(g.state().attackAt+1);
+ settleCurrentAttack(g);
  const hurt=g.state().hp;
  assert.ok(hurt<65);
  for(let i=0;i<4&&g.state().mode==='combat';i++){
-  const impact=g.state().attackAt;g.clock(impact-100);g.parry();g.frame(impact+1);
+  const impact=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(impact+1);
  }
  assert.equal(g.state().mode,'victory');
  assert.equal(g.state().hp,Math.min(65,hurt+Math.ceil(65*.15)));
@@ -731,7 +735,7 @@ test('four-choice loot and extra reroll only appear when permanently purchased',
  g.press('startBtn');
  assert.equal(g.state().rerolls,2);
  for(let i=0;i<4&&g.state().mode==='combat';i++){
-  const impact=g.state().attackAt;g.clock(impact-100);g.parry();g.frame(impact+1);
+  const impact=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(impact+1);
  }
  assert.equal(g.state().mode,'victory');
  g.frame(g.now+950);
@@ -745,11 +749,11 @@ test('four-choice loot and extra reroll only appear when permanently purchased',
 test('soul gains and once-per-run revive apply while preserving combat timing',()=>{
  const p={'parryTowerPermanent_v1':JSON.stringify({soulGain:3,revive:1})};
  const g=makeHarness(p);g.press('startBtn');
- for(let i=0;i<9&&!g.state().reviveUsed;i++)g.frame(g.state().attackAt+1);
+ for(let i=0;i<9&&!g.state().reviveUsed;i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().reviveUsed,true);
  assert.equal(g.state().hp,Math.ceil(g.state().maxHp*.3));
- for(let i=0;i<10&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+ for(let i=0;i<10&&g.state().mode==='combat';i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'gameover','the second fatal blow ends the run');
  assert.equal(g.state().souls,4,'floor one death bonus 3 rounded up by +15%');
  g.frame(g.now+500);
@@ -781,13 +785,13 @@ test('practice and developer page do not write permanent progression',()=>{
 
 function resolveBloodParry(g,delta=0){
  const impact=g.state().attackAt;
- g.clock(impact-100+delta);
+ g.clock(delta<=-40?impact-100+delta:g.bloodTest().timingInfo().target+delta);
  // Historic '-40ms' tests represent the old early guard. Now they must keep
  // holding through the impact to prove the new defensive stance actually works.
  const guarding=delta<=-40;
  if(guarding)g.hold();
  else g.parry();
- g.frame(impact+1);
+ g.frame(Math.max(impact,g.bloodTest().timingInfo().target+(guarding?g.bloodTest().timingInfo().parryWindow:delta))+1);
  if(guarding)g.release();
 }
 test('blood formula scales from 8% to 18%, retains minimum two HP and caps one parry to 25% max HP',()=>{
@@ -912,7 +916,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.5-preview-4/);
+  assert.match(html,/v0\.9\.5-preview-5/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1063,7 +1067,7 @@ test('Ice ward mitigates the next incoming hit and Ice Mirror reflects mitigated
  const mirror=makeHarness();mirror.press('startBtn');const m=mirror.bloodTest();
  m.setSkill('frost',1);m.setSkill('thorns',1);m.setEnemyHp(10000);m.setFrostWard(true);
  const before=m.info().enemyHp;
- mirror.frame(mirror.state().attackAt+1);
+ settleCurrentAttack(mirror);
  assert.equal(mirror.state().hp,65-Math.ceil(mirror.state().enemyAttack*.75),'ice reduces missed attack damage');
  assert.ok(m.info().enemyHp<before,'ice mirror damages the enemy');
  assert.equal(m.hits().filter(x=>x.label==='氷鏡').length,1);
@@ -1109,8 +1113,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-4"/);
-  assert.match(html,/v0\.9\.5-preview-4/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-5"/);
+  assert.match(html,/v0\.9\.5-preview-5/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1428,8 +1432,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-4"'),asset);
-  assert.match(html,/v0\.9\.5-preview-4/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-5"'),asset);
+  assert.match(html,/v0\.9\.5-preview-5/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1936,20 +1940,20 @@ test('hold guard remains raised through repeated hits; early short tap misses in
  const held=makeHarness();held.press('startBtn');
  const d=held.bloodTest();d.setEnemyHp(999999);d.setEnemyAttack(50);
  held.clock(held.state().attackAt-500);held.hold();
- held.frame(held.state().attackAt+1);
+ settleCurrentAttack(held);
  assert.equal(held.state().hp,50,'50 attack is 15 blocked damage at 70% reduction');
  assert.equal(held.state().guardHeld,true);
  const enemyHp=held.state().enemyHp,second=held.state().attackAt;
- held.frame(second+1);
+ settleCurrentAttack(held);
  assert.equal(held.state().hp,35,'next attack also guarded without a second press');
  assert.equal(held.state().enemyHp,enemyHp,'guard does not automatically attack');
  held.release();assert.equal(held.state().guardHeld,false);
- held.frame(held.state().attackAt+1);
+ settleCurrentAttack(held);
  assert.equal(held.state().mode,'gameover','releasing before impact leaves player vulnerable');
  const short=makeHarness();short.press('startBtn');
  short.clock(short.state().attackAt-500);short.parry();
  assert.equal(short.state().guardHeld,false);
- short.frame(short.state().attackAt+1);
+ settleCurrentAttack(short);
  assert.equal(short.state().hp,65-short.state().enemyAttack,'early short tap does not grant guard');
 });
 
@@ -1969,7 +1973,7 @@ test('a fresh parry needs both the 300ms action recovery and 120ms fully release
  }
  for(const [gap,expected]of [[119,'miss'],[120,'just']]){
   const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt;
-  g.clock(due-600);g.hold();g.clock(due-100-gap);g.release();g.clock(due-100);g.parry();g.frame(due+1);
+  g.clock(due-600);g.hold();g.clock(due-100-gap);g.release();g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
   assert.equal(g.state().lastStrikeKind,expected,'release gap '+gap);
  }
 });
@@ -1991,7 +1995,7 @@ test('parry success cancels recovery at contact, and intended inputs still succe
  for(const e of P.all){
   const g=makeHarness({},true);g.dev().launch(80,e.bookKey||e.id+(e.rare?':rare':':normal'),true);
   for(let i=0;i<16;i++){
-   const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+   const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
    assert.equal(g.state().lastStrikeKind,'just',e.id+' intended consecutive hit '+i);assert.equal(g.state().parryCooldownRemaining,0);
   }
  }
@@ -2014,11 +2018,11 @@ test('game draws a sword counter only after successful defense, while guard and 
 
 test('metal feedback fires once at collision, respects mute, and developer sound previews do not affect the fight',()=>{
  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true);const due=g.state().attackAt;
- g.clock(due-100);g.parry();assert.equal(g.metalEvents().length,0);g.frame(due+1);g.frame(due+10);
+ g.clock(g.bloodTest().timingInfo().target);g.parry();assert.equal(g.metalEvents().length,0);g.frame(due+1);g.frame(due+10);
  assert.deepEqual(g.metalEvents().map(e=>e.kind),['just']);assert.ok(Math.abs(g.metalEvents()[0].when-(due+1)/1000-.003)<.00001);
  const state=JSON.stringify(g.state());assert.equal(g.dev().previewSound('guard'),true);assert.equal(JSON.stringify(g.state()),state);
  g.press('audioBtn');assert.equal(g.dev().previewSound('parry'),false);const count=g.metalEvents().length;
- const next=g.state().attackAt;g.clock(next-100);g.parry();g.frame(next+1);assert.equal(g.metalEvents().length,count);
+ const next=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(next+1);assert.equal(g.metalEvents().length,count);
 });
 test('developer volume slider matches adopted production, updates three metal sounds live and leaves BGM and combat unchanged',()=>{
  const g=makeHarness({},true),slider=g.el.get('devSfxVolume'),value=g.el.get('devSfxVolumeValue');
@@ -2032,7 +2036,7 @@ test('developer volume slider matches adopted production, updates three metal so
  for(const kind of ['guard','parry','just'])assert.equal(g.dev().previewSound(kind),true);
  const bus=g.metalEvents()[0].destination;
  assert.ok(g.metalEvents().every(event=>event.destination===bus));assert.equal(bus.gain.value,.27);
- const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+ const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
  assert.equal(g.metalEvents().at(-1).destination,bus,'real collision uses the audition volume');
  assert.equal(g.state().lastStrikeKind,'just');
  slider.value='0';slider.listeners.input();assert.equal(bus.gain.value,0);
@@ -2046,7 +2050,7 @@ test('developer volume can be shared in a URL, survives resets and is bounded wi
  assert.equal(g.dev().setSfxVolume(-9),0);assert.equal(g.dev().setSfxVolume(999),100);
  assert.equal(g.dev().setSfxVolume(NaN),100);
  const normal=makeHarness();normal.random(.5);normal.press('startBtn');
- const due=normal.state().attackAt;normal.clock(due-100);normal.parry();normal.frame(due+1);
+ const due=normal.state().attackAt;normal.clock(normal.bloodTest().timingInfo().target);normal.parry();normal.frame(due+1);
  assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain.value,1,'production effects use the player gain at its approved 100% default');
  assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devSfxVolume/);
 });
@@ -2074,7 +2078,7 @@ test('Dev music switching retires the old bus, preserves tempo and supports ever
   assert.equal(g.state().practice,true);assert.equal(g.state().floor,s.from+(mode==='boss'?4:0));
   assert.equal(g.state().bpm,mode==='boss'?136:112);
   assert.equal(g.dev().musicState().audition,false);assert.equal(g.dev().stopMusic(),false,'never stop a live combat clock via the audition stop button');
-  const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+  const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
   assert.equal(g.state().lastStrikeKind,'just',s.id+' still hits the same beat');
  }
  assert.deepEqual([...g.storage],saved);
@@ -2097,7 +2101,7 @@ test('developer invulnerable practice permits unseen enemies but never unlocks o
  const seed={'parryTowerPrototype_v1':JSON.stringify({coins:77,runs:3})},g=makeHarness(seed,true);
  const saved=[...g.storage];assert.equal(g.dev().launch(75,'endking:normal',true),true);
  assert.equal(g.state().practice,true);assert.equal(g.state().enemy,'endking');assert.equal(g.state().floor,75);
- for(let i=0;i<4;i++)g.frame(g.state().attackAt+1);
+ for(let i=0;i<4;i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'combat');assert.equal(g.state().hp,g.state().maxHp);assert.deepEqual([...g.storage],saved);
  assert.equal(g.state().discovered.length,0);assert.match(g.el.get('practiceEnemy').innerHTML,/gem_slime:rare/);
  g.el.get('practiceEnemy').value='guardian:normal';g.el.get('practiceEnemy').listeners.change();assert.equal(g.state().enemy,'guardian');
@@ -2108,7 +2112,7 @@ test('holding guard reduces 80F boss damage to maxHP 40%; combo decays but is no
  d.setEnemyHp(999999);d.setMaxHp(205);d.setHp(205);d.setShield(0);d.setCombo(80);
  d.setEnemyAttack(501);
  g.clock(g.state().attackAt-400);g.hold();
- g.frame(g.state().attackAt+1);
+ settleCurrentAttack(g);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().hp,123,'maxHP40%=82 guard damage');
  assert.equal(g.state().combo,64,'80 combo loses exactly 20%');
@@ -2116,7 +2120,7 @@ test('holding guard reduces 80F boss damage to maxHP 40%; combo decays but is no
  g.release();d.setEnemyAttack(100);
  d.setCombo(4);d.setHp(205);
  g.clock(g.state().attackAt-400);g.hold();
- g.frame(g.state().attackAt+1);
+ settleCurrentAttack(g);
  assert.equal(g.state().combo,0,'minimum five-combo penalty');
 });
 test('held defense is reset on release, cancel, blur, pause, cinematic and new floor',()=>{
@@ -2150,7 +2154,7 @@ test('press at existing just/parry timing beats hold-guard fallback',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
  d.setEnemyHp(999999);d.setEnemyAttack(40);
  const due=g.state().attackAt;
- g.clock(due-100);g.hold();
+ g.clock(g.bloodTest().timingInfo().target);g.hold();
  g.frame(due+1);
  assert.equal(g.state().hp,65,'on-time press triggers parry, no guard damage');
  assert.ok(g.state().combo>=1);
@@ -2255,7 +2259,7 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
 
 function loseRun(g){
  if(g.state().mode==='title')g.press('startBtn');
- for(let i=0;i<12&&g.state().mode==='combat';i++)g.frame(g.state().attackAt+1);
+ for(let i=0;i<12&&g.state().mode==='combat';i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'gameover','player must eventually die without parries');
 }
 test('v0.9.3 phase 2 shop expands only recovery, boss shield and soul gain, leaving older prices intact',()=>{
@@ -2289,7 +2293,7 @@ test('fifth regeneration tier heals 20% after clearing a floor',()=>{
  const seed={'parryTowerPermanent_v1':JSON.stringify({regen:5})};
  const g=makeHarness(seed);g.press('startBtn');
  const d=g.bloodTest();
- g.frame(g.state().attackAt+1);
+ settleCurrentAttack(g);
  assert.equal(g.state().hp,51);
  d.setEnemyHp(1);
  resolveBloodParry(g,20);
@@ -2365,7 +2369,7 @@ test('production music follows every zone boundary and repeats with the existing
   const enemy=P.byId[g.state().enemy],bpm=enemy.boss?136:enemy.kind==='rogue'?124:112;
   assert.equal(g.state().bpm,bpm);assert.equal(g.bloodTest().mixGains().bgm,.35);
   if(!theme.original)assert.ok(g.el.get('trackLabel').textContent.includes(theme.name));
-  const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);
+  const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
   assert.equal(g.state().lastStrikeKind,'just','same hit clock on '+floor);
  }
 });
@@ -2414,7 +2418,7 @@ test('legacy bonus changes both renderers while preserving combat and BGM; switc
  const key='parryTowerPermanent_v1',owned={unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']};
  const seed={[key]:JSON.stringify(owned)},legacy=makeHarness(seed,true,'adopted'),current=makeHarness({},true,'adopted');
  for(const g of [legacy,current]){await g.readyArt(P.byId.guardian);g.dev().launch(5,'guardian:normal',true);await g.readyArt(P.byId.guardian);}
- for(const g of [legacy,current]){const due=g.state().attackAt;g.clock(due-100);g.parry();g.frame(due+1);}
+ for(const g of [legacy,current]){const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);}
  assert.deepEqual(legacy.artDrawCounts(),{hero:0,enemy:0});assert.ok(current.artDrawCounts().hero>0);assert.ok(current.artDrawCounts().enemy>0);
  for(const name of ['mode','enemy','hp','bpm','attackAt','lastStrikeKind','enemyHp'])assert.equal(legacy.state()[name],current.state()[name],name);
  assert.deepEqual(legacy.audioEvents(),current.audioEvents());
@@ -2441,7 +2445,7 @@ test('equipped dye reaches the actual hero crescent and combo glow is drawn with
  for(const legacy of [false,true]){
   const active=['slashTint','comboGlow',...(legacy?['legacyVisual']:[])],perm={unlockedExtras:active,enabledExtras:active,extraOptions:{slashTint:'violet'}};
   const g=makeHarness({parryTowerPermanent_v1:JSON.stringify(perm)},true,'adopted'),control=makeHarness({parryTowerPermanent_v1:JSON.stringify(legacy?{unlockedExtras:['legacyVisual'],enabledExtras:['legacyVisual']}:{})},true,'adopted');
-  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.dev().launch(5,'guardian:normal',true);await h.readyArt(P.byId.guardian);h.bloodTest().setEnemyHp(100000);h.bloodTest().setCombo(50);const due=h.state().attackAt;h.clock(due-100);h.parry();h.frame(due+110);}
+  for(const h of [g,control]){await h.readyArt(P.byId.guardian);h.dev().launch(5,'guardian:normal',true);await h.readyArt(P.byId.guardian);h.bloodTest().setEnemyHp(100000);h.bloodTest().setCombo(50);const due=h.state().attackAt;h.clock(h.bloodTest().timingInfo().target);h.parry();h.frame(due+110);}
   assert.ok(g.bonusArtEvents().some(e=>e.kind==='slashTint'&&e.tint==='violet'),legacy?'legacy wave':'painted hero wave');
   assert.ok(g.bonusArtEvents().some(e=>e.kind==='comboGlow'&&e.tier===3));
   assert.ok(!control.bonusArtEvents().some(e=>e.kind==='comboGlow'));
@@ -2543,8 +2547,8 @@ test('fundoshi fails on guards and hits through barriers, frost, reduction, refl
   assert.equal(g.state().mode,'gameover');assert.equal(g.state().hp,0);assert.equal(g.state().reviveUsed,false);assert.equal(g.state().enemyHp,before);
  }
  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'fundoshi',true);g.clock(g.now+10);g.parry();assert.equal(g.state().mode,'combat');
- const hit=g.state().attackAt;g.clock(hit-100);g.parry();g.frame(hit+1);assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.state().mode,'combat');assert.equal(g.state().hp,65);
- const practice=makeHarness({},true);practice.dev().launch(5,'guardian:normal',true,'fundoshi',true);practice.frame(practice.state().attackAt+1);assert.equal(practice.state().hp,65);assert.equal(practice.state().mode,'combat');
+ const hit=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(hit+1);assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.state().mode,'combat');assert.equal(g.state().hp,65);
+ const practice=makeHarness({},true);practice.dev().launch(5,'guardian:normal',true,'fundoshi',true);settleCurrentAttack(practice);assert.equal(practice.state().hp,65);assert.equal(practice.state().mode,'combat');
 });
 
 test('spacetime rolls +12,0,-12 per encounter against each base tempo and retains it through pause and restart',()=>{
@@ -2567,9 +2571,9 @@ test('spacetime keeps its rolled tempo through the summit second movement',()=>{
 
 test('skin records keep normal history and per-costume attempts separate while rewards stay shared',()=>{
  const seed={parryTowerPrototype_v1:JSON.stringify({coins:0,bestFloor:12,bestCombo:19,runs:4}),parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['fundoshi'],equippedSkin:'fundoshi'})};
- const g=makeHarness(seed);g.press('startBtn');g.frame(g.state().attackAt+1);assert.equal(g.state().mode,'gameover');
+ const g=makeHarness(seed);g.press('startBtn');settleCurrentAttack(g);assert.equal(g.state().mode,'gameover');
  const p=g.state().permanent;assert.equal(p.skinRecords.normal.bestFloor,12);assert.equal(p.skinRecords.normal.runs,4);assert.equal(p.skinRecords.fundoshi.runs,1);assert.equal(p.skinRecords.fundoshi.bestFloor,1);assert.ok(g.state().souls>0);
- const dev=makeHarness(seed,true);const saved=[...dev.storage];dev.dev().launch(5,'guardian:normal',false,'fundoshi',true);dev.frame(dev.state().attackAt+1);assert.deepEqual([...dev.storage],saved);
+ const dev=makeHarness(seed,true);const saved=[...dev.storage];dev.dev().launch(5,'guardian:normal',false,'fundoshi',true);settleCurrentAttack(dev);assert.deepEqual([...dev.storage],saved);
 });
 
 
@@ -2579,7 +2583,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.5-preview-4 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.5-preview-5 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
@@ -2836,7 +2840,7 @@ test('wallet shows independent tower coins and total soul fragments through purc
  g.press('upgradeOpenBtn');g.upgradeTab('bonus');g.upgradeBuy('bonus-section','skins');g.upgradeBuy('skin-buy','chick');
  assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),150);g.press('upgradeCloseBtn');g.press('startBtn');g.bloodTest().setTowerCoins(37);
  assert.equal(Number(g.el.get('towerCoinsLabel').textContent),37);assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),150);
- g.bloodTest().setHp(1);g.frame(g.state().attackAt+1);assert.equal(g.state().mode,'gameover');
+ g.bloodTest().setHp(1);settleCurrentAttack(g);assert.equal(g.state().mode,'gameover');
  assert.equal(Number(g.el.get('soulFragmentsLabel').textContent),g.state().souls);assert.ok(g.state().souls>150);
 });
 test('player settings use current gains at 100%, persist 0-200 independently and pause combat safely',()=>{
@@ -3105,7 +3109,7 @@ test('beat-contact Dev URL and comparison controls are unsaved and cannot change
  const old=g.state();assert.equal(g.dev().timingState().mode,'previous');assert.equal(old.offset,45);
  assert.ok(Math.abs(old.attackAt-(old.scoreOrigin+old.attackBeat*old.beat)*1000-100)<1e-6);
  assert.deepEqual([...g.storage],Object.entries(seed));
- const normal=makeHarness(seed);normal.press('startBtn');const n=normal.state();assert.ok(Math.abs(n.attackAt-(n.scoreOrigin+n.attackBeat*n.beat)*1000-100)<1e-6);
+ const normal=makeHarness(seed);normal.press('startBtn');const n=normal.state();assert.ok(Math.abs(n.attackAt-(n.scoreOrigin+n.attackBeat*n.beat)*1000)<1e-6);
 });
 
 test('beat-contact candidate keeps the final second movement and its four-beat return on the same beat',()=>{
@@ -3189,7 +3193,7 @@ test('cue comparison URL, switching, correction and pause preserve production ti
   assert.deepEqual([...g.storage],Object.entries(seed));
  }
  const main=makeHarness(seed);main.press('startBtn');const s=main.state();
- assert.ok(Math.abs(s.attackAt-(s.scoreOrigin+s.attackBeat*s.beat)*1000-100)<1e-6);
+ assert.ok(Math.abs(s.attackAt-(s.scoreOrigin+s.attackBeat*s.beat)*1000)<1e-6);
  assert.ok(!fs.readFileSync('index.html','utf8').includes('devTimingMode'));
 });
 
@@ -3229,5 +3233,48 @@ test('cue comparison follow-ups omit actual cutout preparation and windup sound,
    }else{g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);}
   }
   assert.ok(count>0,id+' includes a short follow-up');
+ }
+});
+
+test('production adopts the approved 1.5 beat notation for every enemy without a Dev API',()=>{
+ const book={version:2,seen:Object.fromEntries(P.all.map(e=>[P.enemyKey(e),{encounters:1,firstFloor:1}])),defeated:{}};
+ const g=makeHarness({parryTowerBestiary_v1:JSON.stringify(book)});assert.equal(g.dev(),undefined);g.press('practiceBtn');
+ for(const e of P.all){
+  g.clickers.get(P.enemyKey(e))();
+  for(let i=0;i<e.rhythm.length*2;i++){
+   const s=g.state(),t=g.bloodTest().timingInfo(),beat=(s.scoreOrigin+s.attackBeat*s.beat)*1000,windup=i===0||s.attackSpan/(s.beat*1000)>1.5+1e-6,lead=1.5*s.beat*1000;
+   assert.ok(Math.abs(s.attackAt-beat)<1e-6,e.id);assert.ok(Math.abs(t.target-beat)<1e-6);assert.equal(t.windup,windup);assert.ok(Math.abs(t.windupLead-lead)<1e-6);
+   g.clearAudioEvents();if(s.attackAt-lead+.01>=g.now)g.frame(s.attackAt-lead+.01);g.frame(s.attackAt-.001);
+   assert.equal(g.audioEvents().filter(a=>a.frequency===(e.boss?135:195)&&a.type==='triangle').length,windup?1:0,e.id+' / windup notation');
+   g.clock(beat);g.parry();g.frame(beat+.001);assert.equal(g.state().lastStrikeKind,'just');
+  }
+  g.press('pauseBtn');g.frame(g.now+100);g.press('resumeBtn');assert.equal(g.bloodTest().timingInfo().windup,true);
+  g.press('exitPracticeBtn');g.press('practiceBtn');
+ }
+});
+
+test('production preserves saved input centers and restores approved windups from a checkpoint',async()=>{
+ for(const offset of [-180,0,180]){
+  const seed={parryTowerInputOffset_v1:String(offset),parryTowerAudioOffset_v05:'120'};
+  const g=makeHarness(seed,false,'adopted');g.press('startBtn');await g.readyArt(P.byId.slime);
+  const s=g.state(),t=g.bloodTest().timingInfo();assert.ok(Math.abs(t.target-s.attackAt-offset)<1e-6);
+  const press=t.target;g.clock(press);g.parry();g.frame(Math.max(press,s.attackAt)+.001);assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.heroPose().lift,1);
+  g.bloodTest().checkpoint();const re=reloadHarness(g);re.press('continueBtn');const restored=re.state(),timing=re.bloodTest().timingInfo();
+  assert.equal(restored.offset,offset);assert.ok(Math.abs(restored.attackAt-(restored.scoreOrigin+4*restored.beat)*1000)<1e-6);assert.equal(timing.windup,true);
+  assert.equal(re.storage.get('parryTowerInputOffset_v1'),String(offset));assert.equal(re.storage.get('parryTowerAudioOffset_v05'),'120');
+ }
+});
+
+test('production final movement and all equipped skins retain beat contact and a fresh 1.5 beat opening',async()=>{
+ for(const skin of PR.SKINS){
+  const seed={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:[skin.id],equippedSkin:skin.id}),parryTowerInputOffset_v1:'0'};
+  const g=makeHarness(seed,false,'adopted');g.random(.5);g.press('startBtn');await g.readyArt(P.byId.slime);
+  const d=g.bloodTest();d.setSkill('tempo',6);d.jumpFloor(80);await g.readyArt(P.byId.endking);
+  g.frame(g.now+1);assert.equal(g.heroSkin(),skin.id);assert.equal(g.state().bpm,124);const C=g.state().attackAt;
+  assert.ok(Math.abs(C-(g.state().scoreOrigin+g.state().attackBeat*g.state().beat)*1000)<1e-6);
+  d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
+  g.clock(C);g.parry();g.frame(C+.001);assert.equal(g.heroPose().lift,1);g.frame(g.now+1501);
+  const count=g.state();assert.equal(count.phaseStage,'countin');g.frame(count.phaseCountStartAt+4*count.beat*1000+1);
+  assert.equal(g.state().mode,'combat');assert.equal(d.timingInfo().windup,true);assert.ok(Math.abs(d.timingInfo().windupLead-1.5*g.state().beat*1000)<1e-6);
  }
 });
