@@ -414,8 +414,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.5-preview-5"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.5-preview-5&tempo=1&beat-contact=1&cue=1&layout=2"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.6"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.6&tempo=1&beat-contact=1&cue=1&layout=2"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -962,7 +962,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.5-preview-5/);
+  assert.match(html,/v0\.9\.6/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1159,8 +1159,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.5-preview-5"/);
-  assert.match(html,/v0\.9\.5-preview-5/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.6"/);
+  assert.match(html,/v0\.9\.6/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1478,8 +1478,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.5-preview-5"'),asset);
-  assert.match(html,/v0\.9\.5-preview-5/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.6"'),asset);
+  assert.match(html,/v0\.9\.6/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2412,7 +2412,7 @@ test('production music follows every zone boundary and repeats with the existing
  for(const cycle of [0,80])for(const theme of themes)for(const floor of [theme.from+cycle,theme.to+cycle]){
   g.bloodTest().jumpFloor(floor);assert.equal(g.state().mode,'combat');
   assert.equal(g.bloodTest().musicTheme(),theme.id,'floor '+floor);
-  const enemy=P.byId[g.state().enemy],bpm=enemy.boss?136:enemy.kind==='rogue'?124:112;
+  const enemy=P.findByKey(g.state().encounterKey),bpm=(enemy.boss?136:enemy.kind==='rogue'?124:112)+(enemy.elite?6:0);
   assert.equal(g.state().bpm,bpm);assert.equal(g.bloodTest().mixGains().bgm,.35);
   if(!theme.original)assert.ok(g.el.get('trackLabel').textContent.includes(theme.name));
   const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
@@ -2598,21 +2598,21 @@ test('fundoshi fails on guards and hits through barriers, frost, reduction, refl
 });
 
 test('spacetime rolls +12,0,-12 per encounter against each base tempo and retains it through pause and restart',()=>{
- for(const [id,base]of [['knight',112],['rogue',124],['guardian',136]])for(const [r,offset]of [[.1,12],[.5,0],[.9,-12]]){
-  const g=makeHarness({},true);g.random(r);g.dev().launch(5,id+':normal',false,'spacetime',true);
-  assert.equal(g.state().bpm,base+offset);assert.equal(g.dev().skinState().tempoOffset,offset);assert.equal(g.dev().skinState().parryWindow,31);
-  const due=g.state().scoreOrigin+g.state().attackBeat*g.state().beat;assert.ok(Number.isFinite(due));assert.equal(g.state().attackSpan,4*60000/(base+offset));
-  g.random(.9);g.press('pauseBtn');g.frame(g.now+3000);g.press('pauseBtn');assert.equal(g.state().bpm,base+offset);assert.equal(g.dev().skinState().tempoOffset,offset);
-  g.bloodTest().jumpFloor(5);const next=P.findByKey(g.state().encounterKey),nextBase=next.boss?136:next.kind==='rogue'?124:112;
+ for(const elite of [false,true])for(const [id,base]of [['knight',112],['rogue',124],['guardian',136]])for(const [r,offset]of [[.1,12],[.5,0],[.9,-12]]){
+  const g=makeHarness({},true);g.random(r);g.dev().launch(5,id+(elite?':elite':':normal'),false,'spacetime',true);
+  assert.equal(g.state().bpm,base+(elite?6:0)+offset);assert.equal(g.dev().skinState().tempoOffset,offset);assert.equal(g.dev().skinState().parryWindow,31);
+  const due=g.state().scoreOrigin+g.state().attackBeat*g.state().beat;assert.ok(Number.isFinite(due));assert.equal(g.state().attackSpan,4*60000/(base+(elite?6:0)+offset));
+  g.random(.9);g.press('pauseBtn');g.frame(g.now+3000);g.press('pauseBtn');assert.equal(g.state().bpm,base+(elite?6:0)+offset);assert.equal(g.dev().skinState().tempoOffset,offset);
+  g.bloodTest().jumpFloor(5);const next=P.findByKey(g.state().encounterKey),nextBase=(next.boss?136:next.kind==='rogue'?124:112)+(next.elite?6:0);
   assert.equal(g.state().bpm,nextBase-12,'next encounter starts from its own base, not previous tempo');
  }
 });
 
 test('spacetime keeps its rolled tempo through the summit second movement',()=>{
- const g=makeHarness({},true);g.random(.1);g.dev().launch(80,'endking:elite',false,'spacetime',true);assert.equal(g.state().bpm,148);
+ const g=makeHarness({},true);g.random(.1);g.dev().launch(80,'endking:elite',false,'spacetime',true);assert.equal(g.state().bpm,154);
  g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);g.bloodTest().setBaseAttack(1);resolveBloodParry(g,20);assert.equal(g.state().phaseStage,'rumble');
- g.random(.9);g.frame(g.now+1500);assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,148);assert.equal(g.dev().skinState().tempoOffset,12);
- g.frame(g.state().phaseCountStartAt+g.state().beat*4000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,148);
+ g.random(.9);g.frame(g.now+1500);assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,154);assert.equal(g.dev().skinState().tempoOffset,12);
+ g.frame(g.state().phaseCountStartAt+g.state().beat*4000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,154);
 });
 
 test('skin records keep normal history and per-costume attempts separate while rewards stay shared',()=>{
@@ -2629,7 +2629,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.5-preview-5 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.6 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
@@ -2757,10 +2757,10 @@ test('Dev merchant buttons launch meaningful presets without saving, and ordinar
 });
 
 
-test('tempo levels lower the shared BPM by two each without adding beats to the rhythm',()=>{
- for(const [enemy,base]of [['knight',112],['rogue',124],['guardian',136]])for(let level=0;level<=6;level++){
-  const g=makeHarness({},true);g.dev().launch(5,enemy+':normal',true,'normal',true,level);
-  const before=g.state();assert.equal(before.bpm,base-level*2);assert.ok(Math.abs(before.attackSpan-4*60000/before.bpm)<1e-6);
+test('tempo levels lower normal and elite shared BPM by two each without adding beats to the rhythm',()=>{
+ for(const elite of [false,true])for(const [enemy,base]of [['knight',112],['rogue',124],['guardian',136]])for(let level=0;level<=6;level++){
+  const g=makeHarness({},true);g.dev().launch(5,enemy+(elite?':elite':':normal'),true,'normal',true,level);
+  const before=g.state();assert.equal(before.bpm,base+(elite?6:0)-level*2);assert.ok(Math.abs(before.attackSpan-4*60000/before.bpm)<1e-6);
   assert.equal(g.dev().skinState().tempoReduction,level*2);
   assert.match(g.el.get('trackLabel').textContent,new RegExp(before.bpm+' BPM'));
   for(const step of P.byId[enemy].rhythm){
@@ -2768,6 +2768,40 @@ test('tempo levels lower the shared BPM by two each without adding beats to the 
    assert.equal(g.state().attackBeat-beat,step,'the original rhythm stays intact');
    assert.ok(Math.abs(g.state().attackSpan-step*60000/before.bpm)<1e-6);
   }
+ }
+});
+
+test('production practice applies elite BPM once across the whole codex and keeps beat contact and windup timing',()=>{
+ const entries=P.codexEntries(),book={version:2,seen:Object.fromEntries(entries.map(e=>[e.bookKey,{encounters:1,firstFloor:1}])),defeated:{}};
+ const g=makeHarness({parryTowerBestiary_v1:JSON.stringify(book)});assert.equal(g.dev(),undefined);g.press('practiceBtn');
+ const saved=[...g.storage];
+ for(const e of entries){
+  g.clickers.get(e.bookKey)();
+  const base=e.boss?136:e.kind==='rogue'?124:112,expected=base+(e.elite?6:0),s=g.state();
+  assert.equal(s.bpm,expected,e.bookKey);assert.deepEqual(Array.from(s.enemyRhythm),e.rhythm);
+  assert.match(g.el.get('trackLabel').textContent,new RegExp(expected+' BPM'));
+  assert.ok(Math.abs(s.attackSpan-4*60000/expected)<1e-6);
+  const t=g.bloodTest().timingInfo();assert.ok(Math.abs(t.target-s.attackAt)<1e-6);
+  assert.ok(Math.abs(t.windupLead-1.5*60000/expected)<1e-6);
+  g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);assert.equal(g.state().lastStrikeKind,'just');
+  g.press('pauseBtn');g.frame(g.now+1000);g.press('resumeBtn');assert.equal(g.state().bpm,expected,'resume '+e.bookKey);
+  g.press('exitPracticeBtn');g.press('practiceBtn');
+ }
+ assert.deepEqual([...g.storage],saved);
+});
+
+test('elite +6 and frozen spacetime/curse modifiers survive current and legacy checkpoints without accumulating',()=>{
+ const seed={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['spacetime'],equippedSkin:'spacetime'})};
+ const g=makeHarness(seed);g.random(.1);g.press('startBtn');const d=g.bloodTest();d.setSkill('tempo',6);d.setBreaks('tempo',2);d.jumpFloor(10);
+ assert.equal(g.state().encounterElite,true);assert.equal(g.state().bpm,142);
+ g.press('pauseBtn');g.press('suspendBtn');const saved=g.storage.get(RUN_KEY);
+ for(const legacy of [false,true]){
+  const record=JSON.parse(saved);if(legacy)delete record.game.tempoBpmReduction;
+  g.storage.set(RUN_KEY,JSON.stringify(record));const re=reloadHarness(g);re.random(.9);re.press('continueBtn');
+  assert.equal(re.state().bpm,142);assert.equal(re.state().encounterElite,true);
+  assert.ok(Math.abs(re.state().attackSpan-4*60000/142)<1e-6);
+  for(let i=0;i<2;i++){re.press('pauseBtn');re.frame(re.now+1000);re.press('resumeBtn');assert.equal(re.state().bpm,142);}
+  assert.equal(re.state().runSkills.tempo,6);
  }
 });
 
@@ -2787,9 +2821,9 @@ test('tempo preserves its shared clock through the boss second movement and keep
  const g=makeHarness({},true);g.dev().launch(80,'endking:elite',false,'normal',true,6);
  const d=g.bloodTest();d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);resolveBloodParry(g,20);
  assert.equal(g.state().phaseStage,'rumble');g.frame(g.now+1501);
- assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,124);
- g.frame(g.state().phaseCountStartAt+4*g.state().beat*1000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,124);
- assert.equal(g.state().attackSpan,4*60000/124);
+ assert.equal(g.state().phaseStage,'countin');assert.equal(g.state().bpm,130);
+ g.frame(g.state().phaseCountStartAt+4*g.state().beat*1000+1);assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,130);
+ assert.equal(g.state().attackSpan,4*60000/130);
  g.dev().previewMusic('crypt','boss');assert.equal(g.state().bpm,136,'BGM-only audition uses the original tempo');
 });
 
@@ -3164,7 +3198,7 @@ test('beat-contact candidate keeps the final second movement and its four-beat r
  const d=g.bloodTest();d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
  const C=g.state().attackAt;g.clock(C);g.parry();g.frame(C+1);g.frame(g.now+1501);assert.equal(g.state().phaseStage,'countin');
  const count=g.state();g.frame(count.phaseCountStartAt+4*count.beat*1000+1);const resumed=g.state();assert.equal(resumed.mode,'combat');
- assert.ok(Math.abs(resumed.attackAt-(resumed.scoreOrigin+resumed.attackBeat*resumed.beat)*1000)<1e-6);assert.equal(resumed.bpm,124);assert.equal(g.dev().timingState().windup,true);
+ assert.ok(Math.abs(resumed.attackAt-(resumed.scoreOrigin+resumed.attackBeat*resumed.beat)*1000)<1e-6);assert.equal(resumed.bpm,130);assert.equal(g.dev().timingState().windup,true);
  }
 });
 
@@ -3316,7 +3350,7 @@ test('production final movement and all equipped skins retain beat contact and a
   const seed={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:[skin.id],equippedSkin:skin.id}),parryTowerInputOffset_v1:'0'};
   const g=makeHarness(seed,false,'adopted');g.random(.5);g.press('startBtn');await g.readyArt(P.byId.slime);
   const d=g.bloodTest();d.setSkill('tempo',6);d.jumpFloor(80);await g.readyArt(P.byId.endking);
-  g.frame(g.now+1);assert.equal(g.heroSkin(),skin.id);assert.equal(g.state().bpm,124);const C=g.state().attackAt;
+  g.frame(g.now+1);assert.equal(g.heroSkin(),skin.id);assert.equal(g.state().bpm,130);const C=g.state().attackAt;
   assert.ok(Math.abs(C-(g.state().scoreOrigin+g.state().attackBeat*g.state().beat)*1000)<1e-6);
   d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
   g.clock(C);g.parry();g.frame(C+.001);assert.equal(g.heroPose().lift,1);g.frame(g.now+1501);
