@@ -15,6 +15,10 @@
 .dev-music-pulse{display:flex;gap:7px}.dev-music-pulse span{display:grid;place-items:center;width:36px;height:32px;background:#101a2c;border:1px solid #607388;border-radius:6px;color:#9caec4;transition:background .06s}
 .dev-music-pulse[data-beat="1"] span:nth-child(1),.dev-music-pulse[data-beat="2"] span:nth-child(2),.dev-music-pulse[data-beat="3"] span:nth-child(3),.dev-music-pulse[data-beat="4"] span:nth-child(4){background:#dab96f;color:#101a2c;border-color:#ffdfa2;box-shadow:0 0 12px #e5bf7933}
 .dev-music .dev-music-actions{display:flex;flex-wrap:wrap;align-items:center}
+.dev-music-prototypes{margin:2px 0 16px;padding:14px;border:1px solid #99784f;border-radius:10px;background:linear-gradient(120deg,#302632,#161d30)}
+.dev-music-prototypes>strong{color:#f1d296;font-size:14px}
+.dev-music-prototypes .dev-music-actions{gap:8px;margin-top:12px}
+.dev-music-prototypes button{flex:1 1 190px;min-height:42px}
 .dev-music-score{margin-top:12px;border-top:1px solid #607388;padding-top:10px;color:#bdcfe0;font-size:12px}.dev-music-score summary{cursor:pointer;color:#e5c784;font-weight:700}.dev-music-score p{line-height:1.8}
 @media(max-width:700px){.dev-music>.dev-foldout-body>.dev-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.dev-music>.dev-foldout-body>.dev-controls label{grid-column:1/-1}.dev-music-actions{display:flex!important}.dev-music-name{font-size:17px}}
 .dev-title strong{font-size:16px}.dev-title span{font-size:11px;color:#a8c5dd}

@@ -65,6 +65,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   ParryPlayerSettings:require('../assets/player-settings.js'),ParryRunCheckpoint:require('../assets/run-checkpoint.js'),ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
  window.ParryStageMusic=require('../assets/stage-music');
+ if(devMode)window.ParryFinalBossMusic=require('../assets/final-boss-music');
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
   createElement(tag){if(tag==='canvas')return {getContext:()=>ctx};return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
@@ -415,7 +416,7 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
  assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.6"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.6&tempo=1&beat-contact=1&cue=1&layout=2"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.6&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -2141,6 +2142,49 @@ test('Dev BGM buttons, invalid choices, mute, reset and page hiding keep playbac
  g.press('devMusicPlay');assert.equal(g.state().mode,'title');g.press('devMusicStop');assert.equal(g.state().scoreActive,false);
  g.press('devMusicPlay');g.dev().launch(5,'guardian:normal',true);assert.equal(g.dev().musicState().audition,false);
  g.dev().reset();assert.equal(g.state().scoreActive,false);
+});
+
+test('royal prototype buttons audition 75F and both 80F arrangements at encounter BPM without saves',()=>{
+ const g=makeHarness({},true,'','?music=king-march'),saved=[...g.storage];
+ assert.equal(g.dev().musicList().length,8);assert.equal(g.dev().musicReviews().length,3);
+ assert.equal(g.el.get('devMusicRoom').open,true);
+ for(const [button,id,bpm]of [['devRoyalMarch','king-march',136],['devRoyalAwakening','king-awakening',142],['devRoyalFinale','king-finale',142]]){
+  g.clearAudioEvents();g.press(button);
+  assert.equal(g.state().mode,'title');assert.equal(g.state().bpm,bpm);
+  assert.equal(g.dev().musicState().id,id);assert.equal(g.dev().musicState().bars,16);
+  assert.equal(g.el.get('devMusicVariantControl').hidden,true);
+  for(let i=0;i<5;i++)g.frame(g.now+100);
+  assert.ok(g.audioEvents().some(e=>e.type==='sawtooth'),'new brass and string voices actually reach Web Audio');
+  assert.match(g.el.get('devMusicPosition').textContent,/16小節/);
+  g.press('devMusicStop');assert.equal(g.state().scoreActive,false);
+ }
+ assert.deepEqual([...g.storage],saved);
+ g.dev().launch(80,'endking:elite',true);
+ assert.equal(g.dev().musicState().id,'void','ordinary Dev launch still uses adopted zone music');
+ assert.equal(g.state().bpm,142);
+ assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/final-boss-music/,'prototype module is Dev only');
+});
+
+test('royal music practice keeps actual 75F/80F enemies, pause, phase transition and four count-in drums',()=>{
+ const g=makeHarness({},true),saved=[...g.storage];
+ for(const [id,floor,key,bpm]of [['king-march',75,'endking:normal',136],['king-awakening',80,'endking:elite',142]]){
+  assert.equal(g.dev().practiceMusic(id),true);
+  assert.equal(g.state().floor,floor);assert.equal(g.state().encounterKey,key);assert.equal(g.state().bpm,bpm);
+  g.press('pauseBtn');assert.equal(g.state().mode,'pause');g.press('resumeBtn');
+  assert.equal(g.dev().musicState().id,id);assert.equal(g.state().bpm,bpm);
+ }
+ const hp=g.state().enemyMaxHp;g.bloodTest().setEnemyHp(Math.floor(hp*.49)+100);g.bloodTest().setBaseAttack(1);
+ resolveBloodParry(g,20);assert.equal(g.state().bossPhase,2);
+ g.clearAudioEvents();g.frame(g.now+1500);
+ assert.equal(g.state().phaseStage,'countin');assert.equal(g.audioEvents().length,8);
+ const count=g.state();g.clearAudioEvents();
+ g.frame(count.phaseCountStartAt+4*count.beat*1000+1);
+ for(let i=0;i<4;i++)g.frame(g.now+100);
+ assert.equal(g.state().mode,'combat');assert.equal(g.state().bpm,142);
+ assert.equal(g.dev().musicState().id,'king-awakening');
+ assert.ok(g.audioEvents().some(e=>e.type==='sawtooth'));
+ assert.deepEqual([...g.storage],saved);
+ g.dev().reset();g.dev().launch(75,'endking:normal',true);assert.equal(g.dev().musicState().id,'void');
 });
 
 test('developer invulnerable practice permits unseen enemies but never unlocks or saves them',()=>{

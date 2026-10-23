@@ -18,7 +18,7 @@ test('credits are reachable from both entrypoints', () => {
   const html = read(file);
   assert.match(html, /<footer class="site-footer">/);
   assert.match(html, /href="\.\/credits\.html"/);
-  assert.ok(html.includes('./assets/style.css?v='+build+'&font=5'));
+  assert.ok(html.includes('./assets/style.css?v='+build+'&font=6'));
   assert.doesNotMatch(html, /class="brandmark"/);
   assert.match(html, /class="title-logo">パリィ<span class="title-no">の<\/span>塔<\/h2>/);
   assert.doesNotMatch(html, /id="titleCover"[^]*?<div class="modal"><div class="modal-symbol">⚔️/);
@@ -48,7 +48,7 @@ test('visual headlines and all RUN STATUS counters use pixel face, explanatory c
  assert.match(css, /#titleCover h2\.title-logo[^{]*\{[^}]*font-size:clamp\(46px,14vw,82px\)/);
  assert.match(css, /#titleCover h2 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
  assert.match(css, /\.brand h1 \.title-no[^{]*\{[^}]*font-size:\.7em;[^}]*vertical-align:baseline/);
- assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=5"\)/);
+ assert.match(css, /url\("\.\/fonts\/cp-period-display\.woff2\?v=6"\)/);
 });
 
 test('canvas battle text uses display font without changing combat effects', () => {

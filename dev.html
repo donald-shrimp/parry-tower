@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#0a101e">
 <meta name="parry-build" content="v0.9.6">
 <title>パリィの塔 | 開発者テスト v0.9.6</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.6&font=5">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.6&beat-contact=1&layout=2">
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.6&font=6">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.6&beat-contact=1&layout=2&music=1">
 </head>
 <body>
 <section id="devSetup" class="dev-panel" aria-label="開発者テスト設定" tabindex="-1">
@@ -76,9 +76,14 @@
 <details id="devMusicRoom" class="dev-panel dev-music dev-foldout">
  <summary>♫ ステージBGM試聴室</summary>
  <div class="dev-foldout-body">
+ <div class="dev-music-prototypes" aria-label="75階と80階の試作曲">
+  <strong>75階 → 80階：終王の主題〈試作〉</strong>
+  <p class="dev-note">同じ旋律が、行進から本気の最終決戦へ。ボタンで音楽だけを試聴できます。</p>
+  <div class="dev-controls dev-music-actions"><button type="button" id="devRoyalMarch">75階 · 王の行進 · 136 BPM</button><button type="button" id="devRoyalAwakening">80階 · 終王の覚醒 · 142 BPM</button><button type="button" id="devRoyalFinale">80階 · 第二楽章 · 142 BPM</button></div>
+ </div>
  <div class="dev-controls">
   <label for="devMusicTheme">ステージ<select id="devMusicTheme"></select></label>
-  <label for="devMusicVariant">聴き方<select id="devMusicVariant"><option value="normal">通常 · 112 BPM</option><option value="boss">ボス · 136 BPM</option></select></label>
+  <label id="devMusicVariantControl" for="devMusicVariant">聴き方<select id="devMusicVariant"><option value="normal">通常 · 112 BPM</option><option value="boss">ボス · 136 BPM</option></select></label>
   <button type="button" id="devMusicPlay">▶ BGMだけ再生</button><button type="button" id="devMusicStop" disabled>■ 停止</button>
  </div>
  <p id="devMusicTitle" class="dev-music-name"></p><p id="devMusicDescription"></p><p id="devMusicInstruments" class="dev-note"></p>
@@ -206,10 +211,11 @@
 <script src="./assets/character-knight-puppet.js?v=v0.9.6" defer></script>
 <script src="./assets/character-rig.js?v=v0.9.6" defer></script>
 <script src="./assets/stage-music.js?v=v0.9.6" defer></script>
+<script src="./assets/final-boss-music.js?v=v0.9.6&review=1" defer></script>
 <script src="./assets/audio-clock.js?v=v0.9.6" defer></script>
 <script src="./assets/player-settings.js?v=v0.9.6&timing=2" defer></script>
 <script src="./assets/run-checkpoint.js?v=v0.9.6&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.6&timing=2&tempo=1&beat-contact=1&cue=1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.6&tempo=1&beat-contact=1&cue=1&layout=2" defer></script>
+<script src="./assets/game.js?v=v0.9.6&timing=2&tempo=1&beat-contact=1&cue=1&music=1" defer></script>
+<script src="./assets/dev-tools.js?v=v0.9.6&tempo=1&beat-contact=1&cue=1&layout=2&music=1" defer></script>
 </body>
 </html>
