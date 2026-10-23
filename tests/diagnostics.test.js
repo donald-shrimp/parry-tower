@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const BUILD='v0.9.6';
+const BUILD='v0.9.7';
 const source=fs.readFileSync('assets/diagnostics.js','utf8');
 
 function diagnosticPage(page='index.html',options={}){
@@ -85,8 +85,8 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   'relics.js','routes.js','events.js','combat-sfx.js','stage-music.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
-  assert.match(s,/<meta name="parry-build" content="v0\.9\.6">/);
-  assert.match(s,/v0\.9\.6/);
+  assert.match(s,/<meta name="parry-build" content="v0\.9\.7">/);
+  assert.match(s,/v0\.9\.7/);
   for(const name of required)assert.ok(s.includes('./assets/'+name+'?v='+BUILD),name+' in '+file);
   for(const asset of [...s.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)]){
    assert.ok(asset[1].includes('?v='+BUILD),'all local assets have build query: '+asset[1]);
@@ -94,7 +94,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   assert.ok(s.indexOf('assets/diagnostics.js')<s.indexOf('assets/game.js'),'guard loads before game');
  }
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.6',window.__parryV05)"));
+ assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.7',window.__parryV05)"));
 });
 test('healthy game reports technical status and correct floor-specific route with no warning',()=>{
  const p=diagnosticPage();

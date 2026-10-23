@@ -92,16 +92,16 @@
   $(id).addEventListener('click',()=>{status.textContent=engine.previewSound(kind)?({'guard':'ガン · ガード','parry':'ガキン！ · パリィ','just':'ジャキーン！ · ジャスト'}[kind]+' を試聴中'):'SOUND ONにしてから試してください';});
  }
  const musicThemes=[...(engine.musicList?.()||[]),...(engine.musicReviews?.()||[])],musicTheme=$('devMusicTheme'),musicVariant=$('devMusicVariant');
- for(const theme of musicThemes){const option=document.createElement('option');option.value=theme.id;option.textContent=theme.preview?theme.floor+'F · '+theme.name+'〈試作〉':theme.from+'–'+theme.to+'F · '+theme.zone;musicTheme.appendChild(option);}
+ for(const theme of musicThemes){const option=document.createElement('option');option.value=theme.id;option.textContent=theme.floor!=null?theme.floor+'F · '+theme.name:theme.from+'–'+theme.to+'F · '+theme.zone;musicTheme.appendChild(option);}
  musicTheme.value=musicThemes.some(t=>t.id===params.get('music'))?params.get('music'):'crypt';
  musicVariant.value=params.get('musicMode')==='boss'?'boss':'normal';
  function renderMusic(){
   const theme=musicThemes.find(t=>t.id===musicTheme.value);
   $('devMusicTitle').textContent=theme?theme.name+(theme.preview?' · 試作':theme.original?' · 現行曲':' · 採用曲'):'BGMを読み込めませんでした';
   $('devMusicDescription').textContent=theme?.description||'';
-  $('devMusicInstruments').textContent=theme?'楽器：'+theme.instruments+' · '+(theme.bars||8)+'小節ループ'+(theme.preview?' · '+theme.bpm+' BPM':''):'';
+  $('devMusicInstruments').textContent=theme?'楽器：'+theme.instruments+' · '+(theme.bars||8)+'小節ループ'+(theme.bpm?' · '+theme.bpm+' BPM':''):'';
   $('devMusicTitle').style.color=theme?.color||'';
-  $('devMusicVariantControl').hidden=!!theme?.preview;
+  $('devMusicVariantControl').hidden=theme?.floor!=null;
  }
  let lastMusicKey='';
  function updateMusic(){

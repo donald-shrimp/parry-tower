@@ -1,16 +1,16 @@
-/* Dev compositions. Pure eighth-note scores + a renderer using the caller's
- * AudioContext/bus; no clock, random calls, saved state or automatic selection. */
+/* Adopted royal scores. Pure eighth-note notation + a renderer using the
+ * caller's AudioContext/bus; no clock, random calls or saved state. */
 (function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;if(root)root.ParryFinalBossMusic=api;})(typeof window==='undefined'?globalThis:window,function(){
  'use strict';
  const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
  const pieces=freeze([
-  {id:'king-march',name:'王の行進',from:75,to:75,floor:75,bpm:136,bars:16,preview:true,level:0,color:'#d8b171',zone:'75階・前哨戦の試作',
+  {id:'king-march',name:'王の行進',from:75,to:75,floor:75,bpm:136,bars:16,preview:false,level:0,color:'#d8b171',zone:'75階・前哨戦',
    description:'低い金管が王の旋律を断片的に告げ、太鼓と行進のスネアが進む。力を抑えた、重々しい前哨戦。',
    instruments:'低音金管・大太鼓・行進スネア・低いオルガン'},
-  {id:'king-awakening',name:'終王の覚醒',from:80,to:80,floor:80,bpm:142,bars:16,preview:true,level:1,color:'#dd9b9f',zone:'80階・第一楽章の試作',
+  {id:'king-awakening',name:'終王の覚醒',from:80,to:80,floor:80,bpm:142,bars:16,preview:false,level:1,color:'#dd9b9f',zone:'80階・第一楽章',
    description:'75階と同じ旋律が完成形で現れる。金管の主題、刻む低音弦、厚い和音と太鼓で、最初から本気の最終決戦。',
    instruments:'重奏金管・低音弦の刻み・オルガン・大太鼓・シンバル'},
-  {id:'king-finale',name:'終王の覚醒 — 第二楽章',from:80,to:80,floor:80,bpm:142,bars:16,preview:true,level:2,color:'#edb3df',zone:'80階・第二楽章の試作',
+  {id:'king-finale',name:'終王の覚醒 — 第二楽章',from:80,to:80,floor:80,bpm:142,bars:16,preview:false,level:2,color:'#edb3df',zone:'80階・第二楽章',
    description:'同じBPMで、金管の主題が高く響く。戦闘開始の重い太鼓を合図に、速く移る和音と弦の刻み。中盤の低い旋律から最後の全奏へ。',
    instruments:'高く響く金管・16分の弦・合唱・オルガン・開始4拍の太鼓'}
  ]);
@@ -178,5 +178,11 @@
   src.onended=()=>{src.disconnect();filter.disconnect();gain.disconnect();};
   src.start(at);src.stop(end+.01);return true;
  }
- return Object.freeze({pieces,get,step,play,voices:VOICES,motif});
+ // Encounter variants also identify the same bosses on later tower cycles and
+ // in the codex training room, whose floor counter starts at one.
+ function forEncounter(enemy){
+  if(!enemy?.finalBoss)return null;
+  return get(!enemy.elite?'king-march':enemy.phase>=2?'king-finale':'king-awakening');
+ }
+ return Object.freeze({pieces,get,forEncounter,step,play,voices:VOICES,motif});
 });

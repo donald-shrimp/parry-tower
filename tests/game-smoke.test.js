@@ -65,7 +65,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   ParryPlayerSettings:require('../assets/player-settings.js'),ParryRunCheckpoint:require('../assets/run-checkpoint.js'),ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
  };
  window.ParryStageMusic=require('../assets/stage-music');
- if(devMode)window.ParryFinalBossMusic=require('../assets/final-boss-music');
+ window.ParryFinalBossMusic=require('../assets/final-boss-music');
  const document={
   documentElement:{dataset:{parryDev:devMode?'true':'false'}},
   createElement(tag){if(tag==='canvas')return {getContext:()=>ctx};return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
@@ -129,6 +129,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   };
   window.__parryBloodTest={
    presentation:()=>({contact:attackPresentation.contact?{...attackPresentation.contact}:null,clash:clashFX?{...clashFX}:null}),
+   fallbackSfx:legacy=>{if(legacy){delete window.ParryCombatSfx.playContact;delete window.ParryCombatSfx.playTail;}else window.ParryCombatSfx=null;},
    musicTheme:()=>score.music,
    musicBus:()=>score.bus,audioContext:()=>audioContext,
    mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
@@ -419,8 +420,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.6"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.6&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.7"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.7&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -967,7 +968,7 @@ test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.6/);
+  assert.match(html,/v0\.9\.7/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1164,8 +1165,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.6"/);
-  assert.match(html,/v0\.9\.6/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.7"/);
+  assert.match(html,/v0\.9\.7/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1483,8 +1484,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.6"'),asset);
-  assert.match(html,/v0\.9\.6/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.7"'),asset);
+  assert.match(html,/v0\.9\.7/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2102,7 +2103,7 @@ test('developer volume can be shared in a URL, survives resets and is bounded wi
  assert.equal(g.dev().setSfxVolume(NaN),100);
  const normal=makeHarness();normal.random(.5);normal.press('startBtn');
  const due=normal.state().attackAt;normal.clock(normal.bloodTest().timingInfo().target);normal.parry();normal.frame(due+1);
- assert.equal(normal.dev(),undefined);assert.equal(normal.metalEvents()[0].destination.gain.value,1,'production effects use the player gain at its approved 100% default');
+ assert.equal(normal.dev(),undefined);assert.equal(normal.tailEvents()[0].destination.gain.value,1,'production effects use the player gain at its approved 100% default');
  assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devSfxVolume/);
 });
 test('Dev BGM-only playback schedules all eight themes without combat or saves, and stops cleanly',()=>{
@@ -2164,9 +2165,9 @@ test('royal prototype buttons audition 75F and both 80F arrangements at encounte
  }
  assert.deepEqual([...g.storage],saved);
  g.dev().launch(80,'endking:elite',true);
- assert.equal(g.dev().musicState().id,'void','ordinary Dev launch still uses adopted zone music');
+ assert.equal(g.dev().musicState().id,'king-awakening','ordinary Dev launch uses the adopted final boss music');
  assert.equal(g.state().bpm,142);
- assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/final-boss-music/,'prototype module is Dev only');
+ assert.match(fs.readFileSync('index.html','utf8'),/final-boss-music/,'adopted music loads in production');
 });
 
 test('royal music practice keeps actual 75F/80F enemies, pause, phase transition and four count-in drums',()=>{
@@ -2197,7 +2198,7 @@ test('royal music practice keeps actual 75F/80F enemies, pause, phase transition
  assert.equal(g.dev().musicState().bar,1);
  assert.ok(g.audioEvents().some(e=>e.type==='sawtooth'));
  assert.deepEqual([...g.storage],saved);
- g.dev().reset();g.dev().launch(75,'endking:normal',true);assert.equal(g.dev().musicState().id,'void');
+ g.dev().reset();g.dev().launch(75,'endking:normal',true);assert.equal(g.dev().musicState().id,'king-march');
 });
 
 test('developer invulnerable practice permits unseen enemies but never unlocks or saves them',()=>{
@@ -2468,10 +2469,11 @@ test('production music follows every zone boundary and repeats with the existing
  const themes=require('../assets/stage-music').themes;
  for(const cycle of [0,80])for(const theme of themes)for(const floor of [theme.from+cycle,theme.to+cycle]){
   g.bloodTest().jumpFloor(floor);assert.equal(g.state().mode,'combat');
-  assert.equal(g.bloodTest().musicTheme(),theme.id,'floor '+floor);
+  const expected=P.findByKey(g.state().encounterKey).finalBoss?'king-awakening':theme.id;
+  assert.equal(g.bloodTest().musicTheme(),expected,'floor '+floor);
   const enemy=P.findByKey(g.state().encounterKey),bpm=(enemy.boss?136:enemy.kind==='rogue'?124:112)+(enemy.elite?6:0);
   assert.equal(g.state().bpm,bpm);assert.equal(g.bloodTest().mixGains().bgm,.35);
-  if(!theme.original)assert.ok(g.el.get('trackLabel').textContent.includes(theme.name));
+  if(!theme.original)assert.ok(g.el.get('trackLabel').textContent.includes(require('../assets/final-boss-music').get(expected)?.name||theme.name));
   const due=g.state().attackAt;g.clock(g.bloodTest().timingInfo().target);g.parry();g.frame(due+1);
   assert.equal(g.state().lastStrikeKind,'just','same hit clock on '+floor);
  }
@@ -2686,7 +2688,7 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.6 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+test('v0.9.7 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
  const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
  const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
  for(const skill of catalog){
@@ -3507,12 +3509,70 @@ test('production final movement and all equipped skins retain beat contact and a
  for(const skin of PR.SKINS){
   const seed={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:[skin.id],equippedSkin:skin.id}),parryTowerInputOffset_v1:'0'};
   const g=makeHarness(seed,false,'adopted');g.random(.5);g.press('startBtn');await g.readyArt(P.byId.slime);
-  const d=g.bloodTest();d.setSkill('tempo',6);d.jumpFloor(80);await g.readyArt(P.byId.endking);
-  g.frame(g.now+1);assert.equal(g.heroSkin(),skin.id);assert.equal(g.state().bpm,130);const C=g.state().attackAt;
+  const d=g.bloodTest();d.setSkill('tempo',6);d.setBreaks('tempo',2);d.jumpFloor(80);await g.readyArt(P.byId.endking);
+  g.frame(g.now+1);assert.equal(g.heroSkin(),skin.id);assert.equal(g.state().bpm,130);assert.equal(d.musicTheme(),'king-awakening');const C=g.state().attackAt;
   assert.ok(Math.abs(C-(g.state().scoreOrigin+g.state().attackBeat*g.state().beat)*1000)<1e-6);
   d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.49)+100);d.setBaseAttack(1);
   g.clock(C);g.parry();g.frame(C+.001);assert.equal(g.heroPose().lift,1);g.frame(g.now+1501);
-  const count=g.state();assert.equal(count.phaseStage,'countin');g.frame(count.phaseCountStartAt+4*count.beat*1000+1);
+  const count=g.state();assert.equal(count.phaseStage,'countin');assert.equal(d.musicTheme(),'king-finale');
+  const musicAt=count.phaseCountStartAt+4*count.beat*1000;g.clearAudioEvents();g.frame(musicAt-100);
+  assert.ok(g.audioEvents().length>0);assert.ok(g.audioEvents().every(e=>e.time>=musicAt/1000-1e-6));g.frame(musicAt+1);
   assert.equal(g.state().mode,'combat');assert.equal(d.timingInfo().windup,true);assert.ok(Math.abs(d.timingInfo().windupLead-1.5*g.state().beat*1000)<1e-6);
+  g.press('pauseBtn');g.press('resumeBtn');assert.equal(d.musicTheme(),'king-finale');assert.equal(g.state().bpm,130);
+  d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().bossPhase,2);assert.equal(re.bloodTest().musicTheme(),'king-finale');assert.equal(re.state().bpm,130);
+ }
+});
+
+test('production selects royal encounters on each cycle and their training variants without changing surrounding music',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');
+ for(const [floor,id]of [[73,'void'],[75,'king-march'],[76,'void'],[79,'void'],[80,'king-awakening'],[81,'crypt'],[155,'king-march'],[160,'king-awakening'],[161,'crypt']]){
+  g.bloodTest().jumpFloor(floor);assert.equal(g.bloodTest().musicTheme(),id,'floor '+floor);
+  const bpm=g.state().bpm;g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.bloodTest().musicTheme(),id);assert.equal(g.state().bpm,bpm);
+ }
+ const book={version:2,seen:Object.fromEntries(['endking:normal','endking:elite'].map(key=>[key,{encounters:1,firstFloor:75}])),defeated:{}};
+ const p=makeHarness({parryTowerBestiary_v1:JSON.stringify(book)});p.press('practiceBtn');
+ p.clickers.get('endking:normal')();
+ for(const [key,id]of [['endking:normal','king-march'],['endking:elite','king-awakening']]){
+  p.el.get('practiceEnemy').value=key;p.el.get('practiceEnemy').listeners.change();assert.equal(p.bloodTest().musicTheme(),id);
+ }
+});
+
+test('production contact remains on the beat with wide chick windows, corrected late inputs and neutral recoil',async()=>{
+ for(const skin of ['normal','chick'])for(const offset of [-180,0,180])for(const kind of ['guard','miss','parry']){
+  const seed={parryTowerPermanent_v1:JSON.stringify({unlockedSkins:[skin],equippedSkin:skin}),parryTowerInputOffset_v1:String(offset)};
+  const g=makeHarness(seed,false,'adopted');g.random(.5);g.press('startBtn');await g.readyArt(P.byId.slime);
+  const d=g.bloodTest();d.jumpFloor(5);await g.readyArt(P.byId.guardian);d.setMaxHp(10000);d.setHp(10000);
+  const C=g.state().attackAt,window=d.timingInfo().parryWindow,input=C+offset+window-1;
+  assert.equal(window,skin==='chick'?93:31);
+  if(kind==='guard'){g.clock(C-400);g.hold();}
+  g.frame(Math.min(C-160,input-1));
+  if(kind==='parry'){
+   if(input>C)g.frame(C+1);g.clock(input);g.parry();g.frame(Math.max(C,input)+.01);
+  }else{g.frame(C+1);const pending=d.presentation().contact;assert.equal(pending.at,C);g.frame(Math.max(C+1,C+offset+window+1));}
+  assert.equal(g.state().lastStrikeKind,kind,skin+'/'+offset+'/'+kind);
+  assert.equal(g.contactEvents().length,1);assert.ok(Math.abs(g.contactEvents()[0].when-C/1000)<1e-6);
+  assert.equal(d.presentation().clash.at,C);assert.equal(g.metalEvents().length,0);
+  assert.equal(g.tailEvents().length,kind==='miss'?0:1);
+  assert.equal(g.audioEvents().some(e=>e.frequency===145&&e.type==='sawtooth'),false);
+ }
+});
+
+test('production cancels future contacts, consumes muted hits and retains current victory feedback',()=>{
+ const g=makeHarness();g.press('startBtn');let C=g.state().attackAt;
+ g.frame(C-100);g.press('pauseBtn');assert.equal(g.contactEvents()[0].cancelled,true);
+ g.press('resumeBtn');C=g.state().attackAt;g.press('audioBtn');g.frame(C-100);g.frame(C+1);g.press('audioBtn');g.frame(C+10);
+ assert.equal(g.contactEvents().length,1,'unmute does not replay old contact');g.frame(C+40);
+ C=g.state().attackAt;g.frame(C-100);g.bloodTest().setEnemyHp(1);g.clock(C);g.parry();g.frame(C+.01);
+ assert.equal(g.state().mode,'victory');assert.equal(g.contactEvents().at(-1).cancelled,false);assert.equal(g.tailEvents().at(-1).kind,'just');
+ const count=g.contactEvents().length;g.frame(g.now+300);assert.equal(g.contactEvents().length,count);
+});
+
+test('production keeps fighting with legacy or unavailable combat SFX instead of failing in a frame',()=>{
+ for(const legacy of [false,true]){
+  const g=makeHarness();g.bloodTest().fallbackSfx(legacy);g.press('startBtn');const C=g.state().attackAt,hp=g.state().hp;
+  g.frame(C-100);g.clock(C);g.parry();g.frame(C+1);
+  assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.state().hp,hp);assert.ok(g.state().attackAt>C);
+  assert.equal(g.contactEvents().length,0);assert.equal(g.tailEvents().length,0);
+  if(legacy)assert.equal(g.metalEvents().at(-1).kind,'just');else assert.ok(g.audioEvents().length>0);
  }
 });

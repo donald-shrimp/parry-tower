@@ -2,6 +2,24 @@
 const test=require('node:test'),assert=require('node:assert/strict'),music=require('../assets/final-boss-music');
 const score=(id,beat=60/142,movement=1)=>Array.from({length:128},(_,n)=>music.step(id,n,beat,movement));
 
+test('royal music follows actual endking variants across tower cycles and training',()=>{
+ const P=require('../assets/encounters');
+ for(const cycle of [0,80,160]){
+  assert.equal(music.forEncounter(P.encounterForFloor(75+cycle)).id,'king-march');
+  const final=P.encounterForFloor(80+cycle);
+  assert.equal(music.forEncounter(final).id,'king-awakening');
+  assert.equal(music.forEncounter({...final,phase:2}).id,'king-finale');
+  assert.equal(music.forEncounter({...P.encounterForFloor(75+cycle),phase:2}).id,'king-march');
+ }
+ for(const e of P.all.filter(e=>!e.finalBoss))assert.equal(music.forEncounter(e),null);
+ assert.equal(music.forEncounter(null),null);
+ for(const page of ['index.html','dev.html']){
+  const html=require('node:fs').readFileSync(page,'utf8');
+  assert.ok(html.indexOf('assets/final-boss-music.js')>=0);
+  assert.ok(html.indexOf('assets/final-boss-music.js')<html.indexOf('assets/game.js'));
+ }
+});
+
 test('approved march and awakening remain exactly the same scores',()=>{
  const hash=require('node:crypto').createHash;
  for(const [id,expected]of [
