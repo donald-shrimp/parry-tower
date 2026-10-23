@@ -194,7 +194,7 @@ const motionFor=(e,opening=attackPresentation.opening)=>{
  return {...m,prepare,swing:prepare*m.swing/m.prepare,cuePrepare:prepare,noWindup:!P.attackPhrase(e,e.index,opening).windup};
 };
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
-const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
+const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
  get bpm(){return Math.round(60/this.beat)}};
 let latencyOffset=0;try{
  const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
@@ -257,13 +257,17 @@ function scoreFinalKick(t,accent=false){
 }
 const NOTES=[73.42,82.41,87.31,98,110,116.54,130.81,146.83,164.81,174.61,196,220,233.08,261.63,293.66,329.63,349.23,392,440,466.16,523.25,587.33];
 function playMusicStep(n,t){
- // Leave the four count-in beats for the kick alone: no pitched melody, hi-hats or snare.
- if(!audioEnabled||(game.mode==='phase'&&game.phaseStage==='countin'))return;
+ if(!audioEnabled)return;
  if(FINAL_MUSIC?.get(score.music)){
-  for(const event of FINAL_MUSIC.step(score.music,n,score.beat,game.enemy?.phase||1))
+  // Keep count-in beats silent, but allow lookahead to reserve the first music
+  // downbeat AFTER them. Its score starts at zero without moving combat's clock.
+  if(n<score.musicStartStep)return;
+  for(const event of FINAL_MUSIC.step(score.music,n-score.musicStartStep,score.beat,game.enemy?.phase||1))
    FINAL_MUSIC.play(audioContext,event,t+event.offset,score.bus,score.noise);
   return;
  }
+ // Preserve the existing count-in suppression for the eight adopted themes.
+ if(game.mode==='phase'&&game.phaseStage==='countin')return;
  if(STAGE_MUSIC&&score.music!=='crypt'){
   for(const event of STAGE_MUSIC.step(score.music,n,score.beat,score.boss)){
    const at=t+event.offset;
@@ -294,7 +298,7 @@ function encounterBpm(enemy){
  game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
-function startScore(enemy){attackPresentation.cues.clear();score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function startScore(enemy){attackPresentation.cues.clear();score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
@@ -2159,7 +2163,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
    title();start(true,key,{floor,allowUnseenPractice:true,musicId:id});return true;
   },
   musicState(){
-   const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat):0;
+   const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
    const bars=musicDefinition(score.music)?.bars||8;
    return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },

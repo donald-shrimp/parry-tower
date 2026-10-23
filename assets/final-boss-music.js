@@ -11,8 +11,8 @@
    description:'75階と同じ旋律が完成形で現れる。金管の主題、刻む低音弦、厚い和音と太鼓で、最初から本気の最終決戦。',
    instruments:'重奏金管・低音弦の刻み・オルガン・大太鼓・シンバル'},
   {id:'king-finale',name:'終王の覚醒 — 第二楽章',from:80,to:80,floor:80,bpm:142,bars:16,preview:true,level:2,color:'#edb3df',zone:'80階・第二楽章の試作',
-   description:'BPMは第一楽章と同じ。弦の刻みを細かくし、上声の対旋律と太鼓のフィルで最後まで追い込む。',
-   instruments:'重奏金管・16分の低音弦・対旋律・オルガン・連打太鼓'}
+   description:'同じBPMで、金管の主題が高く響く。戦闘開始の重い太鼓を合図に、速く移る和音と弦の刻み。中盤の低い旋律から最後の全奏へ。',
+   instruments:'高く響く金管・16分の弦・合唱・オルガン・開始4拍の太鼓'}
  ]);
  const byId=Object.freeze(Object.fromEntries(pieces.map(p=>[p.id,p])));
  const get=id=>Object.hasOwn(byId,id)?byId[id]:null;
@@ -32,42 +32,75 @@
   [[0,23,2],[4,26,1],[6,23,1]]
  ]);
  const answers=freeze({0:[31,29,27,26],3:[36,34,31,29],5:[32,31,29,27],7:[35,31,29,26],8:[39,38,36,32]});
+ // Four distinct phrases: fanfare, compressed royal motif, lower answer, final ascent.
+ // Faster harmony and a new lead make the movement recognizable without a tempo change.
+ const finaleRoots=freeze([0,8,5,7,0,3,8,7,5,8,0,7,8,5,7,7]);
+ const finaleMelody=freeze([
+  [[0,36,1],[2,35,.5],[3,31,.5],[4,32,1],[6,35,1]],
+  [[0,36,1.5],[3,32,.5],[4,27,1],[6,31,1]],
+  [[0,41,1],[2,39,.5],[3,38,.5],[4,36,1],[6,32,.5],[7,31,.5]],
+  [[0,41,1],[2,38,1],[4,35,1],[6,31,1]],
+  [[0,36,.5],[1,31,.5],[2,32,.5],[3,35,.5],[4,36,2]],
+  [[0,39,1.5],[3,38,.5],[4,36,1],[6,34,1]],
+  [[0,39,.5],[1,38,.5],[2,36,1],[4,32,1],[6,31,.5],[7,32,.5]],
+  [[0,35,1],[2,38,1],[4,41,1]],
+  [[0,29,1.5],[3,31,.5],[4,32,1],[6,36,1]],
+  [[0,39,2],[4,38,1],[6,36,1]],
+  [[0,43,1],[2,41,1],[4,39,1],[6,38,1]],
+  [[0,41,1],[2,38,.5],[3,35,.5],[4,31,2]],
+  [[0,36,1.5],[3,31,.5],[4,32,1],[6,35,1]],
+  [[0,41,1],[2,39,1],[4,38,1],[6,36,1]],
+  [[0,43,1.5],[3,41,.5],[4,38,1],[6,35,1]],
+  [[0,41,.5],[1,38,.5],[2,35,1],[4,31,1],[6,35,1]]
+ ]);
  function step(id,n,beat,movement=1){
   const p=get(id);if(!p||!Number.isInteger(n)||n<0||!Number.isFinite(beat)||beat<=0)return [];
   n%=p.bars*8;
-  const ix=n%8,bar=Math.floor(n/8),root=roots[bar],chord=chords[root],level=p.level===1&&movement>=2?2:p.level,out=[];
+  const ix=n%8,bar=Math.floor(n/8),level=p.level===1&&movement>=2?2:p.level;
+  const root=(level===2?finaleRoots:roots)[bar],chord=chords[root],out=[],bridge=level===2&&bar>=8&&bar<10;
   const voice=(preset,midi,beats,volume,pan=0,offset=0)=>out.push({kind:'voice',preset,frequency:hz(midi),duration:beat*beats,volume,pan,offset});
-  const drum=(preset,volume,offset=0)=>out.push({kind:'drum',preset,duration:preset==='cymbal'?.7:preset==='snare'?.13:.30,volume,pan:0,offset});
+  const drum=(preset,volume,offset=0)=>out.push({kind:'drum',preset,duration:preset==='cymbal'?.7:preset==='snare'?.13:preset==='stomp'?.36:.30,volume,pan:0,offset});
   // March has a spacious half-time weight. The full score fills every quarter.
-  if((level===0?[0,4]:[0,2,4,6]).includes(ix))drum('war',ix===0?.205:.14);
+  if(level===2){
+   // The opening recalls all four count-in blows. Later bars answer with syncopation.
+   const pattern=bridge?[0,4]:bar%4===0?[0,2,4,6]:[0,3,4];
+   if(pattern.includes(ix))drum('stomp',ix===0?.205:bridge?.14:.16);
+   if(bar%4===3&&ix>=6){drum('war',ix===6?.13:.10);if(ix===7)drum('war',.08,beat*.25);}
+  }else if((level===0?[0,4]:[0,2,4,6]).includes(ix))drum('war',ix===0?.205:.14);
   if(ix===2||ix===6)drum('snare',level===0?.065:.075);
   if((bar%4===3||level===2&&bar%2===1)&&ix===7){
    drum('snare',.040);if(level===2)drum('snare',.033,beat*.25);
   }
   if(ix===0&&bar%(level===0?8:2)===0)drum('cymbal',level===0?.022:.033);
-  if(ix===0||ix===4)voice('bass',38+root,1.8,.066,0);
+  if(level===2&&!bridge){
+   if([0,3,4,6].includes(ix))voice('bass',38+root+(ix===3?7:0),ix===0?1.25:.65,.066,0);
+  }else if(ix===0||ix===4)voice('bass',38+root,1.8,.066,0);
   if(ix===0){
    // A low, sustained foundation; thicker arrangements do not simply turn it up.
    for(let i=0;i<3;i++)voice('organ',50+chord[i],3.8,.014,(i-1)*.25);
   }
   if(level>0){
    const arp=[0,2,1,2,0,2,1,2],note=50+chord[arp[ix]];
-   voice('strings',note,level===2?.36:.73,level===2?.023:.032,-.28);
-   if(level===2)voice('strings',50+chord[arp[(ix+1)%8]],.36,.019,.28,beat*.25);
+   voice('strings',note,level===2?.36:.73,level===2?(bridge?.015:.027):.032,-.28);
+   if(level===2)voice('strings',50+chord[arp[(ix+1)%8]],.36,bridge?.012:.023,.28,beat*.25);
   }
-  const phrase=motif[bar%8];
+  const phrase=level===2?finaleMelody[bar]:motif[bar%8];
   for(let i=0;i<phrase.length;i++){
    const [onset,pitch,length]=phrase[i];
    // Only fragments at 75F; exactly those pitches return in the full melody.
    if(ix!==onset||level===0&&(bar%2===1||i!==0&&i!==phrase.length-1))continue;
-   voice('brass',38+pitch,length*(level===0?.85:.93),level===0?.047:.060,.05);
-   if(level===2&&bar>=8)voice('strings',50+pitch,length*.9,.015,-.12);
+   voice('brass',38+pitch,length*(level===0?.85:.93),level===0?.047:bridge?.045:.060,.05);
+   if(level===2){
+    voice('strings',38+pitch,length*.9,.018,-.12);
+    if(bar>=12)voice('brass',26+pitch,length*.85,.020,-.20);
+   }
   }
-  if(level===2&&ix%2===1){
-   voice('choir',38+answers[root][Math.floor(ix/2)],.9,.020,.30);
+  if(level===2){
+   if(ix===0)for(let i=0;i<3;i++)voice('choir',62+chord[i],3.6,bridge?.010:.014,(i-1)*.35);
+   if(ix%2===1)voice('choir',38+answers[root][Math.floor(ix/2)],.85,bridge?.018:.025,.30);
   }
   // The last bars pull toward the leading tone, then resolve into the loop's D.
-  if(level>0&&bar%8===7&&(ix===4||ix===6))drum('war',.10);
+  if(level===1&&bar%8===7&&(ix===4||ix===6))drum('war',.10);
   return out;
  }
  const VOICES=freeze({
@@ -104,6 +137,29 @@
    return true;
   }
   if(event.kind!=='drum')return false;
+  if(event.preset==='stomp'){
+   // Same four-layer recipe as game.scoreFinalKick, mixed lower for repeated accents.
+   const mix=level/.34;
+   for(const [type,start,finish,bend,volume,attack,decay,stop]of [
+    ['triangle',220,92,.11,.34,.005,.19,.20],['sine',135,55,.17,.46,.014,.35,.36]
+   ]){
+    const o=ac.createOscillator(),g=ac.createGain();o.type=type;
+    o.frequency.setValueAtTime(start,at);o.frequency.exponentialRampToValueAtTime(finish,at+bend);
+    g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(volume*mix,at+attack);
+    g.gain.exponentialRampToValueAtTime(.0001,at+decay);o.connect(g);g.connect(destination);
+    o.onended=()=>{o.disconnect();g.disconnect();};o.start(at);o.stop(at+stop);
+   }
+   if(noiseBuffer)for(const [type,hz,q,volume,attack,decay,stop]of [
+    ['bandpass',950,.7,.19,.004,.07,.08],['lowpass',380,1,.11,.014,.24,.25]
+   ]){
+    const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),g=ac.createGain();
+    src.buffer=noiseBuffer;filter.type=type;filter.frequency.value=hz;filter.Q.value=q;
+    g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(volume*mix,at+attack);
+    g.gain.exponentialRampToValueAtTime(.0001,at+decay);src.connect(filter);filter.connect(g);g.connect(destination);
+    src.onended=()=>{src.disconnect();filter.disconnect();g.disconnect();};src.start(at);src.stop(at+stop);
+   }
+   return true;
+  }
   if(event.preset==='war'){
    for(const [type,start,finish,volume,length]of [['sine',135,45,level,d],['triangle',210,88,level*.36,.11]]){
     const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(start,at);
