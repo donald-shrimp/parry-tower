@@ -8,3 +8,8 @@ test-results/
 __pycache__/
 *.pyc
 assets/character-art/studio-project.backup.json
+
+# Private inputs, scratch files and review exports
+.local-only/
+.codex-remote-attachments/
+/output/

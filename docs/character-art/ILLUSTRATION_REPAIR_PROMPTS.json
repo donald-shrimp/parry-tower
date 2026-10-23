@@ -33,5 +33,6 @@
       "path": "C:/Users/EBIHARA/Downloads/parry-tower/parry-tower/assets/character-art/rework/gem_slime/gem_slime-ready-candidate.png",
       "prompt": "Use case: precise-object-edit. Input image 1 is the EDIT TARGET. Recolor this exact green gem slime to a clearly YELLOW gem slime. Change ONLY the green/turquoise body and crystals to golden-yellow/honey/citrine hues: warm clear lemon-yellow highlights, golden amber middle tones and deep warm brown/ochre shadows. Preserve the exact menacing white eyes, thick black uneven ink outlines, rough angular painted cel shading, silhouette, extended pseudopod at screen-left, number and shape of back crystals, crystal facets, body size and entire pose/framing. Do not redesign or add anything. Crystals should look like golden citrine rather than green emerald. Keep dark dramatic depth inside the slime. Output ONE complete full-body standing game character PNG, with genuinely transparent RGBA background, preserve transparency and clean edges. No background, floor, cast shadow, labels, UI, text, collage or parts sheet."
     }
-  ]
+  ],
+  "archiveNote": "Historical prompts. Superseded input/output PNGs were removed from Git on 2026-10-23 and preserved under .local-only/archive/old-art-2026-10-23/ with their original repository paths. Paths below describe the original generation, not current runtime sources."
 }

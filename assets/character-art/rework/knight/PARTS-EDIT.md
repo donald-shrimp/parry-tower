@@ -1,6 +1,8 @@
 # 関節の補完
 
-Built-in image generation edit, 2026-10-18. Target: `knight-parts.png`. Output: `knight-parts-v2.png`. Closed hollow joint ends, keeping the layout and approved-direction illustration style. The runtime uses this v2 atlas.
+> 2026-10-23 整理：この制作記録の旧案PNGは `.local-only/archive/old-art-2026-10-23/` 内へ元の相対パスで保管。現在の採用画像は `pixel-candidates/manifest.json` を参照。過去の入力・出力名は制作履歴として残す。
+
+Built-in image generation edit, 2026-10-18. Target: `knight-parts.png`. Output: `knight-parts-v2.png`. Closed hollow joint ends, keeping the layout and approved-direction illustration style. This is a historical atlas experiment. The current runtime uses knight-ready-candidate-v3.png and knight-plume-repaired.png; both old atlases are archived locally.
 
 ## Prompt
 

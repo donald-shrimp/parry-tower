@@ -1,5 +1,7 @@
 # 両手持ち原画の修整 v6
 
+> 2026-10-23 整理：この制作記録の旧案PNGは `.local-only/archive/old-art-2026-10-23/` 内へ元の相対パスで保管。現在の採用画像は `pixel-candidates/manifest.json` を参照。過去の入力・出力名は制作履歴として残す。
+
 ユーザーの指摘：モーションの方向性はよいが、特に守護者の腕が破綻。立ち絵そのものから直す。
 
 ## 実行範囲
@@ -23,7 +25,7 @@
 
 | キャラ | 構え | 打ち込み |
 | --- | --- | --- |
-| 鐘楼の守護者 | [guardian-ready-guard-v6.png](../../assets/character-art/rework/guardian/guardian-ready-guard-v6.png) | [guardian-contact-v6.png](../../assets/character-art/rework/guardian/guardian-contact-v6.png) |
+| 鐘楼の守護者 | `guardian-ready-guard-v6.png`（旧案・ローカル保管済み） | `guardian-contact-v6.png`（旧案・ローカル保管済み） |
 | 鉄血の監督官 | [ironwarden-ready-guard-v6.png](../../assets/character-art/rework/ironwarden/ironwarden-ready-guard-v6.png) | [ironwarden-contact-v6.png](../../assets/character-art/rework/ironwarden/ironwarden-contact-v6.png) |
 | 弔鐘の司祭 | [dirgekeeper-ready-low-v6.png](../../assets/character-art/rework/dirgekeeper/dirgekeeper-ready-low-v6.png) | [dirgekeeper-contact-v6.png](../../assets/character-art/rework/dirgekeeper/dirgekeeper-contact-v6.png) |
 | 時の監視者 | [timewarden-ready-guard-v6.png](../../assets/character-art/rework/timewarden/timewarden-ready-guard-v6.png) | [timewarden-contact-v6.png](../../assets/character-art/rework/timewarden/timewarden-contact-v6.png) |
