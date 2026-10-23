@@ -30,6 +30,7 @@ test('simulated fixed-seed combat is deterministic and more than a single strike
  assert.deepEqual(a,b);assert.ok(a.won);assert.ok(a.step>10);
  const defeated=S.simulate(S.PROFILES[0],80,{just:0,parry:0,guard:0,miss:1},123);
  assert.equal(defeated.won,false);assert.equal(defeated.step,1);
+ assert.ok(Math.abs(defeated.seconds-4*60/142)<1e-9,'elite boss opening uses 142 BPM');
 });
 test('report covers every profile and stage and probabilities have valid denominators',()=>{
  const out=S.results();

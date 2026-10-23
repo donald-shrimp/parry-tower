@@ -57,7 +57,7 @@ function kindFor(roll,style){
 }
 function simulate(profile,floor,style,seed=1,options={}){
  const foe=foeAt(floor),eq=gear(profile,floor,options.shieldMode||'bossOnly',options.includeSkills!==false);
- const s=eq.skills,lev=id=>s[id]||0,random=rng(seed),beat=60/136;
+ const s=eq.skills,lev=id=>s[id]||0,random=rng(seed),beat=60/(136+(foe.elite?6:0));
  let hp=eq.hp,shield=eq.shield,enemy=foe.maxHp,combo=0,charge=0,time=0,phase=1,rhythm=foe.rhythm,idx=0,phasePending=false;
  let parries=0,guards=0,misses=0,justs=0;
  function deal(raw){const d=Math.min(enemy,Math.max(1,Math.round(raw)));enemy-=d;return d;}
