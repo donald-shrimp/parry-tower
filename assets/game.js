@@ -191,7 +191,11 @@ const motionFor=(e,opening=attackPresentation.opening)=>{
  if(!cueBeats)return m;
  // Keep each enemy's authored pose sequence; fit preparation and release into the selected beat lead.
  const prepare=cueBeats*score.beat*1000;
- return {...m,prepare,swing:prepare*m.swing/m.prepare,cuePrepare:prepare,noWindup:!P.attackPhrase(e,e.index,opening).windup};
+ const swing=prepare*m.swing/m.prepare,phrase=P.attackPhrase(e,e.index,opening),noWindup=!phrase.windup;
+ // Finish the previous recoil before a short follow-up's swing begins.
+ // An overlapping contact pose otherwise hides the new release and snaps back late.
+ const recovery=noWindup?Math.min(m.recovery,Math.max(80,phrase.beats*score.beat*1000-swing)):m.recovery;
+ return {...m,prepare,swing,recovery,cuePrepare:prepare,noWindup};
 };
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
 const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,

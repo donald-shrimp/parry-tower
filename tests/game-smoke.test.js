@@ -172,7 +172,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   checkpoint:()=>{checkpoint();return readCheckpoint()},
   tutorialInfo:()=>({active:game.tutorial,step:game.tutorialStep,finishing:game.tutorialFinishing}),
   calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
-  timingInfo:()=>({windup:!motionFor(game.enemy).noWindup,windupLead:motionFor(game.enemy).cuePrepare,parryWindow:getParryWindow(),target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
+  timingInfo:()=>({windup:!motionFor(game.enemy).noWindup,windupLead:motionFor(game.enemy).cuePrepare,recovery:motionFor(game.enemy).recovery,parryWindow:getParryWindow(),target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
   skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:s.desc})),
   skillCap,merchantTargets,
   setBreaks:(id,n)=>{game.skillBreaks[id]=n},
@@ -3366,6 +3366,47 @@ test('cue comparison follow-ups omit actual cutout preparation and windup sound,
    }else{g.clock(s.attackAt);g.parry();g.frame(s.attackAt+.001);}
   }
   assert.ok(count>0,id+' includes a short follow-up');
+ }
+});
+
+test('guardian short follow-ups finish recovery before their real cutout swing after JUST, guard and miss',async()=>{
+ for(const variant of ['normal','elite'])for(const tempo of [0,6])for(const result of ['just','guard','miss']){
+  const g=makeHarness({},true,'adopted');g.dev().launch(5,'guardian:'+variant,true,'normal',false,tempo,'onehalf',0);await g.readyArt(P.byId.guardian);
+  for(let i=0;i<3;i++){
+   const C=g.state().attackAt;
+   if(result==='just'){g.clock(C);g.parry();g.frame(C+.001);}
+   else{
+    if(result==='guard'){g.clock(C-150);g.hold();}
+    g.frame(C+g.bloodTest().timingInfo().parryWindow+1);
+    if(result==='guard')g.release();
+   }
+   assert.equal(g.state().lastStrikeKind,result);
+  }
+  const s=g.state(),timing=g.dev().timingState(),m=g.bloodTest().timingInfo();
+  assert.ok(Math.abs(s.attackSpan-s.beat*1000)<1e-6,'fourth hit remains exactly one beat after third');
+  assert.equal(timing.windup,false);
+  assert.ok(m.recovery<=s.attackSpan-timing.swingLead+1e-6);
+  g.frame(s.attackAt-timing.swingLead+.01);
+  assert.equal(g.enemySample().t.rec,0,'old recovery has ended when the new whoosh starts');
+  assert.equal(g.enemySample().q.keyFrame,'ready','do not hold the old contact drawing during the next release');
+  assert.equal(g.enemySample().q.placements.strikePose.phaseVisible,false);
+  g.frame(s.attackAt-timing.swingLead*.45);
+  assert.equal(g.enemySample().q.keyFrame,'ready');
+  assert.ok(g.enemySample().q.inbetween>0,'authored middle pose is no longer suppressed by old recovery');
+  g.frame(s.attackAt-.001);
+  assert.equal(g.enemySample().q.keyFrame,'contact');
+  assert.equal(g.enemySample().q.placements.strikePose.phaseVisible,true);
+  assert.equal(g.state().attackAt,s.attackAt,'visual recovery never moves the attack clock');
+ }
+});
+
+test('long guardian phrases and former timing retain authored recovery; late input remains accepted',()=>{
+ for(const mode of ['previous','half','full','onehalf']){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'normal',false,0,mode,0);
+  assert.equal(g.bloodTest().timingInfo().recovery,520,'opening recovery unchanged');
+  const s=g.state(),press=g.bloodTest().timingInfo().target+15;g.clock(press);g.parry();g.frame(Math.max(s.attackAt,press)+.001);
+  assert.equal(g.state().lastStrikeKind,'parry','positive input window unchanged');
+  assert.equal(g.bloodTest().timingInfo().recovery,520,'two-beat recovery unchanged');
  }
 });
 
