@@ -51,3 +51,23 @@ test('reference-like steel rings after the immediate contact instead of ending a
  const a=S.synthesize('just',rate);assert.ok(energy(a,.2,.45)>energy(a,0,.04)*.5,'JUST still has a recognizable steel tail');
  assert.ok(energy(a,.6,.85)<energy(a,.08,.3)*.04,'late JUST ring fades instead of sustaining a whistle');
 });
+
+test('neutral contact and result tails use one audio time, skip the attack and cancel queued contacts',()=>{
+ const starts=[],levels=[];let made=0;
+ const ac={sampleRate:48000,currentTime:10,destination:{},
+  createBuffer(ch,n){made++;const data=new Float32Array(n);return{getChannelData:()=>data};},
+  createBufferSource(){const s={connect(){},disconnect(){},start(when,offset){starts.push({s,when,offset});},stop(when){s.stoppedAt=when;}};return s;},
+  createGain(){return{gain:{setValueAtTime(v,t){levels.push([v,t]);},linearRampToValueAtTime(v,t){levels.push([v,t]);},cancelScheduledValues(){}},connect(){},disconnect(){}};}};
+ const contact=S.playContact(ac,10.1);assert.equal(starts[0].when,10.1);assert.equal(starts[0].offset,0);
+ const pcm=starts[0].s.buffer.getChannelData(0);assert.equal(pcm[0],0);assert.equal(pcm.at(-1),0);
+ assert.ok(pcm.every(Number.isFinite));assert.ok(pcm.some(x=>Math.abs(x)>.3));assert.ok(pcm.every(x=>Math.abs(x)<1));
+ contact.cancel();assert.equal(starts[0].s.stoppedAt,10);
+ S.playContact(ac,10.2);assert.equal(made,1,'same neutral waveform is cached');
+ S.playTail(ac,'just',10);assert.equal(starts.at(-1).when,10.04);assert.ok(Math.abs(starts.at(-1).offset-.04)<1e-8);
+ ac.currentTime=10.093;S.playTail(ac,'guard',10);
+ assert.equal(starts.at(-1).when,10.093);assert.ok(Math.abs(starts.at(-1).offset-.093)<1e-8);
+ assert.equal(S.playTail(ac,'miss',10),false);
+ ac.currentTime=12;assert.equal(S.playTail(ac,'guard',10),false,'do not restart an expired tail');
+ assert.ok(levels.some(([v])=>v===.0735*.4));
+ starts[0].s.onended();assert.equal(contact.ended,true);
+});

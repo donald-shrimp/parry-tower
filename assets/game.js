@@ -3,7 +3,19 @@ const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getCon
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 let devPreviewSkin='normal';
 let beatContact=true,cueBeats=1.5,devTimingTrace={};
-const attackPresentation={opening:true,cues:new Map()};
+const attackPresentation={opening:true,cues:new Map(),contact:null,sounds:[]};
+const splitContact=()=>DEV_MODE&&cueBeats>0;
+function stopFutureContacts(){
+ for(const sound of attackPresentation.sounds)if(!sound.ended&&sound.when>(audioContext?.currentTime??0))sound.cancel();
+ attackPresentation.sounds=[];
+}
+function presentContact(){
+ if(!splitContact())return;
+ const key=score.theme+':'+game.attackBeat;
+ if(attackPresentation.contact?.key===key)return;
+ attackPresentation.contact={key,at:game.attackAt,audioAt:score.origin+game.attackBeat*score.beat,guard:!!game.guardAtImpact,result:null};
+ triggerClashFX('contact',game.attackAt,game.enemy.kind);
+}
 const STAGE_MUSIC=window.ParryStageMusic;
 const FINAL_MUSIC=DEV_MODE?window.ParryFinalBossMusic:null;
 const musicDefinition=id=>FINAL_MUSIC?.get(id)||STAGE_MUSIC?.get(id);
@@ -292,7 +304,7 @@ function playMusicStep(n,t){
  if(ix===0&&bar%2===0){scoreTone(low*4,score.beat*3.5,.042,t,'sine');scoreTone(low*6,score.beat*3.5,.025,t,'sine')}
  if(score.boss&&(ix===1||ix===5))scoreTone(low*2,.12,.04,t,'sawtooth',-45);
 }
-function stopScore(){score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
+function stopScore(){stopFutureContacts();score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
  const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
 }}
 function encounterBpm(enemy){
@@ -302,7 +314,7 @@ function encounterBpm(enemy){
  game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
-function startScore(enemy){attackPresentation.cues.clear();score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function startScore(enemy){attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
@@ -316,6 +328,10 @@ function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=sc
 function inputTargetAt(){return game.attackAt-contactDelay()+latencyOffset}
 function musicParry(kind){
  if(!audioEnabled||!audioContext)return;
+ if(splitContact()&&attackPresentation.contact){
+  if(window.ParryCombatSfx?.PROFILES[kind])window.ParryCombatSfx.playTail(audioContext,kind,attackPresentation.contact.audioAt,steelDestination());
+  return;
+ }
  if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
  if(!score.bus||!score.noise)return;
  const t=audioContext.currentTime+.003;
@@ -734,7 +750,7 @@ function tutorialResult(kind){
  else if(game.tutorialStep>=2&&['just','parry'].includes(kind))game.tutorialFinishing=true;
  syncTutorial();
 }
-function title(){runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
+function title(){attackPresentation.contact=null;runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';}
@@ -1150,7 +1166,7 @@ function damageEnemy(n,color='#fff',label){
 }
 function heal(n){const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);const restored=Math.max(0,game.hp-a);if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);return restored}
 function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
-function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,effectAt,e.kind);if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
+function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
   game.relicJustStreak=0;game.justStreak=0;
   if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
    game.relicStopUsed++;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
@@ -1161,7 +1177,7 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
   if(game.mode!=='combat')return;
   if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18);if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');
 }else if(kind==='miss'){
-  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');sound(145,.21,'sawtooth',.045,-85);shake=12;
+  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');if(!splitContact())sound(145,.21,'sawtooth',.045,-85);shake=12;
 }else{
   game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
   game.lastDeflectAt=effectAt;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.charge=Math.min(7,game.charge+2)}else{game.charge=Math.min(7,game.charge+1)}
@@ -1615,21 +1631,22 @@ function hero(now){
  const lift=Math.max(quickLift,heldLift,contactLift,pendingLift);
  const action=['parry','just'].includes(game.lastStrikeKind)?clamp(1-(now-(game.lastDeflectAt??-99999))/240,0,1):0;
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
- const age=now-(game.lastImpactAt??-99999),push=(age>=0&&age<160&&game.lastStrikeKind!=='miss'?Math.sin(Math.PI*age/160):0)*(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45);
+ const contact=splitContact()?attackPresentation.contact:null,impactAt=contact?.at??game.lastImpactAt,visibleKind=contact?(contact.result||'contact'):game.lastStrikeKind;
+ const age=now-(impactAt??-99999),push=(age>=0&&age<160&&(contact||game.lastStrikeKind!=='miss')?Math.sin(Math.PI*age/160):0)*(contact?(contact.guard?.75:.45):(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45));
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
-   attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:game.lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind,
-   pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
+   attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,
+   pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,
-  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
+  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
  if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,
-  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt}}))return;
+  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
  ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
  ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
- if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:game.lastStrikeKind,lastImpactAt:game.lastImpactAt})){ctx.restore();return;}
+ if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
+ if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
+ if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
+ if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
+ if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
  fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
  fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
  fillPoly([[-21,-5],[-2,-5],[-1,2],[-23,2]],'#29384c');fillPoly([[5,-5],[25,-5],[29,2],[4,2]],'#29384c');
@@ -1658,16 +1675,18 @@ function enemy(now){
   attackAt+=span;e={...e,index:e.index+1};opening=false;
  }
  const m=motionFor(e,opening);
+ const shownResult=attackPresentation.contact?.result;
+ const presentedKind=splitContact()?(['just','parry'].includes(shownResult)?shownResult:'contact'):(awaitingInput?'':game.lastStrikeKind);
  const d=attackAt-now;
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawEnemy(ctx,{e,m,now,width:w,height:h,
    attackAt,attackSpan:span,lastImpactAt,
-   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
+   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
   attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
  if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawEnemy(ctx,{e,m,now,width:w,height:h,
   attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:awaitingInput?'':game.lastStrikeKind}))return;
+  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
  const prepare=m.cuePrepare??Math.min(m.prepare,Math.max(m.swing+120,span-130));
@@ -1889,7 +1908,7 @@ function drawClashFX(now){
 
 function combatPoseTime(now){
  // Freeze *only the character poses* for 40ms, never game time, BGM or attack scheduling.
- if(!clashFX||clashFX.kind!=='just'||game.mode!=='combat'||game.enemy?.kind!==clashFX.enemyKind)return now;
+ if(!clashFX||clashFX.noFreeze||clashFX.kind!=='just'||game.mode!=='combat'||game.enemy?.kind!==clashFX.enemyKind)return now;
  const age=now-clashFX.at;
  return age>=0&&age<40&&game.attackAt-now>220?clashFX.at:now;
 }
@@ -1977,6 +1996,15 @@ function attackCues(now,beat,at,motion){
  const played=cues.get(key);
  if(!motion.noWindup&&!played.windup&&now>=at-motion.cuePrepare){played.windup=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);}
  if(!played.swing&&now>=at-motion.swing){played.swing=true;sfxSwing();}
+ const contactAt=score.origin+beat*score.beat;
+ if(splitContact()&&!played.contact&&score.active&&audioContext?.state==='running'&&contactAt<=audioContext.currentTime+.17){
+  played.contact=true;
+  // Muting consumes the event too. Never replay an old impact on unmute.
+  if(audioEnabled&&contactAt>=audioContext.currentTime-.025){
+   attackPresentation.sounds=attackPresentation.sounds.filter(s=>!s.ended);
+   attackPresentation.sounds.push(window.ParryCombatSfx.playContact(audioContext,contactAt,steelDestination()));
+  }
+ }
 }
 function update(now,dt){const m=game.mode;
  if(['combat','phase'].includes(m)&&score.active&&!readAudioClock().healthy){pauseForClock();return;}
@@ -2000,6 +2028,7 @@ function update(now,dt){const m=game.mode;
   // Remember the guard at physical contact; releasing it during a positive
   // input offset must not erase it, and a guard raised afterwards is too late.
   captureImpactGuard(now);
+  presentContact();
   // Wait for the corrected late edge before assigning guard/miss. Pending
   // parries can resolve at contact; a late success starts fresh feedback now.
   if(game.pendingKind||now>inputTargetAt()+getParryWindow()){

@@ -74,5 +74,35 @@
   source.onended=()=>{source.disconnect?.();gain.disconnect?.();};source.start(t);return true;
  }
  function prepare(ac){for(const kind of Object.keys(PROFILES))bufferFor(ac,kind);}
- return Object.freeze({PROFILES,synthesize,bufferFor,play,prepare});
+ // A result-free contact transient. The broad input window must never move it.
+ function contactBuffer(ac){
+  let sounds=cache.get(ac);if(!sounds){sounds=new Map();cache.set(ac,sounds);}
+  if(!sounds.has('contact')){
+   const n=Math.ceil(ac.sampleRate*.04),b=ac.createBuffer(1,n,ac.sampleRate),out=b.getChannelData(0);let seed=0x193a59,low=0;
+   for(let i=0;i<n;i++){
+    const t=i/ac.sampleRate;seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+    const white=(seed>>>0)/2147483648-1;low+=.30*(white-low);
+    const body=.65*Math.sin(2*Math.PI*145*t)+.22*Math.sin(2*Math.PI*690*t)+.23*(white-low);
+    out[i]=Math.tanh(body*1.6)*(1-Math.exp(-t/.0004))*Math.exp(-t/.010)*Math.min(1,(n-1-i)/(ac.sampleRate*.005));
+   }
+   out[0]=out[n-1]=0;sounds.set('contact',b);
+  }
+  return sounds.get('contact');
+ }
+ function playPart(ac,buffer,when,destination,level,offset=0,fade=0){
+  const t=Math.max(ac.currentTime,when),source=ac.createBufferSource(),gain=ac.createGain();source.buffer=buffer;let ended=false;
+  if(fade){gain.gain.setValueAtTime(.0001,t);gain.gain.linearRampToValueAtTime(level,t+fade);}else gain.gain.setValueAtTime(level,t);
+  source.connect(gain);gain.connect(destination);
+  source.onended=()=>{ended=true;source.disconnect?.();gain.disconnect?.();};source.start(t,offset);
+  return {when:t,get ended(){return ended;},cancel(){if(!ended){gain.gain.cancelScheduledValues(ac.currentTime);gain.gain.setValueAtTime(.0001,ac.currentTime);source.stop?.(ac.currentTime);}}};
+ }
+ function playContact(ac,when=ac.currentTime,destination=ac.destination){return playPart(ac,contactBuffer(ac),when,destination,.09);}
+ function playTail(ac,kind,contactAt,destination=ac.destination){
+  const buffer=bufferFor(ac,kind);if(!buffer)return false;
+  // Offset is in seconds of the already-rendered PCM (including JUST's speed).
+  const when=Math.max(ac.currentTime,contactAt+.04),offset=Math.max(.04,when-contactAt);
+  if(offset>=PROFILES[kind].duration)return false;
+  return playPart(ac,buffer,when,destination,PROFILES[kind].level*(kind==='guard'?.40:.70),offset,.008);
+ }
+ return Object.freeze({PROFILES,synthesize,bufferFor,play,prepare,playContact,playTail});
 });

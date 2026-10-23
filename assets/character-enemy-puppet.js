@@ -208,7 +208,7 @@
   const active=t.p>=(k.inbetween?.end??releaseStart)-1e-7||(age>=0&&age<38+.64*(m.recovery-38));
   const impacted=age>=0&&age<m.recovery,release=impacted?1:ease((t.p-releaseStart)/(1-releaseStart)),direction=k.direction;
   const bounce=impacted&&age>38?Math.sin(Math.PI*clamp(recovery/.64)):0;
-  const deflect=['just','parry'].includes(result),reaction=deflect?.10*(result==='just'?1:.55):result==='guard'?0:-.08;
+  const deflect=['just','parry'].includes(result),reaction=deflect?.10*(result==='just'?1:.55):['guard','contact'].includes(result)?0:-.08;
   const turn=active?target.angle+direction*(releaseTurn*(1-release)+reaction*bounce)
    :age>=38&&age<m.recovery?-.06*(1-recovery)/.36:leanFor(s,t.charge,0,recoil);
   const readyScale=k.readyScale||1;

@@ -150,7 +150,7 @@
   };
   if(sinceImpact>=0&&sinceImpact<m.recovery){
    const u=clamp((sinceImpact-38)/(m.recovery-38)),deflected=['just','parry'].includes(result);
-   const stop=result==='guard',peak=deflected?(result==='just'?.84:.90):stop?.97:1.10;
+   const stop=result==='guard'||result==='contact',peak=deflected?(result==='just'?.84:.90):stop?.97:1.10;
    return {upper:key(u,[[0,1],[.20,.88],[.48,.62],[1,0]]),
     blade:key(u,[[0,1],[.20,peak],[.48,deflected?.93:stop?1:1.06],[.72,.55],[1,0]]),
     hilt:key(u,[[0,1],[.20,.78],[.48,.56],[1,0]]),charge:0,phase:u===0?'contact':u<.48?'rebound':'return'};

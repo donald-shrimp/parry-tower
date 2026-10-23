@@ -5,7 +5,7 @@ const PR=require('../assets/progression.js');
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
+ const audioEvents=[],metalEvents=[],contactEvents=[],tailEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -80,6 +80,8 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  };
  vm.runInNewContext(fs.readFileSync('assets/combat-sfx.js','utf8'),context);
  const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when,destination){metalEvents.push({kind,when:when??ac.currentTime,destination});return metal.play(ac,kind,when,destination);}};
+ window.ParryCombatSfx.playContact=(ac,when,destination)=>{const e={when,destination,cancelled:false};contactEvents.push(e);const h=metal.playContact(ac,when,destination),cancel=h.cancel;h.cancel=()=>{e.cancelled=true;cancel();};return h;};
+ window.ParryCombatSfx.playTail=(ac,kind,contactAt,destination)=>{tailEvents.push({kind,contactAt,resultAt:ac.currentTime,destination});return metal.playTail(ac,kind,contactAt,destination);};
  if(artMode){
   context.URL=URL;
   window.location={search:artMode==='adopted'?'':'?art='+(artMode==='missing'?'impact':artMode==='missing-illustrated'?'illustrated':artMode)};window.document=document;window.URL=URL;window.localStorage=context.localStorage;
@@ -126,6 +128,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    return outcome;
   };
   window.__parryBloodTest={
+   presentation:()=>({contact:attackPresentation.contact?{...attackPresentation.contact}:null,clash:clashFX?{...clashFX}:null}),
    musicTheme:()=>score.music,
    musicBus:()=>score.bus,audioContext:()=>audioContext,
    mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
@@ -202,6 +205,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
   artDrawCounts:()=>({...artDrawCounts}),
   metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,enemySample:()=>lastEnemySample,
+  contactEvents:()=>contactEvents.map(e=>({...e})),tailEvents:()=>tailEvents.map(e=>({...e})),
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
@@ -3408,6 +3412,66 @@ test('long guardian phrases and former timing retain authored recovery; late inp
   assert.equal(g.state().lastStrikeKind,'parry','positive input window unchanged');
   assert.equal(g.bloodTest().timingInfo().recovery,520,'two-beat recovery unchanged');
  }
+});
+
+test('Dev contact stays on the beat while normal and chick guard/miss results wait for their full window',async()=>{
+ for(const skin of ['normal','chick'])for(const kind of ['guard','miss']){
+  const g=makeHarness({},true,'adopted');g.dev().launch(5,'guardian:normal',false,skin,true,0,'onehalf',0);await g.readyArt(P.byId.guardian);
+  const s=g.state(),C=s.attackAt,window=g.dev().skinState().parryWindow,hp=s.hp;
+  g.frame(C-160);if(kind==='guard'){g.clock(C-150);g.hold();}
+  assert.equal(g.contactEvents().length,1);assert.ok(Math.abs(g.contactEvents()[0].when-C/1000)<1e-6);
+  g.frame(C+1);const contact=g.bloodTest().presentation().contact;
+  assert.equal(contact.at,C);assert.equal(contact.result,null);assert.equal(g.state().hp,hp);
+  g.frame(C+25);const lean=g.enemySample().q.lean;
+  g.frame(C+window+1);assert.equal(g.state().lastStrikeKind,kind);
+  assert.ok(g.state().hp<hp,'damage is committed only after the full window');
+  assert.equal(g.bloodTest().presentation().contact.at,C);
+  assert.equal(g.bloodTest().presentation().clash.at,C,'result cannot restart the contact flash');
+  assert.equal(g.enemySample().q.lean,lean,'guard/miss resolution cannot change neutral recoil');
+  assert.equal(g.contactEvents().length,1);assert.equal(g.metalEvents().length,0);
+  assert.equal(g.tailEvents().length,kind==='guard'?1:0);
+  assert.equal(g.audioEvents().some(e=>e.frequency===145&&e.type==='sawtooth'),false,'no delayed second hit');
+ }
+});
+
+test('Dev accepts corrected late chick parries after contact without repeating the impact',()=>{
+ for(const offset of [-180,0,180]){
+  const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'chick',true,6,'onehalf',offset);
+  g.bloodTest().setSkill('stability',8);const s=g.state(),C=s.attackAt;
+  const input=C+offset+g.dev().skinState().parryWindow-1;
+  g.frame(Math.min(C-160,input-1));
+  if(input>C)g.frame(C+1);
+  g.clock(input);g.parry();g.frame(Math.max(C,input)+.01);
+  assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().hp,s.hp);
+  assert.equal(g.contactEvents().length,1);assert.equal(g.tailEvents().length,1);
+  assert.ok(Math.abs(g.tailEvents()[0].contactAt-C/1000)<1e-6);
+  assert.equal(g.bloodTest().presentation().contact.at,C);
+  assert.equal(g.bloodTest().presentation().clash.at,C);
+ }
+});
+
+test('Dev cancels only future contact audio on pause and keeps current victory feedback',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',true,'chick',true,0,'onehalf',0);
+ const C=g.state().attackAt;g.frame(C-100);assert.equal(g.contactEvents().length,1);
+ g.press('pauseBtn');assert.equal(g.contactEvents()[0].cancelled,true);
+ g.frame(C+100);assert.equal(g.contactEvents().length,1);
+ g.press('resumeBtn');const next=g.state().attackAt;
+ g.frame(next-100);g.bloodTest().setEnemyHp(1);g.clock(next);g.parry();g.frame(next+.01);
+ assert.equal(g.state().mode,'victory');assert.equal(g.contactEvents()[1].cancelled,false);
+ assert.equal(g.tailEvents().at(-1).kind,'just');
+ const count=g.contactEvents().length;g.frame(g.now+300);assert.equal(g.contactEvents().length,count);
+});
+
+test('Dev mute consumes a contact event and timestamp refinement cannot lose a later result',()=>{
+ const g=makeHarness({},true);g.dev().launch(5,'guardian:normal',false,'chick',true,0,'onehalf',0);
+ const C=g.state().attackAt;g.press('audioBtn');g.frame(C-100);g.frame(C+1);
+ assert.equal(g.contactEvents().length,0);g.press('audioBtn');g.frame(C+10);
+ assert.equal(g.contactEvents().length,0,'unmute cannot play an old contact');
+ const ac=g.bloodTest().audioContext();ac.getOutputTimestamp=()=>({performanceTime:g.now+.5,contextTime:g.now/1000});
+ g.clock(C+70);g.parry();g.frame(C+70.01);
+ assert.equal(g.state().lastStrikeKind,'parry');
+ assert.equal(g.bloodTest().presentation().contact.result,'parry','match by score identity rather than floating-point contact time');
+ assert.equal(g.bloodTest().presentation().clash.at,C);
 });
 
 test('production adopts the approved 1.5 beat notation for every enemy without a Dev API',()=>{
