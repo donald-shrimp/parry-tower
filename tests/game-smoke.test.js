@@ -400,7 +400,7 @@ test('practicing another encountered variant via dropdown never unlocks unencoun
  select.value='guardian:elite';
  select.listeners.change();
  assert.equal(g.state().encounterKey,'guardian:elite');
- assert.equal(g.state().bpm,136);
+ assert.equal(g.state().bpm,142);
  assert.equal(g.state().souls,0);
  assert.equal(JSON.parse(g.storage.get('parryTowerBestiary_v1')).seen['guardian:elite'].encounters,1);
 });
@@ -482,7 +482,7 @@ test('developer page jumps to arbitrary floor and enemy without writing the publ
  assert.equal(dev.launch(40,'timewarden:elite'),true);
  assert.equal(g.state().floor,40);
  assert.equal(g.state().enemy,'timewarden');
- assert.equal(g.state().bpm,136);
+ assert.equal(g.state().bpm,142);
  assert.equal(dev.launch(41,'ember_slime:normal'),true);
  assert.equal(g.state().floor,41);
  assert.equal(g.state().enemy,'ember_slime');
