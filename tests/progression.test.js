@@ -19,6 +19,14 @@ test('skill prices are registry-driven, epic defaults to 300 and future skills n
  assert.equal(P.skillPrice({id:'unknown_common',rarity:'common'}),25);
  assert.equal(P.skillPrice({id:'unknown_rarity',rarity:'mythic'}),35);
 });
+
+test('inheritance defaults and all three permanent purchase tiers survive normalization',()=>{
+ assert.equal(P.defaults().wardInheritance,0);
+ assert.deepEqual([0,1,2,3].map(level=>P.value({wardInheritance:level},'wardInheritance')),[0,5,8,10]);
+ assert.deepEqual([0,1,2,3].map(level=>P.costNext({wardInheritance:level},'wardInheritance')),[60,120,220,Infinity]);
+ assert.equal(P.normalize({wardInheritance:999},skills).wardInheritance,3);
+ assert.equal(P.normalize({wardInheritance:'3'},skills).wardInheritance,0);
+});
 test('normalizer rejects malformed progress, forged levels, invalid slots and duplicate equipment',()=>{
  const p=P.normalize({slots:99,unlockedSkills:['blood','blade','blood','future_epic',false],
   equipped:['blood','blood'],regen:Infinity,bossWard:999,revive:-5,choice4:1.9},skills);
@@ -72,7 +80,7 @@ test('permanent modifiers have explicit level caps and price steps',()=>{
  assert.equal(P.costNext({revive:1},'revive'),Infinity);
  assert.equal(P.costNext({},'nonexistent'),Infinity);
  assert.equal(P.SLOT_COSTS.length,2);
- assert.equal(P.UPGRADES.length,7);
+ assert.equal(P.UPGRADES.length,8);
 });
 
 test('v0.5.8 seal upgrade uses four priced levels and preserves pre-v0.5.8 saves',()=>{

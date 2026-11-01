@@ -2,6 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
+const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
@@ -142,6 +143,10 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    rewardPool:()=>choosePool().map(skill=>skill.id),
    incoming:n=>applyDamage(n,'TEST'),
    setShield:ward=>{game.shield=ward},
+   setRunBonus:(id,value)=>{game.bonuses[id]=value},
+   recoverOutside:amount=>heal(amount),
+   bonus:id=>runBonus(id),
+   bulwarkUsed:()=>!!game.relicBulwarkUsed,
    setFrostWard:flag=>{game.frostWard=flag},
    setFrostCount:value=>{game.frostCount=value},
    setFortitudeReady:flag=>{game.fortitudeReady=flag},
@@ -241,6 +246,158 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
 function settleCurrentAttack(g){
  const timing=g.bloodTest().timingInfo();g.frame(Math.max(g.state().attackAt,timing.target+timing.parryWindow)+1);
 }
+
+function survivalHarness(relics=[],skills={}){
+ const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();d.jumpFloor(80);
+ for(const id of relics)assert.equal(d.grantRelic(id),true);
+ d.setRawMaxHp(275);d.setHp(275);d.setShield(0);d.setEnemyHp(1000000);
+ for(const [id,level]of Object.entries(skills))d.setSkill(id,level);
+ return {g,d};
+}
+
+test('survival: replenishing an over-cap shield never removes existing barrier',()=>{
+ const {g,d}=survivalHarness([],{aegis:1});d.setShield(151);resolveBloodParry(g);
+ assert.equal(g.state().shield,151);
+ d.setSkill('fortitude',1);d.setFortitudeReady(true);resolveBloodParry(g,20);
+ assert.equal(g.state().shield,151,'Fortitude replenishment also preserves excess');
+ const relic=survivalHarness(['royal_banner']);relic.d.setShield(151);relic.d.setCombo(9);resolveBloodParry(relic.g,20);
+ assert.equal(relic.g.state().shield,151);
+ d.jumpFloor(4);g.routeSelect('rest');g.roomChoose('rest:meditate');
+ assert.equal(g.state().shield,151,'noncombat meditation preserves excess');
+});
+
+test('survival: overflowing parry heals share one conversion budget and preserve real-healing Bloodlust',()=>{
+ const {g,d}=survivalHarness(['overflow_chalice','pilgrim_bell','blood_pact_chalice'],{blood:8,bloodlust:4});
+ d.setBaseAttack(10000);d.setRelicCounter('pilgrim_bell',3);d.setRelicFlag('relicPactReady',true);
+ resolveBloodParry(g,20);assert.equal(g.state().shield,14);assert.equal(g.state().bloodlustPending,0);
+ for(let i=0;i<6;i++)resolveBloodParry(g,20);
+ assert.equal(g.state().shield,83,'conversion stops at 30% HP');
+ d.setShield(151);resolveBloodParry(g,20);assert.equal(g.state().shield,151,'does not truncate existing shield');
+ d.setShield(0);d.setHp(260);resolveBloodParry(g,20);
+ assert.equal(g.state().hp,275);assert.equal(g.state().shield,14);assert.equal(g.state().bloodlustPending,68,'15 real HP × 4.5, rounded');
+});
+
+test('survival: chalice excludes outside healing and clear regeneration but includes the killing parry',()=>{
+ const {g,d}=survivalHarness(['overflow_chalice'],{blood:1});
+ d.recoverOutside(100);assert.equal(g.state().shield,0);
+ d.setRunBonus('regen',20);d.setEnemyHp(1);resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'victory');assert.equal(g.state().shield,1,'only 2-point parry heal overflows; clear regen does not');
+});
+
+test('survival: polished chalice has a shared 6% budget, 40% ceiling, and no Wardcraft gain multiplier',()=>{
+ const {g,d}=survivalHarness(['overflow_chalice'],{blood:8,wardcraft:3});
+ d.setRelicFlag('polishedRelics',['overflow_chalice']);d.setBaseAttack(10000);
+ resolveBloodParry(g,20);assert.equal(g.state().shield,17);
+ for(let i=0;i<7;i++)resolveBloodParry(g,20);
+ assert.equal(g.state().shield,110);
+ const large=survivalHarness(['overflow_chalice'],{blood:8});large.d.setRawMaxHp(1000);large.d.setHp(1000);large.d.setBaseAttack(10000);
+ for(let i=0;i<4;i++)resolveBloodParry(large.g,20);
+ assert.equal(large.g.state().shield,100,'normal shield cap still applies');
+});
+
+test('survival: Wardcraft amplifies every combat source and supports both limit breaks',()=>{
+ const {g,d}=survivalHarness([],{aegis:4,wardcraft:3});resolveBloodParry(g);
+ assert.equal(g.state().shield,23);
+ d.setShield(269);resolveBloodParry(g);assert.equal(g.state().shield,270);
+ d.setSkill('wardcraft',2);d.setShield(243);resolveBloodParry(g);assert.equal(g.state().shield,243,'180 × 135% is exactly 243, not 244 from binary rounding');
+ d.setSkill('wardcraft',3);
+ d.setSkill('fortitude',1);d.setFortitudeReady(true);d.setShield(0);resolveBloodParry(g,20);assert.equal(g.state().shield,8);
+ for(const [id,prepare,expected]of [
+  ['broken_gear',d=>d.setRelicFlag('relicGearReady',true),8],
+  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),12],
+  ['royal_banner',d=>d.setCombo(9),15]
+ ]){const x=survivalHarness([id],{wardcraft:3});prepare(x.d);resolveBloodParry(x.g);assert.equal(x.g.state().shield,expected,id);}
+ d.setSkill('aegis',1);d.setSkill('wardcraft',4);d.setBreaks('wardcraft',1);d.setShield(0);resolveBloodParry(g);assert.equal(g.state().shield,10);
+ d.setSkill('wardcraft',5);d.setBreaks('wardcraft',2);d.setShield(0);resolveBloodParry(g);assert.equal(g.state().shield,11);
+ d.setFortitudeReady(false);d.jumpFloor(4);d.setShield(0);g.routeSelect('rest');g.roomChoose('rest:meditate');assert.equal(g.state().shield,20,'noncombat gain stays unamplified');
+});
+
+test('survival: Unbroken Sigil protects spill once, preserves exact blocks, and follows Frost before HP relics',()=>{
+ const {g,d}=survivalHarness(['unbroken_sigil']);d.setShield(55);d.incoming(325);
+ assert.equal(g.state().hp,99);assert.equal(d.bulwarkUsed(),true);
+ d.setShield(55);d.setHp(275);d.incoming(325);assert.equal(g.state().hp,5,'only once in an encounter');
+ d.jumpFloor(79);assert.equal(d.bulwarkUsed(),false);
+ d.setShield(20);d.incoming(20);assert.equal(d.bulwarkUsed(),false,'no HP spill, no consumption');
+ d.setHp(275);d.setShield(55);d.setSkill('frost',6);d.setFrostWard(true);d.incoming(325);
+ assert.equal(g.state().hp,257,'325 -> 82 Frost -> 27 spill -> 18 HP loss');
+ const mirror=survivalHarness(['unbroken_sigil','silver_mirror','rusty_crest']);
+ mirror.d.setShield(10);mirror.d.setEnemyAttack(325);resolveBloodParry(mirror.g,-40);
+ assert.equal(mirror.g.state().hp,231,'98 guard -> 88 spill -> 58 sigil -> 50 mirror -> 44 crest');
+ const polished=survivalHarness(['unbroken_sigil']);polished.d.setRelicFlag('polishedRelics',['unbroken_sigil']);polished.d.setShield(55);polished.d.incoming(325);
+ assert.equal(polished.g.state().hp,140);
+ const boundary=survivalHarness(['unbroken_sigil']);boundary.d.setShield(1);boundary.d.incoming(181);assert.equal(boundary.g.state().hp,158,'35% of 180 prevents exactly 63');
+});
+
+test('survival: inheritance is purchased, fixed at run start, and replenishes only new combat floors',()=>{
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:500}),parryTowerPermanent_v1:JSON.stringify({wardInheritance:2})};
+ const g=makeHarness(seed);g.press('upgradeOpenBtn');g.upgradeTab('base');assert.match(g.el.get('upgradeList').innerHTML,/守護の継承/);
+ g.upgradeBuy('extra','wardInheritance');assert.equal(g.state().permanent.wardInheritance,3);assert.equal(g.state().souls,280);
+ g.press('upgradeCloseBtn');g.press('startBtn');const d=g.bloodTest();assert.equal(g.state().shield,7);assert.equal(d.bonus('wardInheritance'),10);
+ d.setShield(0);g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.state().shield,0);
+ d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().shield,0,'reload does not replenish');
+ d.jumpFloor(4);assert.equal(g.state().shield,0,'route is not combat');g.routeSelect('rest');g.roomChoose('rest:heal');g.roomChoose('continue');assert.equal(g.state().shield,7);
+ d.setShield(151);d.jumpFloor(6);assert.equal(g.state().shield,151,'minimum, not additive');
+ const boss=makeHarness({parryTowerPermanent_v1:JSON.stringify({wardInheritance:3,bossWard:6})});boss.press('startBtn');boss.bloodTest().setShield(0);boss.bloodTest().jumpFloor(5);assert.equal(boss.state().shield,55,'boss barrier not multiplied');
+});
+
+test('survival: checkpoint keeps consumed sigil and new skills, migrates legacy bonuses, and rejects malformed values',()=>{
+ const {g,d}=survivalHarness(['unbroken_sigil','overflow_chalice'],{wardcraft:5,blood:4});d.setBreaks('wardcraft',2);
+ d.setShield(55);d.incoming(325);d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');
+ assert.equal(re.bloodTest().bulwarkUsed(),true);assert.equal(re.state().runSkills.wardcraft,5);assert.equal(re.state().shield,0);
+ re.bloodTest().setHp(275);re.bloodTest().setShield(55);re.bloodTest().incoming(325);assert.equal(re.state().hp,5);
+ const legacy=JSON.parse(g.storage.get(RUN_KEY));delete legacy.game.bonuses.wardInheritance;delete legacy.game.relicBulwarkUsed;
+ const old=makeHarness({[RUN_KEY]:JSON.stringify(legacy),parryTowerPermanent_v1:JSON.stringify({wardInheritance:3})});old.press('continueBtn');assert.equal(old.bloodTest().bonus('wardInheritance'),0,'new purchase does not alter old run');
+ for(const value of ['10',99,-1]){const invalid=JSON.parse(JSON.stringify(legacy));invalid.game.bonuses.wardInheritance=value;const bad=makeHarness({[RUN_KEY]:JSON.stringify(invalid)});assert.equal(bad.el.get('continueBtn').hidden,true);}
+});
+
+test('survival: Dev presets expose four effects and polishing without touching any real save',()=>{
+ const g=makeHarness({},true);const before=JSON.stringify(Object.fromEntries(g.storage));
+ for(const profile of ['baseline','overflow','wardcraft','inheritance','sigil','all']){
+  assert.equal(g.dev().survival(profile,'normal',true,true),true);assert.equal(g.state().floor,80);assert.equal(g.state().maxHp,275);
+  assert.equal(g.state().shield,['inheritance','all'].includes(profile)?28:0);
+ }
+ assert.equal(g.state().runSkills.wardcraft,3);assert.deepEqual(Array.from(g.state().polishedRelics),['overflow_chalice','unbroken_sigil']);
+ assert.equal(g.dev().survivalHit('guard'),true);assert.equal(g.dev().survival('invalid'),false);
+ assert.equal(JSON.stringify(Object.fromEntries(g.storage)),before);
+ g.press('devReset');assert.equal(g.dev().survivalHit('miss'),false);
+});
+
+test('survival: chick uses scaled HP, fundoshi bypasses shields and sigil, and practice gains no new protection',()=>{
+ const chick=makeHarness({},true);chick.dev().survival('all','chick',true);assert.equal(chick.state().maxHp,413);assert.equal(chick.state().shield,42);
+ const d=chick.bloodTest();d.setShield(0);d.setBaseAttack(10000);d.setEnemyHp(1000000);resolveBloodParry(chick,30);assert.equal(chick.state().shield,21,'overflow budget uses chick HP');
+ d.grantRelic('reaper_pact');assert.equal(chick.state().maxHp,330);d.setHp(330);d.setShield(0);resolveBloodParry(chick,30);assert.equal(chick.state().shield,17,'budget tracks reduced HP after the pact');
+ d.setRunBonus('revive',30);d.setShield(1);d.incoming(1000);assert.equal(chick.state().hp,99);assert.equal(d.bulwarkUsed(),true);
+ d.setHp(330);d.setShield(55);d.incoming(325);assert.equal(chick.state().hp,60,'reviving does not recharge the sigil');
+ const fundoshi=makeHarness({},true);fundoshi.dev().survival('all','fundoshi',true);fundoshi.bloodTest().setShield(9999);fundoshi.dev().survivalHit('guard');assert.equal(fundoshi.state().mode,'gameover');assert.equal(fundoshi.bloodTest().bulwarkUsed(),false);
+ const practice=makeHarness({parryTowerPermanent_v1:JSON.stringify({wardInheritance:3})},true);practice.dev().launch(80,'endking:elite',true);assert.equal(practice.state().shield,0);practice.bloodTest().incoming(325);assert.equal(practice.state().shield,0);
+});
+
+test('survival: Wardcraft can be bought and equipped, then excluded with Fate Seal',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({coins:1000}),parryTowerPermanent_v1:JSON.stringify({slots:1,sealSlots:1})});
+ g.press('upgradeOpenBtn');g.upgradeTab('skills');g.upgradeBuy('skill','wardcraft');assert.equal(g.state().souls,910);
+ g.upgradeTab('loadout');g.upgradeEquip(0,'wardcraft');g.press('upgradeCloseBtn');g.press('startBtn');assert.equal(g.state().runSkills.wardcraft,1);
+ const sealed=makeHarness({parryTowerPermanent_v1:JSON.stringify({slots:1,sealSlots:1,unlockedSkills:['wardcraft']})});
+ sealed.press('upgradeOpenBtn');sealed.upgradeTab('seal');sealed.upgradeBuy('seal','wardcraft');sealed.press('upgradeCloseBtn');sealed.press('startBtn');
+ assert.equal(sealed.bloodTest().rewardPool().includes('wardcraft'),false);
+});
+
+test('survival: new relics use merchant polishing and chalice exchange retains earned shields',()=>{
+ const {g,d}=survivalHarness(['overflow_chalice','unbroken_sigil','pilgrim_bell'],{blood:8});
+ revisitMerchant(g,100);buyTarget(g,'polish','overflow_chalice');assert.equal(g.state().towerCoins,64);assert.deepEqual(Array.from(g.state().polishedRelics),['overflow_chalice']);
+ revisitMerchant(g,100);buyTarget(g,'polish','unbroken_sigil');assert.equal(g.state().towerCoins,64);assert.equal(g.state().polishedRelics.includes('unbroken_sigil'),true);
+ d.setShield(83);d.setRelicFlag('mode','relic');d.setRelicFlag('relicOffer',['duet_mask']);g.relicSelect('duet_mask');g.relicReplace('overflow_chalice');
+ assert.equal(g.state().relics.includes('overflow_chalice'),false);assert.equal(g.state().shield,83);assert.equal(g.state().polishedRelics.includes('overflow_chalice'),false);
+});
+
+test('survival: sigil stays consumed through the final second movement',()=>{
+ const g=makeHarness({},true);g.dev().survival('all','normal',true);const d=g.bloodTest();
+ d.setShield(55);d.incoming(325);assert.equal(d.bulwarkUsed(),true);d.setHp(275);
+ d.setEnemyHp(Math.floor(g.state().enemyMaxHp*.4)+60);d.setBaseAttack(1);resolveBloodParry(g,20);assert.equal(g.state().mode,'phase');
+ const before=g.state().shield;
+ g.frame(g.now+1500);const start=g.state().phaseCountStartAt,beat=g.state().beat*1000;
+ for(let i=0;i<=4;i++)g.frame(start+i*beat);
+ assert.equal(g.state().mode,'combat');assert.equal(d.bulwarkUsed(),true);assert.equal(g.state().shield,before,'phase count-in does not replenish inheritance');
+});
 
 test('bestiary UI has no obsolete arena actions and practice buttons stay within card layouts',()=>{
  const html=fs.readFileSync('index.html','utf8');
@@ -420,8 +577,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.7"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.7&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.7-survival-1"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.7-survival-1&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -715,7 +872,7 @@ test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as sep
  assert.equal(g.state().permanent.slots,1);
  assert.equal(g.state().souls,730);
  g.upgradeTab('skills');
- assert.match(g.el.get('upgradeList').innerHTML,/24/);
+ assert.match(g.el.get('upgradeList').innerHTML,/25/);
  assert.match(g.el.get('upgradeList').innerHTML,/奥義紋/);
  g.upgradeBuy('skill','rune');
  assert.equal(g.state().souls,430,'epic is exactly 300 shards');
@@ -962,19 +1119,19 @@ test('blood lifesteal is disabled in immortal practice mode',()=>{
 });
 
 
-test('v0.5.8 registers 24 skills, six new abilities, and six new synergies in both entrypoints',()=>{
+test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in both entrypoints',()=>{
  const script=fs.readFileSync('assets/game.js','utf8');
  for(const name of ['不屈','拍動','過充電','血の渇望','氷結','王の一撃',
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.7/);
+  assert.match(html,/v0\.9\.7-survival-1/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:1200})});
  g.press('upgradeOpenBtn');g.upgradeTab('skills');
- assert.match(g.el.get('upgradeList').innerHTML,/24/);
+ assert.match(g.el.get('upgradeList').innerHTML,/25/);
  for(const [name,price] of [['fortitude',20],['heartbeat',25],['overcharge',95],
   ['bloodlust',110],['frost',90],['king',300]]){
   const row=g.el.get('upgradeList').innerHTML.match(new RegExp('data-key="'+name+'"[^>]*>([^<]+)<'));
@@ -1165,8 +1322,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.7"/);
-  assert.match(html,/v0\.9\.7/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.7-survival-1"/);
+  assert.match(html,/v0\.9\.7-survival-1/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1484,8 +1641,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.7"'),asset);
-  assert.match(html,/v0\.9\.7/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.7-survival-1"'),asset);
+  assert.match(html,/v0\.9\.7-survival-1/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -2688,9 +2845,9 @@ function revisitMerchant(g,coins=150){
 }
 function buyTarget(g,item,target){g.roomChoose('buy:'+item);g.roomChoose('target:'+target);}
 
-test('v0.9.7 all 24 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
- const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,blood:8,frost:6,focus:6,stability:6};
- const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,24);
+test('v0.9.7-survival-1 all 25 skills enforce normal caps and exactly two immediate limit breaks per run',()=>{
+ const expected={blade:20,thunder:12,ember:10,precision:10,heal:10,aegis:10,wardcraft:3,blood:8,frost:6,focus:6,stability:6};
+ const first=makeCrossroads(),catalog=first.d.skillCatalog();assert.equal(catalog.length,25);
  for(const skill of catalog){
   const {g,d}=makeCrossroads();assert.equal(skill.max,expected[skill.id]||({double:5,tempo:4,fortitude:4,heartbeat:4,overcharge:5,bloodlust:4,king:4}[skill.id]||6),skill.id);
   d.setSkill(skill.id,skill.max);assert.equal(d.gainSkill(skill.id),false);
@@ -2919,7 +3076,7 @@ test('double remains below certainty at its breakthrough cap',()=>{
 });
 
 
-const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
+
 function reloadHarness(g,dev=false){return makeHarness(Object.fromEntries(g.storage),dev)}
 test('clock recovery keeps music and attacks advancing when only the output context timestamp freezes',()=>{
  const g=makeHarness({parryTowerInputOffset_v1:'45'});g.random(.5);g.press('startBtn');const d=g.bloodTest(),start=g.now,before=g.state(),ac=d.audioContext();

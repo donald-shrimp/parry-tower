@@ -18,6 +18,8 @@
   {id:'royal_banner',power:Object.freeze([10, 15]),polishedDesc:'10コンボごとの到達時に障壁+15',icon:'🚩',name:'王の戦旗',rarity:'rare',desc:'10コンボごとの到達時に障壁+10',affinity:'狂戦士・王の一撃'},
   {id:'blood_pact_chalice',power:Object.freeze([8, 12]),polishedDesc:'各階最初のHP被弾後、次の成功パリィでHP12回復',icon:'🩸',name:'血盟の杯',rarity:'rare',desc:'各階最初のHP被弾後、次の成功パリィでHP8回復',affinity:'不屈・血の渇望'},
   {id:'golden_festival_bell',power:Object.freeze([0.2, 0.3]),polishedDesc:'ボスへの通常反撃ダメージ+30%',icon:'🔔',name:'黄金の祭鐘',rarity:'rare',desc:'ボスへの通常反撃ダメージ+20%',affinity:'奥義紋・処刑人'},
+  {id:'overflow_chalice',power:Object.freeze([.50,.65]),secondary:Object.freeze([.05,.06]),polishedDesc:'成功パリィの余剰回復65%を障壁へ。1パリィ最大HP6%、最大HP40%まで補充（通常上限内）',icon:'🏺',name:'溢命の聖杯',rarity:'rare',desc:'成功パリィの余剰回復50%を障壁へ。1パリィ最大HP5%、最大HP30%まで補充（通常上限内）',affinity:'吸血・血の渇望・巡礼者の鐘'},
+  {id:'unbroken_sigil',power:Object.freeze([.35,.50]),polishedDesc:'各階1回、障壁を超えてHPへ貫通する被害を50%軽減',icon:'🔰',name:'砕けぬ紋章',rarity:'rare',desc:'各階1回、障壁を超えてHPへ貫通する被害を35%軽減',affinity:'魔法障壁・氷結・不屈'},
   {id:'stopped_hand',power:Object.freeze([1, 2]),polishedDesc:'各階のガード2回までコンボを維持',icon:'⏳',name:'止まった秒針',rarity:'legendary',desc:'各階最初のガード1回だけコンボを維持',affinity:'狂戦士・共鳴波'},
   {id:'reaper_pact',power:Object.freeze([0.35, 0.5]),polishedDesc:'所持中最大HP-20%、通常反撃ダメージ+50%',icon:'💀',name:'死神の盟約',rarity:'legendary',desc:'所持中最大HP-20%、通常反撃ダメージ+35%',affinity:'背水・剛剣・吸血'},
   {id:'duet_mask',power:Object.freeze([0.4, 0.6]),polishedDesc:'ジャストで次の成功パリィに通常反撃60%の追加斬撃を準備',icon:'🎭',name:'二重奏の仮面',rarity:'legendary',desc:'ジャストで次の成功パリィに通常反撃40%の追加斬撃を準備',affinity:'一点集中・拍動・残響'}
