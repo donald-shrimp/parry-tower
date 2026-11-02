@@ -23,4 +23,4 @@
 
 Git除外の `test-results/survival-builds/gui/` に `checks.json`、PC／390px／320pxのJPEG、修正後ショップの `shop-inheritance-fixed.jpg`、関連テスト結果を保存。表示サイズを元に戻し、未研磨の全部入り80階・HP275＋障壁28を一時停止したタブを残した。
 
-試遊：<http://127.0.0.1:8011/dev.html?survival=all>。サーバーはNode session 98546で再起動。公開は行っていない。実際のスマートフォンの押しやすさや音声遅延、ビルドの楽しさはユーザーの実機試遊で評価する。
+試遊：<http://127.0.0.1:8011/dev.html?survival=all>。サーバーはNode session 98546で再起動。GUI確認時点では未公開で、続く採用指示によりv0.9.8を公開する。公開検証は [V098](./V098.md) を参照。実際のスマートフォンの押しやすさや音声遅延、ビルドの楽しさはユーザーの実機試遊で評価する。
