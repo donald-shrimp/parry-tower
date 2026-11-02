@@ -560,7 +560,10 @@ function renderUpgradeScreen(){
   }):[];
   const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab&&o.id!=='sealSlots').map(o=>{
    const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
-   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc:o.description(nextValue)});
+   const desc=o.id==='wardInheritance'
+    ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:'（最大強化）'}（通常上限内）`
+    :o.description(nextValue);
+   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
   });
   // Make rescue milestones discoverable; claiming still happens only on game over.
   const rescueNote=upgradeTab==='base'
