@@ -3,15 +3,15 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const R=require('../assets/relics.js');
 const expectedNames=['錆びた盾章','星屑の砥石','雷導石','余燼の小瓶','巡礼者の鐘','欠けた歯車',
  '静謐の水晶','雷帝の導線','蒼銀の鏡','王の戦旗','血盟の杯','黄金の祭鐘',
- '止まった秒針','死神の盟約','二重奏の仮面'];
+ '溢命の聖杯','砕けぬ紋章','止まった秒針','死神の盟約','二重奏の仮面'];
 
-test('fifteen immutable and uniquely identified relics: 6 common, 6 rare and 3 legendary',()=>{
+test('seventeen immutable and uniquely identified relics: 6 common, 8 rare and 3 legendary',()=>{
  assert.equal(R.MAX_HELD,3);
- assert.equal(R.RELICS.length,15);
+ assert.equal(R.RELICS.length,17);
  assert.deepEqual(R.RELICS.map(r=>r.name),expectedNames);
- assert.equal(new Set(R.RELICS.map(r=>r.id)).size,15);
+ assert.equal(new Set(R.RELICS.map(r=>r.id)).size,17);
  for(const rarity of ['common','rare','legendary']){
-  assert.equal(R.RELICS.filter(r=>r.rarity===rarity).length,rarity==='legendary'?3:6);
+  assert.equal(R.RELICS.filter(r=>r.rarity===rarity).length,rarity==='legendary'?3:rarity==='rare'?8:6);
  }
  for(const r of R.RELICS){
   assert.ok(r.desc&&r.affinity&&r.icon);
@@ -65,6 +65,6 @@ test('removed relics never reappear in one run; exhausted rarities redistribute 
 test('unexpected IDs and malformed stored values cannot affect available pool',()=>{
  assert.deepEqual(R.validIds(['duet_mask','duet_mask','ghost',null,10,'stopped_hand']),['duet_mask','stopped_hand']);
  assert.deepEqual(R.validIds({length:3}),[]);
- assert.equal(R.available(['ghost','duet_mask'],['stopped_hand']).length,13);
+ assert.equal(R.available(['ghost','duet_mask'],['stopped_hand']).length,15);
  assert.equal(R.offer('first',null,null,()=>Number.NaN).length,3);
 });

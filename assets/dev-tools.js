@@ -66,8 +66,20 @@
   engine.reset();
   status.textContent='初期画面に戻りました。ゲーム内の保存データは変更していません。';
  });
+ $('devSurvivalStart').addEventListener('click',()=>{
+  const profile=$('devSurvivalProfile').value;showPlay();
+  if(engine.survival(profile,$('devSkin').value,$('devSkinEffects').checked,$('devSurvivalPolished').checked)){
+   status.textContent='回復・障壁ビルドの試遊中 · 80階 / '+profile+' · 保存しません。';
+  }
+ });
+ for(const [id,kind]of [['devSurvivalMiss','miss'],['devSurvivalGuard','guard']])$(id).addEventListener('click',()=>{
+  if(!engine.survivalHit(kind))status.textContent='「80階で試す」で開始し、戦闘中に押してください。';
+ });
  // Support explicit test URLs without starting audio until the player presses Launch.
  const params=new URLSearchParams(location.search),targetFloor=Number(params.get('floor'));
+ if(['baseline','overflow','wardcraft','inheritance','sigil','all'].includes(params.get('survival'))){
+  $('devSurvivalRoom').open=true;$('devSurvivalProfile').value=params.get('survival');
+ }
  const requestedTiming=params.get('timingMode');
  $('devTimingMode').value=['half','full','onehalf'].includes(requestedTiming)?requestedTiming:requestedTiming==='previous'?'previous':requestedTiming==='beat'?'half':'onehalf';
  const trialOffset=params.get('inputOffset');

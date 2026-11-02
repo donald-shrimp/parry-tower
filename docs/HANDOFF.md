@@ -1,4 +1,12 @@
-# 継続状態（2026-10-23）
+# 継続状態（2026-11-03）
+
+## 最新：v0.9.8 公開作業
+
+ユーザーの「んじゃ、実装頼むわ」で、GUI確認済みの回復・障壁4案と補充バグ修正を本番へ採用・公開する。origin/mainから公開用ブランチcodex/release-v098を作り、採用コミット455275d／4aa7620だけを取り込んだ。スマホ後退62pxの候補はcodex/mobile-thrust-runup、試遊全体はcodex/survival-buildsに保持し、今回の公開差分には入れない。
+
+v0.9.8へ表示・query・診断・CIを統一。25スキル・17レリック、研磨・突破・旧保存互換とDev比較機能を含む。公開前検証→main統合／push→CIとPages→公開ファイル一致と実GUIを確認する。仕様は[SURVIVAL_IMPLEMENTATION](./SURVIVAL_IMPLEMENTATION.md)、GUI証跡は[SURVIVAL_GUI_REVIEW](./SURVIVAL_GUI_REVIEW.md)、公開記録は[V098](./V098.md)。証跡test-results/v098/。
+
+次は公開候補の検証を完了させてコミットし、mainへ統合・公開する。
 
 ## 最新：v0.9.7 本編統合・公開完了
 
