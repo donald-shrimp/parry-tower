@@ -1,12 +1,12 @@
 # 継続状態（2026-11-03）
 
-## 最新：v0.9.8 公開作業
+## 最新：v0.9.8 公開完了
 
-ユーザーの「んじゃ、実装頼むわ」で、GUI確認済みの回復・障壁4案と補充バグ修正を本番へ採用・公開する。origin/mainから公開用ブランチcodex/release-v098を作り、採用コミット455275d／4aa7620だけを取り込んだ。スマホ後退62pxの候補はcodex/mobile-thrust-runup、試遊全体はcodex/survival-buildsに保持し、今回の公開差分には入れない。
+ユーザーの「んじゃ、実装頼むわ」で、GUI確認済みの回復・障壁4案と補充バグ修正を本番へ採用。[PR #30](https://github.com/donald-shrimp/parry-tower/pull/30)をmainへ統合し、公開コード94e92a3をPagesへ反映した。origin/mainから採用コミット455275d／4aa7620だけを取り込み、スマホ後退62pxの候補はcodex/mobile-thrust-runup、試遊全体はcodex/survival-buildsに保持する。
 
-v0.9.8へ表示・query・診断・CIを統一。25スキル・17レリック、研磨・突破・旧保存互換とDev比較機能を含む。公開前検証→main統合／push→CIとPages→公開ファイル一致と実GUIを確認する。仕様は[SURVIVAL_IMPLEMENTATION](./SURVIVAL_IMPLEMENTATION.md)、GUI証跡は[SURVIVAL_GUI_REVIEW](./SURVIVAL_GUI_REVIEW.md)、公開記録は[V098](./V098.md)。証跡test-results/v098/。
+v0.9.8へ表示・query・診断・CIを統一。25スキル・17レリック、研磨・突破・旧保存互換とDev比較を含む。PR候補のStatic checks 41472337578とmain側41474235196はいずれも全Node483件・画像8件・フォント2件・全構文／静的参照／試算成功。公開コードとテスト済み候補4982cc9のGit treeは同一。Pages 41474234134は成功。配信36ファイルが94e92a3と一致し、本編v0.9.8と既存記録の読み込み、公開Devの全部入り80階で描画・HP275／障壁28／上限270・停止／再開・警告なしを確認。通常挑戦の開始・購入・設定保存は操作していない。仕様は[SURVIVAL_IMPLEMENTATION](./SURVIVAL_IMPLEMENTATION.md)、GUI証跡は[SURVIVAL_GUI_REVIEW](./SURVIVAL_GUI_REVIEW.md)、公開記録は[V098](./V098.md)。証跡test-results/v098/（ci-pr.json／ci-main.json／live-assets-94e92a3.json／live-main.jpg／live-dev.jpg）。
 
-次は公開候補の検証を完了させてコミットし、mainへ統合・公開する。
+本編 <https://donald-shrimp.github.io/parry-tower/?v=v0.9.8> と公開Dev <https://donald-shrimp.github.io/parry-tower/dev.html?survival=all> の確認タブを残した。公開記録の文書コミットは配信コードを変更しない。次は公開後のプレイ感、ビルドの強さ・価格・押しやすさへのフィードバック対応。
 
 ## 最新：v0.9.7 本編統合・公開完了
 
