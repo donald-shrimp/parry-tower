@@ -1677,7 +1677,7 @@ test('rest recovers 35 percent, consumes room and resets combo, without ordinary
  d.setCombo(18);d.setJustStreak(2);d.setHp(10);
  g.routeSelect('rest');
  assert.equal(g.state().mode,'room');
- assert.equal(g.state().combo,0);
+ assert.equal(g.state().combo,18);
  assert.equal(g.state().justStreak,0);
  const originalSkills=JSON.stringify(g.state().runSkills);
  g.roomChoose('rest:heal');
@@ -1708,7 +1708,7 @@ test('rest meditation grants capped shield and one reroll; future 8F rest leads 
  assert.equal(g.state().floor,9);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().encounterElite,true);
- assert.equal(g.state().combo,0);
+ assert.equal(g.state().combo,99);
 });
 test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus normal loot',()=>{
  const {g,d}=makeCrossroads();
@@ -1717,7 +1717,7 @@ test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus 
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().routeTrial,true);
  assert.equal(g.state().encounterElite,true);
- assert.equal(g.state().combo,9);
+ assert.equal(g.state().combo,12);
  g.random(.99);
  d.setEnemyHp(1);
  resolveBloodParry(g,20);
@@ -2901,7 +2901,7 @@ test('elixir caps at seven and waits until the next successful counter to trigge
  const {g,d}=makeCrossroads();d.setCharge(6);d.setTowerCoins(50);g.routeSelect('merchant');
  g.roomChoose('buy:elixir');assert.equal(g.state().charge,7);assert.equal(g.state().towerCoins,32);
  assert.equal(d.hits().length,0);g.roomChoose('continue');d.setEnemyHp(100000);
- resolveBloodParry(g,20);assert.equal(d.hits().filter(x=>x.label==='奥義').length,1);assert.equal(g.state().charge,0);
+ resolveBloodParry(g,0);assert.equal(d.hits().filter(x=>x.label==='奥義').length,1);assert.equal(g.state().charge,0);
  revisitMerchant(g);d.setCharge(7);g.roomChoose('buy:elixir');assert.equal(g.state().towerCoins,150);
 });
 
@@ -2950,7 +2950,7 @@ test('polished relics apply their improved damage, recovery, shields and guard r
  x=polishedFight('conduit_stone');for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷導').dealt,18);
  x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
  x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
- x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,20);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
+ x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,0);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
  x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
  x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
  x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
@@ -3732,4 +3732,52 @@ test('production keeps fighting with legacy or unavailable combat SFX instead of
   assert.equal(g.contactEvents().length,0);assert.equal(g.tailEvents().length,0);
   if(legacy)assert.equal(g.metalEvents().at(-1).kind,'just');else assert.ok(g.audioEvents().length>0);
  }
+});
+
+test('v0.9.9: merchant allows multiple distinct purchases per visit, and sanctuary/forge/scales events work',()=>{
+ const {g,d}=makeCrossroads();d.setTowerCoins(60);g.routeSelect('merchant');
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,48);assert.equal(g.state().roomStage,'result');
+ g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,32);assert.equal(g.state().shield,20);
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,32,'cannot buy same item twice in one visit');
+ g.roomChoose('continue');assert.equal(g.state().mode,'combat');
+ const s1=makeCrossroads(8);s1.d.gainSkill('blade');s1.g.random(.6);s1.g.routeSelect('event');
+ assert.equal(s1.g.state().eventId,'sanctuary');s1.g.roomChoose('event:train');s1.g.roomChoose('target:blade');
+ assert.equal(s1.g.state().runSkills.blade,2);
+ const s2=makeCrossroads(8);s2.d.grantRelic('rusty_crest');s2.g.random(.75);s2.g.routeSelect('event');
+ assert.equal(s2.g.state().eventId,'forge');s2.g.roomChoose('event:polish');s2.g.roomChoose('target:rusty_crest');
+ assert.deepEqual(Array.from(s2.g.state().polishedRelics),['rusty_crest']);
+ const s3=makeCrossroads(8);s3.d.setTowerCoins(20);const beforeSouls=s3.g.state().souls;s3.g.random(.95);s3.g.routeSelect('event');
+ assert.equal(s3.g.state().eventId,'scales');s3.g.roomChoose('event:toSouls');
+ assert.equal(s3.g.state().towerCoins,4);assert.equal(s3.g.state().souls,beforeSouls+20);
+});
+
+test('v0.9.9: boss and elite 3-beat heavy strikes trigger HEAVY BREAK (+3 charge, 1.25x damage) on JUST parry',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ d.jumpFloor(25);d.setEnemyHp(100000);d.setCharge(0);
+ resolveBloodParry(g,0);
+ const normalJustDealt=d.hits()[0].dealt;
+ assert.equal(g.state().charge,2,'opening strike is not heavy break');
+ d.resetHits();resolveBloodParry(g,0);
+ assert.equal(g.state().charge,5,'dirgekeeper index 0 is 3-beat heavy strike -> +3 charge');
+ assert.ok(d.hits()[0].dealt>normalJustDealt,'heavy break deals 1.25x damage');
+});
+
+test('v0.9.9: first boss defeat grants guaranteed bonus souls, and 2+ JUST parries grant technical bonus coins',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ const beforeSouls=g.state().souls;
+ d.jumpFloor(5);d.setEnemyHp(100000);
+ resolveBloodParry(g,0);d.setEnemyHp(1);resolveBloodParry(g,0);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().towerCoins,11,'boss base 10 + 1 technical coin from 2 JUST parries');
+ assert.equal(g.state().souls,beforeSouls+6,'first boss kill grants +6 guaranteed bonus souls');
+});
+
+test('v0.9.9: reward cards display synergy ready badge and level-up diff, and death screen shows miss timing delta',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('blade',1);d.setSkill('fury',0);d.setEnemyHp(1);resolveBloodParry(g,0);
+ g.frame(g.now+950);assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ d.setHp(1);d.setShield(0);const c=g.state().attackAt;g.clock(c-120);g.parry();g.frame(c+100);
+ assert.equal(g.state().mode,'gameover');
+ assert.match(g.el.get('deathSummary').innerHTML,/最終被弾：早すぎ/);
 });

@@ -8,7 +8,7 @@
   Object.freeze({id:'relic',icon:'🏺',name:'封印された遺物箱',cost:42,desc:'風化60%・秘宝40%の遺物3択'}),
   Object.freeze({id:'training',icon:'📖',name:'技の指南書',cost:34,desc:'所持スキルを指定して1レベル強化'}),
   Object.freeze({id:'breakthrough',icon:'✦',name:'限界突破の秘伝書',cost:60,desc:'上限到達スキルの上限・レベルを+1（各2回まで）'}),
-  Object.freeze({id:'elixir',icon:'🔮',name:'奥義の霊薬',cost:18,desc:'奥義ゲージ+3（最大7）。次の成功パリィで発動'}),
+  Object.freeze({id:'elixir',icon:'🔮',name:'奥義の霊薬',cost:18,desc:'奥義ゲージ+3（最大7）。次のJUSTパリィで発動'}),
   Object.freeze({id:'polish',icon:'✨',name:'遺物の研磨剤',cost:36,desc:'所持遺物を指定して効果を強化（各1回まで）'})
  ]);
  const EVENTS=Object.freeze([
@@ -19,13 +19,20 @@
   Object.freeze({id:'traveler',icon:'🎒',name:'旅人の遺品',description:'朽ちた荷物に、かつての挑戦者の道具が残されていた。',
    actions:Object.freeze([{id:'coins',label:'塔貨+18'},{id:'ward',label:'引き直し+1・障壁+10'}])}),
   Object.freeze({id:'chest',icon:'📦',name:'封じられた宝箱',description:'宝箱の隙間から、不気味な魔力が漏れている。',
-   actions:Object.freeze([{id:'open',label:'40%で遺物、60%で最大HP20%分の被害'},{id:'coins',label:'開けずに塔貨+10'}])})
+   actions:Object.freeze([{id:'open',label:'40%で遺物、60%で最大HP20%分の被害'},{id:'coins',label:'開けずに塔貨+10'}])}),
+  Object.freeze({id:'sanctuary',icon:'🎼',name:'共鳴の聖堂',description:'古い聖堂に、互いを呼び合う技の残響が満ちている。',
+   actions:Object.freeze([{id:'resonate',label:'所持スキルの共鳴相方を引き当てる'},{id:'train',label:'所持スキル1つを強化（+1Lv）'},{id:'pray',label:'静かに祈り、HP25%回復'}])}),
+  Object.freeze({id:'forge',icon:'⚒️',name:'古の金床',description:'まだ熱を残す金床が、武具や遺物のさらなる覚醒を待っている。',
+   actions:Object.freeze([{id:'polish',label:'未研磨の所持遺物1つを無料で研磨'},{id:'temper',label:'塔貨15枚で基礎攻撃力+3・障壁+15'},{id:'scrap',label:'鉄屑を拾い、塔貨+14'}])}),
+  Object.freeze({id:'scales',icon:'⚖️',name:'試練の祭器',description:'黄金の器と魂の器が、捧げ物を待って静かに揺れている。',
+   actions:Object.freeze([{id:'toSouls',label:'塔貨16枚を捧げ、魂の欠片+20 ✧'},{id:'toCoins',label:'現在HP20%を捧げ、塔貨+24・引き直し+1'},{id:'leave',label:'祭器に触れず先へ進む（障壁+10）'}])})
  ]);
  const BY_ID=Object.freeze(Object.fromEntries(EVENTS.map(e=>[e.id,e])));
  const ITEMS_BY_ID=Object.freeze(Object.fromEntries(ITEMS.map(x=>[x.id,x])));
- function randomEvent(rng=Math.random){
+ function randomEvent(rng=Math.random,excludeId=null){
+  const pool=excludeId&&EVENTS.some(e=>e.id===excludeId)&&EVENTS.length>1?EVENTS.filter(e=>e.id!==excludeId):EVENTS;
   const roll=Math.max(0,Math.min(1-Number.EPSILON,Number(rng())||0));
-  return EVENTS[Math.floor(roll*EVENTS.length)];
+  return pool[Math.floor(roll*pool.length)];
  }
  function altarCost(maxHp){return Math.max(1,Math.ceil(Math.max(1,maxHp)*.12));}
  function canSacrifice(hp,maxHp){return Number.isFinite(hp)&&hp-altarCost(maxHp)>=1;}

@@ -9,11 +9,13 @@ test('eight merchant offers have unique IDs and agreed prices',()=>{
   assert.equal(item.cost>0,true);
  }
 });
-test('four event narratives offer the agreed mutually exclusive actions',()=>{
- assert.deepEqual(EV.EVENTS.map(x=>x.id),['altar','mirror','traveler','chest']);
+test('seven event narratives offer the agreed mutually exclusive actions',()=>{
+ assert.deepEqual(EV.EVENTS.map(x=>x.id),['altar','mirror','traveler','chest','sanctuary','forge','scales']);
  const actionMap={
   altar:['sacrifice','ward'],mirror:['swap','coins'],
-  traveler:['coins','ward'],chest:['open','coins']
+  traveler:['coins','ward'],chest:['open','coins'],
+  sanctuary:['resonate','train','pray'],forge:['polish','temper','scrap'],
+  scales:['toSouls','toCoins','leave']
  };
  for(const event of EV.EVENTS){
   assert.deepEqual(event.actions.map(x=>x.id),actionMap[event.id]);
@@ -21,13 +23,20 @@ test('four event narratives offer the agreed mutually exclusive actions',()=>{
   assert.ok(event.icon&&event.description&&event.name);
  }
 });
-test('event selector handles boundary values and draws all four events',()=>{
+test('event selector handles boundary values, draws all seven events and avoids consecutive repeats when excludeId is passed',()=>{
  assert.equal(EV.randomEvent(()=>0).id,'altar');
- assert.equal(EV.randomEvent(()=>.25).id,'mirror');
- assert.equal(EV.randomEvent(()=>.5).id,'traveler');
- assert.equal(EV.randomEvent(()=>.75).id,'chest');
- assert.equal(EV.randomEvent(()=>1).id,'chest');
+ assert.equal(EV.randomEvent(()=>.15).id,'mirror');
+ assert.equal(EV.randomEvent(()=>.3).id,'traveler');
+ assert.equal(EV.randomEvent(()=>.45).id,'chest');
+ assert.equal(EV.randomEvent(()=>.6).id,'sanctuary');
+ assert.equal(EV.randomEvent(()=>.75).id,'forge');
+ assert.equal(EV.randomEvent(()=>.95).id,'scales');
+ assert.equal(EV.randomEvent(()=>1).id,'scales');
  assert.equal(EV.randomEvent(()=>NaN).id,'altar');
+ assert.equal(EV.randomEvent(()=>0,'altar').id,'mirror');
+ for(const id of EV.EVENTS.map(x=>x.id)){
+  for(let r=0;r<=1;r+=.1)assert.notEqual(EV.randomEvent(()=>r,id).id,id);
+ }
 });
 test('altar cannot kill even at low max HP and offers rounded 12% sacrifice',()=>{
  assert.equal(EV.altarCost(65),8);
