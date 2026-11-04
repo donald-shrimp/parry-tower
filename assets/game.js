@@ -532,7 +532,7 @@ function bonusNavigation(){
 function renderSkinPicker(){
  for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
  return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const owned=PR.ownsSkin(permanent,skin.id),wearing=skin.id===permanent.equippedSkin;
+  const owned=PR.ownsSkin(permanent,skin.id),wearing=!PR.extraEnabled(permanent,'legacyVisual')&&skin.id===permanent.equippedSkin;
   const action=owned?'skin-equip':'skin-buy';
   const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':skin.cost+' ✧')+'</button>';
   const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0};
@@ -607,18 +607,19 @@ function renderUpgradeScreen(){
 }
 function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
- upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
+ runLegacyVisual=null;upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
 }
-function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');else if(upgradeReturnMode==='gameover')$('deathRecords').innerHTML=records();}
+function syncShopAppearance(){if(DEV_MODE){devPreviewSkin=permanent.equippedSkin;if($('devSkin'))$('devSkin').value=devPreviewSkin;}if(upgradeReturnMode==='gameover')game.skin=permanent.equippedSkin;syncArtMode();}
 function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
  if(action==='skin-equip'){
   const next=PR.equipSkin(permanent,key,SKILLS);if(!next)return;
-  permanent=next;savePermanent();syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);renderUpgradeScreen();return;
+  permanent=next;savePermanent();syncShopAppearance();window.ParryHeroPuppet?.preloadSkin?.(key);renderUpgradeScreen();return;
  }
  if(action==='bonus-toggle'){
   const next=PR.toggleExtra(permanent,key,!PR.extraEnabled(permanent,key),SKILLS);if(!next)return;
-  permanent=next;savePermanent();syncArtMode();renderUpgradeScreen();sound(650,.12,'triangle',.04,140);return;
+  permanent=next;savePermanent();if(key==='legacyVisual')syncShopAppearance();else syncArtMode();renderUpgradeScreen();sound(650,.12,'triangle',.04,140);return;
  }
  if(action==='quick-equip'){
   const [slotStr,skillId]=String(key).split(':'),slot=Number(slotStr);
@@ -642,7 +643,7 @@ function buyUpgrade(action,key){
  }else if(action==='skin-buy'){
   const skin=PR.SKINS.find(s=>s.id===key);
   if(skin&&Number.isFinite(skin.cost)&&!PR.ownsSkin(permanent,key)){
-   cost=skin.cost;apply=()=>{permanent.unlockedSkins.push(key);permanent=PR.equipSkin(permanent,key,SKILLS);syncArtMode();window.ParryHeroPuppet?.preloadSkin?.(key);};
+   cost=skin.cost;apply=()=>{permanent.unlockedSkins.push(key);permanent=PR.equipSkin(permanent,key,SKILLS);syncShopAppearance();window.ParryHeroPuppet?.preloadSkin?.(key);};
   }
  }else if(action==='bonus-buy'){
   const item=PR.EXTRAS.find(item=>item.id===key);
@@ -1578,10 +1579,10 @@ function die(){
  recordSkinRun(true);
  const rescue=grantRescueRewards();
  save(); // Reward currency and claim mask are saved together.
- const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
+ const foe=game.enemy,foeLine=foe&&!foe.preview?`?<b>${foe.name}</b>?`:'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
- $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
- $('deathRecords').innerHTML=records();
+ $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}??????<br>??????? <b>${game.perfects}?</b> / ?? <b>${game.misses}?</b><br>????? <b>${game.peakCombo}</b><br>???? <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ?</b>${techSouls?`??????? +${techSouls}?`:''}${game.bonusSouls?`????? +${game.bonusSouls}?`:''}${rescue?`????????? +${rescue} ??`:''}`;
+ $('deathRecords').innerHTML=records();runLegacyVisual=null;
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
 }
