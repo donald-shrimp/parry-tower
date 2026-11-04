@@ -345,7 +345,7 @@
   if(!readyFor(data.e))return false;
   const impactAt=data.pose?.lastImpactAt??data.lastImpactAt;
   const counterPhase=Number.isFinite(impactAt)&&Number.isFinite(data.now)?(data.now-impactAt)/240:data.pose?.action>0?1-data.pose.action:-1;
-  const active=counterPhase>.30&&counterPhase<272/240&&['parry','just'].includes(data.pose?.lastStrikeKind);
+  const active=counterPhase>.30&&counterPhase<272/240&&['parry','just'].includes(data.pose?.lastStrikeKind)&&data.counterWave!==false;
   return (root.ParryHeroPuppet||root.ParryCombatArt).drawHero(ctx,{...data,counterPhase,counterTarget:active?counterTarget(data):null,
    layout:layout(data.width,data.height,data.e,data.m||root.ParryCombatArt.profile(data.e),data.staging)});
  }

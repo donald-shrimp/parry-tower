@@ -1482,9 +1482,10 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
    damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
    if(game.mode!=='combat')return;
   }
-  if(game.charge>=7){game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.92;flashColor='#e5c8ff';shake=Math.max(shake,10);puff(w*.7,h*.55,'#f7df94',36,1.8);sound(660,.33,'sawtooth',.05,-340)}
+  let ultFired=false;
+  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義・絶衝');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110);showText('奥義・絶衝!',w*.52,h*.30,'#a8f7ff',22)}
   finishParryRecovery();
-  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
+  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);if(!ultFired){flash=.67;flashColor='#a0e8ff';}shake=Math.max(shake,5)}else if(!ultFired){flash=Math.max(flash,.18);flashColor='#9accff'};
 }
 if(game.mode==='combat')nextStrike();syncHUD();}
 function clearFloor(){
@@ -1911,6 +1912,7 @@ function drawBackground(now){const g=ctx.createLinearGradient(0,0,0,h);g.addColo
   paintDeepZone(now,P.zoneForFloor(game.floor||1).scene);
   if(game.enemy?.boss){let gl=ctx.createRadialGradient(w*.71,h*.56,4,w*.71,h*.56,h*.55);gl.addColorStop(0,'#d77f4537');gl.addColorStop(1,'#f59f4800');ctx.fillStyle=gl;ctx.fillRect(0,0,w,h)}
 }
+let lastHeroAnchors=null;
 function heroAnchors(now,poseInput,s,x,y,lift,push,hurt){
  const HP=window.ParryHeroPuppet;
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.readyFor(game.enemy)&&HP){
@@ -1919,23 +1921,29 @@ function heroAnchors(now,poseInput,s,x,y,lift,push,hurt){
   const editTime=q.action>0?q.phase*240:0,u=HP.SCALE||.16;
   const parts=edits?.placements('hero',baseParts,HP.placements(HP.pose()),editTime,u)||baseParts;
   const whole=edits?.whole('hero')||{x:0,y:0,scale:1};
-  const sh=parts.shield,piv=HP.PIVOTS.shieldContact;
-  const vx=(piv[0]-sh.pivot[0])*u*(sh.sx||1),vy=(piv[1]-sh.pivot[1])*u*(sh.sy||1);
-  const rx=vx*Math.cos(sh.angle)-vy*Math.sin(sh.angle),ry=vx*Math.sin(sh.angle)+vy*Math.cos(sh.angle);
-  return {
+  const partPoint=(partName,[px,py])=>{
+   const t=parts[partName],vx=(px-t.pivot[0])*u*(t.sx||1),vy=(py-t.pivot[1])*u*(t.sy||1);
+   const rx=vx*Math.cos(t.angle)-vy*Math.sin(t.angle),ry=vx*Math.sin(t.angle)+vy*Math.cos(t.angle);
+   return {x:l.heroX+(q.slide+(t.at.x+rx)*whole.scale+whole.x*u)*l.heroScale,y:l.ground+((t.at.y+ry)*whole.scale+whole.y*u)*l.heroScale};
+  };
+  const shPt=partPoint('shield',HP.PIVOTS.shieldContact);
+  return lastHeroAnchors={
    illustrated:true,layout:l,m,
    footX:l.heroX+(q.slide+whole.x*u)*l.heroScale,
    footY:l.ground+whole.y*u*l.heroScale,
    scale:l.heroScale*whole.scale,
-   shieldX:l.heroX+(q.slide+(sh.at.x+rx)*whole.scale+whole.x*u)*l.heroScale,
-   shieldY:l.ground+((sh.at.y+ry)*whole.scale+whole.y*u)*l.heroScale,
+   grip:partPoint('weapon',HP.PIVOTS.grip),
+   tip:partPoint('weapon',HP.PIVOTS.tip),
+   shieldX:shPt.x,shieldY:shPt.y,
    shieldAngle:q.shieldAngle||0
   };
  }
  const fx=x-hurt*8-push*4,fy=y+Math.sin(now/390)*1.6+hurt*5+push*2;
- return {
+ return lastHeroAnchors={
   illustrated:false,layout:null,m:null,
   footX:fx,footY:fy,scale:s,
+  grip:{x:fx+12*s,y:fy-65*s},
+  tip:{x:fx+24*s,y:fy-108*s},
   shieldX:fx+(21+lift*18-push*5)*s,
   shieldY:fy+(-48-lift*10+push*2)*s,
   shieldAngle:-.16+lift*.18-push*.23
@@ -1974,7 +1982,7 @@ function drawHeroBehindFX(now,anchors,poseInput){
   ctx.restore();
  }
 }
-function drawHeroFrontFX(now,anchors){
+function drawHeroFrontFX(now,anchors,ultActive){
  if(lvl('frost')>0&&game.frostWard){
   const sx=anchors.shieldX+9*anchors.scale,sy=anchors.shieldY+2*anchors.scale,sw=18*anchors.scale,sh=38*anchors.scale;
   ctx.save();ctx.translate(sx,sy);ctx.rotate((anchors.shieldAngle||0)-.08);ctx.globalCompositeOperation='lighter';
@@ -1989,14 +1997,29 @@ function drawHeroFrontFX(now,anchors){
   ctx.moveTo(sw*.95,-sh*.52);ctx.lineTo(-sw*.65,sh*.48);ctx.stroke();
   ctx.restore();
  }
+ // 案C：蒼白臨界待機刀身オーラ（次のパリィまたはJUSTパリィで奥義発動可能な時、切り出し刀身が蒼白く発光）
+ if(['combat','phase'].includes(game.mode)&&!ultActive&&(game.charge||0)>=5&&anchors.grip&&anchors.tip){
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  const color='#9ef6ff';
+  ctx.strokeStyle=color;ctx.shadowColor=color;ctx.shadowBlur=16;
+  ctx.lineWidth=(4.5+1.5*Math.sin(now/120))*anchors.scale;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(anchors.grip.x,anchors.grip.y);ctx.lineTo(anchors.tip.x,anchors.tip.y);ctx.stroke();
+  for(let i=0;i<4;i++){
+   const t=((now/260+i*.25)%1);
+   const sx=anchors.grip.x+(anchors.tip.x-anchors.grip.x)*t+Math.sin(now/60+i)*4;
+   const sy=anchors.grip.y+(anchors.tip.y-anchors.grip.y)*t+Math.cos(now/60+i)*4;
+   ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx,sy,2.2*anchors.scale,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+ }
  if(['combat','phase','victory'].includes(game.mode)){
-  const charge=game.charge||0,isMax=charge>=7,rx=45*anchors.scale,ry=9*anchors.scale,cy=anchors.footY+9*anchors.scale;
+  const charge=ultActive?7:(game.charge||0),isMax=charge>=6,rx=45*anchors.scale,ry=9*anchors.scale,cy=anchors.footY+9*anchors.scale;
   ctx.save();
   for(let i=0;i<7;i++){
    const t=1-(i/6),angle=Math.PI*(.15+.70*t);
    const px=anchors.footX+Math.cos(angle)*rx,py=cy+Math.sin(angle)*ry,lit=i<charge;
    ctx.beginPath();ctx.arc(px,py,lit?(isMax?4.8:4.0):2.6,0,Math.PI*2);
-   if(lit){ctx.fillStyle=isMax?'#e6b8ff':'#7ceeff';ctx.shadowColor=isMax?'#c466ff':'#44ccff';ctx.shadowBlur=isMax?14:8;}
+   if(lit){ctx.fillStyle=ultActive?'#a8f7ff':isMax?'#e6b8ff':'#7ceeff';ctx.shadowColor=ultActive?'#38d6ff':isMax?'#c466ff':'#44ccff';ctx.shadowBlur=isMax||ultActive?14:8;}
    else{ctx.fillStyle='rgba(140,165,205,.28)';ctx.shadowBlur=0;}
    ctx.fill();
   }
@@ -2017,7 +2040,7 @@ function hero(now){
  const hurt=clamp(1-(now-(game.lastDamageAt||-99999))/250,0,1);
  const contact=splitContact()?attackPresentation.contact:null,impactAt=contact?.at??game.lastImpactAt,visibleKind=contact?(contact.result||'contact'):game.lastStrikeKind;
  const age=now-(impactAt??-99999),push=(age>=0&&age<160&&(contact||game.lastStrikeKind!=='miss')?Math.sin(Math.PI*age/160):0)*(contact?(contact.guard?.75:.45):(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45));
- const ultActive=(now-(game.lastUltimateAt??-99999))>=0&&(now-(game.lastUltimateAt??-99999))<260;
+ const ultActive=(now-(game.lastUltimateAt??-99999))>=0&&(now-(game.lastUltimateAt??-99999))<520;
  const poseInput={lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt};
  const anchors=heroAnchors(now,poseInput,s,x,y,lift,push,hurt);
  drawHeroBehindFX(now,anchors,poseInput);
@@ -2063,7 +2086,7 @@ function hero(now){
    origin:{x:w*.28,y:h*.80-65*s},target:{x:w*.65,y:h*.80-65*s},scale:s,tint:PR.extraOption(permanent,'slashTint')});
  }
  ctx.restore();
- drawHeroFrontFX(now,anchors);
+ drawHeroFrontFX(now,anchors,ultActive);
 }
 function drawHeavyAuraC(ax,ay,groundY,ew,eh,scale,charge,p,now,front){
  if(charge<=.02&&p<=.01)return;
@@ -2346,23 +2369,29 @@ function drawClashFX(now){
 }
 
 function drawUltimateFX(now){
+ // 案C：刹那暗転・一閃（空間断裂）＋十字フレア＋衝撃波リング
  const age=now-(game.lastUltimateAt??-99999);
- if(age<0||age>380)return;
- const p=clamp(age/380,0,1),fade=1-p;
- const ex=w*.71,ey=h*.54;
+ if(age<0||age>520)return;
+ const p=clamp(age/520,0,1),alpha=1-p;
+ const scale=lastHeroAnchors?.scale||(Math.min(w/550,h/470)*1.23);
+ const gripX=lastHeroAnchors?.grip?.x??(w*.28);
+ const m=game.enemy?motionFor(game.enemy):undefined;
+ const target=(useIllustratedArt()&&!game.artFallback&&game.enemy&&KNIGHT_PUPPET?.counterTarget?.({e:game.enemy,m,now,width:w,height:h,attackAt:game.attackAt,attackSpan:game.attackSpan||1900,lastImpactAt:game.lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:game.lastStrikeKind}))||{x:w*.72,y:h*.58};
  ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
- const glow=ctx.createRadialGradient(ex,ey,4,ex,ey,Math.max(w,h)*.65);
- glow.addColorStop(0,'rgba(255,235,175,'+(fade*.55)+')');
- glow.addColorStop(.35,'rgba(205,140,255,'+(fade*.32)+')');
- glow.addColorStop(1,'rgba(120,60,220,0)');
- ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
- ctx.globalAlpha=fade;
- ctx.strokeStyle='#ffe9a6';ctx.lineWidth=11*fade;
- ctx.beginPath();ctx.moveTo(ex-w*.22,ey-h*.28);ctx.lineTo(ex+w*.18,ey+h*.22);ctx.stroke();
- ctx.strokeStyle='#e3b8ff';ctx.lineWidth=6*fade;
- ctx.beginPath();ctx.moveTo(ex+w*.18,ey-h*.26);ctx.lineTo(ex-w*.18,ey+h*.22);ctx.stroke();
- ctx.beginPath();ctx.arc(ex,ey,(18+p*Math.min(w,h)*.52),0,Math.PI*2);
- ctx.strokeStyle='#ffd984';ctx.lineWidth=4.5*fade;ctx.stroke();
+ // Outer cyan glow line
+ ctx.strokeStyle='#5ce1ff';ctx.shadowColor='#38d6ff';ctx.shadowBlur=28;
+ ctx.lineWidth=(14*Math.pow(1-p,1.3))*scale;ctx.globalAlpha=alpha;
+ ctx.beginPath();ctx.moveTo(gripX-28,target.y+20);ctx.lineTo(w-10,target.y-26);ctx.stroke();
+ // Crisp white-hot core slash line
+ ctx.strokeStyle='#ffffff';ctx.lineWidth=(4.5*Math.pow(1-p,1.5))*scale;
+ ctx.beginPath();ctx.moveTo(gripX-28,target.y+20);ctx.lineTo(w-10,target.y-26);ctx.stroke();
+ // Impact cross-star at enemy center
+ const starLen=(58*(1-p*.5))*scale;
+ ctx.strokeStyle='#e8fdff';ctx.lineWidth=(3.2*(1-p))*scale;
+ ctx.beginPath();ctx.moveTo(target.x-starLen*.35,target.y-starLen);ctx.lineTo(target.x+starLen*.35,target.y+starLen);ctx.stroke();
+ // Expanding shock ring
+ ctx.strokeStyle='#9ef6ff';ctx.lineWidth=3.2*(1-p);
+ ctx.beginPath();ctx.arc(target.x,target.y,18+p*140,0,Math.PI*2);ctx.stroke();
  ctx.restore();
 }
 function combatPoseTime(now){
@@ -2436,7 +2465,9 @@ function drawComboGlow(now){
 function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();if(shake>0){const sx=rand(-shake,shake),sy=rand(-shake,shake);if(preferences.shake)ctx.translate(sx,sy);}drawBackground(now);
  if(game.mode==='combat'&&!game.practice){ctx.save();ctx.globalAlpha=.035;ctx.fillStyle=P.zoneForFloor(game.floor).accent;ctx.fillRect(0,0,w,h*.72);ctx.restore()}
  if(game.artLoading){ctx.restore();textDraw('立ち絵を読み込み中…',w*.5,h*.5,Math.min(20,w*.05),'#cfdff5');return;}
- const poseTime=combatPoseTime(now);enemy(poseTime);drawComboGlow(poseTime);hero(poseTime);ctx.restore();drawClashFX(now);drawUltimateFX(now);
+ const ultAge=now-(game.lastUltimateAt??-99999);
+ if(ultAge>=0&&ultAge<260){ctx.save();ctx.fillStyle=`rgba(3,6,18,${.72*(1-ultAge/260)})`;ctx.fillRect(0,0,w,h);ctx.restore();}
+ const poseTime=combatPoseTime(now);enemy(poseTime);drawComboGlow(poseTime);hero(poseTime);ctx.restore();if(ultAge<0||ultAge>=520)drawClashFX(now);drawUltimateFX(now);
  // Reserve separate, stable vertical lanes: the combo stays above the floor-entry title.
  // 0.055h vs 0.14h leaves a legible gap even on the 345px-tall mobile canvas.
  const boss=game.enemy?.boss;if(game.mode==='combat'){if(game.nextFloorHint&&now-game.nextFloorHintAt<1300){const alpha=clamp(1-(now-game.nextFloorHintAt-500)/800,0,1);ctx.globalAlpha=alpha;textDraw(game.nextFloorHint,w*.5,h*.14,Math.min(30,w*.075),boss?'#ffe0a2':'#cfdff5');ctx.globalAlpha=1}
