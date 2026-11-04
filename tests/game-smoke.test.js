@@ -2787,7 +2787,7 @@ test('skin purchases charge approved prices once, preserve currency on failure, 
  mutual.upgradeBuy('skin-equip','normal');assert.equal(mutual.artMode(),'illustrated');assert.deepEqual(Array.from(mutual.state().permanent.enabledExtras),[]);
  assert.match(mutual.el.get('upgradeList').innerHTML,/skin-card selected[\s\S]*?data-key="normal" disabled/);
  const fromGameover=makeHarness({parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['fundoshi'],equippedSkin:'fundoshi',unlockedExtras:['legacyVisual'],enabledExtras:[]})});
- fromGameover.press('startBtn');settleCurrentAttack(fromGameover);assert.equal(fromGameover.state().mode,'gameover');
+ fromGameover.press('startBtn');settleCurrentAttack(fromGameover);assert.equal(fromGameover.state().mode,'gameover');assert.match(fromGameover.el.get('deathSummary').innerHTML,/で力尽きた。[\s\S]*ジャストパリィ[\s\S]*魂の欠片/);
  fromGameover.clock(fromGameover.now+700);fromGameover.frame(fromGameover.now);
  fromGameover.press('deathUpgradeBtn');fromGameover.upgradeTab('bonus');fromGameover.upgradeBuy('bonus-toggle','legacyVisual');
  assert.equal(fromGameover.artMode(),'legacy','switching to legacyVisual from gameover shop updates artMode immediately');

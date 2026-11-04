@@ -1579,9 +1579,9 @@ function die(){
  recordSkinRun(true);
  const rescue=grantRescueRewards();
  save(); // Reward currency and claim mask are saved together.
- const foe=game.enemy,foeLine=foe&&!foe.preview?`?<b>${foe.name}</b>?`:'';
+ const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
- $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}??????<br>??????? <b>${game.perfects}?</b> / ?? <b>${game.misses}?</b><br>????? <b>${game.peakCombo}</b><br>???? <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ?</b>${techSouls?`??????? +${techSouls}?`:''}${game.bonusSouls?`????? +${game.bonusSouls}?`:''}${rescue?`????????? +${rescue} ??`:''}`;
+ $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
  $('deathRecords').innerHTML=records();runLegacyVisual=null;
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
