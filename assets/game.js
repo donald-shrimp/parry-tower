@@ -1484,7 +1484,7 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
    if(game.mode!=='combat')return;
   }
   let ultFired=false;
-  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義・絶衝');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110);showText('奥義・絶衝!',w*.52,h*.30,'#a8f7ff',22)}
+  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110)}
   finishParryRecovery();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);if(!ultFired){flash=.67;flashColor='#a0e8ff';}shake=Math.max(shake,5)}else if(!ultFired){flash=Math.max(flash,.18);flashColor='#9accff'};
 }
