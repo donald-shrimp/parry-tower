@@ -8,7 +8,7 @@
   Object.freeze({id:'relic',icon:'🏺',name:'封印された遺物箱',cost:42,desc:'風化60%・秘宝40%の遺物3択'}),
   Object.freeze({id:'training',icon:'📖',name:'技の指南書',cost:34,desc:'所持スキルを指定して1レベル強化'}),
   Object.freeze({id:'breakthrough',icon:'✦',name:'限界突破の秘伝書',cost:60,desc:'上限到達スキルの上限・レベルを+1（各2回まで）'}),
-  Object.freeze({id:'elixir',icon:'🔮',name:'奥義の霊薬',cost:18,desc:'奥義ゲージ+3（最大7）。次のJUSTパリィで発動'}),
+  Object.freeze({id:'elixir',icon:'🔮',name:'奥義の霊薬',cost:18,desc:'奥義ゲージ+3（最大7）。次のパリィで発動'}),
   Object.freeze({id:'polish',icon:'✨',name:'遺物の研磨剤',cost:36,desc:'所持遺物を指定して効果を強化（各1回まで）'})
  ]);
  const EVENTS=Object.freeze([

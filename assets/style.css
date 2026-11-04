@@ -286,3 +286,5 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .quick-equip-btn{background:#243552;color:#dce8ff;border:1px solid #597298;border-radius:7px;padding:6px 8px;font-size:10px;font-weight:800}
 .quick-equip-btn.equipped{background:#3a3442;border-color:#e0bf81;color:#ffe4ac}
 .hpfill.shielded{box-shadow:0 0 14px #76e4f166,inset 0 0 0 1px #9ef6ff88}
+.progress{position:relative}
+.shieldfill{position:absolute;top:0;left:0;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#3fa2d9a8,#8ceeffd8);box-shadow:0 0 10px #76e4f166;pointer-events:none;transition:width .15s}

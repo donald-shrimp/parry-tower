@@ -417,7 +417,7 @@ function setMode(mode){
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
  $('floorBadge').textContent=game.practice?'⚔ PRACTICE':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
  $('zoneLabel').textContent=game.practice?'稽古場':P.zoneForFloor(game.floor||1).name;
- $('zoneLabel').style.color=game.practice?'#f4d68d':P.zoneForFloor(game.floor||1).accent;$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('hpFill').classList?.toggle?.('shielded',(game.shield||0)>0);$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('towerCoinsLabel').textContent=game.towerCoins||0;$('soulFragmentsLabel').textContent=meta.coins;renderCombatBuffs();}
+ $('zoneLabel').style.color=game.practice?'#f4d68d':P.zoneForFloor(game.floor||1).accent;$('enemyName').textContent=enemy?.name||'塔の入口';$('comboLabel').textContent=game.combo||0;$('hpText').textContent=`${Math.ceil(game.hp||0)} / ${game.maxHp||100}`;$('hpFill').style.width=clamp(100*(game.hp||0)/(game.maxHp||100),0,100)+'%';$('hpFill').classList?.toggle?.('shielded',(game.shield||0)>0);if($('shieldFill'))$('shieldFill').style.width=clamp(100*(game.shield||0)/(game.maxHp||100),0,100)+'%';$('shieldText').textContent=game.shield>0?`＋🛡${Math.ceil(game.shield)}`:'';$('enemyBarName').textContent=enemy?.name||'ENEMY';$('enemyHpText').textContent=enemy?`${Math.ceil(Math.max(0,enemy.hp))} / ${enemy.maxHp}`:'—';$('enemyHpFill').style.width=enemy?clamp(enemy.hp/enemy.maxHp*100,0,100)+'%':'0%';$('perfectStat').textContent=game.perfects||0;$('damageStat').textContent=formatCompact(game.damage||0);$('bestComboStat').textContent=game.peakCombo||0;$('chargeStat').textContent=`${game.charge||0} / 7`;$('buildCount').textContent=`${upgradeCount()} LEVELS`;$('towerCoinsLabel').textContent=game.towerCoins||0;$('soulFragmentsLabel').textContent=meta.coins;renderCombatBuffs();}
 function renderCombatBuffs(){
  const parts=[];
  if(lvl('fortitude')&&game.fortitudeReady)parts.push('🛡 不屈 準備');
@@ -451,7 +451,24 @@ function merchantAvailable(id){
 }
 function relicPolished(id){return hasRelic(id)&&!!game.polishedRelics?.includes(id)}
 function relicPower(id,secondary=false){return RR.BY_ID[id]?.[secondary?'secondary':'power']?.[relicPolished(id)?1:0]||0}
-function ownedRelic(id){const r=RR.BY_ID[id];return relicPolished(id)?{...r,name:r.name+' ✦',desc:r.polishedDesc}:r}
+function relicScaledSuffix(id,polished=false){
+ const r=RR.BY_ID[id];if(!r)return '';
+ const idx=polished?1:0;
+ if(id==='conduit_stone'||id==='ember_vial'||id==='emperor_conduit'){
+  const s=skillAtkScale();if(Math.abs(s-1)<=1e-4)return '';
+  if(id==='conduit_stone')return `（現在 ${Math.round(r.power[idx]*s)}）`;
+  if(id==='ember_vial')return `（現在 +${Math.round(r.power[idx]*s)}）`;
+  return `（現在 雷撃${Math.round(r.secondary[idx]*s)}）`;
+ }
+ if(id==='rusty_crest'||id==='pilgrim_bell'||id==='blood_pact_chalice'||id==='silver_mirror'){
+  const s=hpSkillScale();if(Math.abs(s-1)<=1e-4)return '';
+  if(id==='rusty_crest')return `（現在 ${Math.round(r.power[idx]*s)}軽減）`;
+  if(id==='silver_mirror')return `（現在 最大${Math.round(r.secondary[idx]*s)}軽減）`;
+  return `（現在 HP${Math.round(r.power[idx]*s)}回復）`;
+ }
+ return '';
+}
+function ownedRelic(id){const r=RR.BY_ID[id],pol=relicPolished(id),base=pol?r.polishedDesc:r.desc;return {...r,name:pol?r.name+' ✦':r.name,desc:base+relicScaledSuffix(id,pol)}}
 function hasRelic(id){return !game.practice&&!!game.relics?.includes(id)}
 function relicCounter(id){return game.relicCounters?.[id]||0}
 function relicBump(id,threshold){
@@ -523,9 +540,11 @@ function renderSkinPicker(){
  }).join('')+'</div>';
 }
 function renderUpgradeScreen(){
+ if(upgradeTab==='skills')upgradeTab='loadout';
+ if(upgradeTab==='special')upgradeTab='base';
  $('upgradeCoins').textContent=meta.coins+' ✧';
  $('soulFragmentsLabel').textContent=meta.coins;
- const tabs=[['loadout','スキル装備'],['skills','スキル解放'],['base','基礎強化'],['special','特殊強化'],['seal','運命の封印'],['bonus','おまけ']];
+ const tabs=[['loadout','初期スキル'],['base','能力強化'],['seal','運命の封印'],['bonus','おまけ']];
  $('upgradeTabs').innerHTML=tabs.map(([id,name])=>`<button type="button" class="upgrade-tab ${upgradeTab===id?'active':''}" aria-pressed="${upgradeTab===id}" data-tab="${id}">${name}</button>`).join('');
  if(upgradeTab==='loadout'){
   const owned=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)&&!permanent.sealedSkills.includes(skill.id));
@@ -538,7 +557,16 @@ function renderUpgradeScreen(){
     .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
    return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
   }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div>${owned.length?'':'<div class="upgrade-empty">「スキル解放」から装備するスキルを購入</div>'}`;
+  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
+  const skillRows=SKILLS.map(skill=>{
+   const isOwned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill),sealed=permanent.sealedSkills.includes(skill.id);
+   const quickSlots=isOwned&&permanent.slots>0&&!sealed?`<div class="quick-equip-row">${Array.from({length:permanent.slots},(_,i)=>{
+    const eq=permanent.equipped[i]===skill.id;
+    return `<button type="button" class="quick-equip-btn ${eq?'equipped':''}" data-action="quick-equip" data-key="${i}:${skill.id}">${eq?`✓ スロット${i+1}装備中`:`スロット${i+1}に装備`}</button>`;
+   }).join('')}</div>`:'';
+   return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
+  }).join('');
+  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
  }else if(upgradeTab==='bonus'&&bonusView==='skins'){
   $('upgradeList').innerHTML=renderSkinPicker();
  }else if(upgradeTab==='bonus'){
@@ -547,17 +575,6 @@ function renderUpgradeScreen(){
    const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
    return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div><div class="upgrade-effect">'+(owned?'購入済み · '+(enabled?'ON':'OFF'):'未購入')+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
   }).join('');
- }else if(upgradeTab==='skills'){
-  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
-  $('upgradeList').innerHTML=`<p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>`+
-   SKILLS.map(skill=>{
-    const owned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill),sealed=permanent.sealedSkills.includes(skill.id);
-    const quickSlots=owned&&permanent.slots>0&&!sealed? `<div class="quick-equip-row">${Array.from({length:permanent.slots},(_,i)=>{
-     const eq=permanent.equipped[i]===skill.id;
-     return `<button type="button" class="quick-equip-btn ${eq?'equipped':''}" data-action="quick-equip" data-key="${i}:${skill.id}">${eq?`✓ スロット${i+1}装備中`:`スロット${i+1}に装備`}</button>`;
-    }).join('')}</div>` :'';
-    return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${owned||meta.coins<cost?'disabled':''}>${owned?'解放済み':cost+' ✧'}</button></div>`;
-   }).join('');
  }else if(upgradeTab==='seal'){
   const limit=PR.value(permanent,'sealSlots'),seals=permanent.sealedSkills;
   const nextCost=PR.costNext(permanent,'sealSlots'),full=!Number.isFinite(nextCost);
@@ -570,13 +587,13 @@ function renderUpgradeScreen(){
   }).join('');
   $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。出撃前ならいつでも変更可能。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
  }else{
-  const legacy=upgradeTab==='base'?LEGACY_OFFERS.map(o=>{
+  const legacy=LEGACY_OFFERS.map(o=>{
    const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
    const next=PR.baseValue({...meta,[o.id]:level+1},o.id);
    return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),
     desc:`現在：${o.effect} +${now}${level===o.max?'（最大強化）':` → Lv.${level+1}：+${next}`}`});
-  }):[];
-  const extra=PR.UPGRADES.filter(o=>o.group===upgradeTab&&o.id!=='sealSlots').map(o=>{
+  });
+  const extra=PR.UPGRADES.filter(o=>(o.group==='base'||o.group==='special')&&o.id!=='sealSlots').map(o=>{
    const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
    const desc=o.id==='wardInheritance'
     ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:'（最大強化）'}（通常上限内）`
@@ -584,9 +601,7 @@ function renderUpgradeScreen(){
    return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
   });
   // Make rescue milestones discoverable; claiming still happens only on game over.
-  const rescueNote=upgradeTab==='base'
-   ?`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`
-   :'';
+  const rescueNote=`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`;
   $('upgradeList').innerHTML=rescueNote+legacy.concat(extra).join('');
  }
 }
@@ -804,7 +819,7 @@ function start(practice=false,practiceKey=null,devOptions=null){
  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
  stopScore();game.sealedSkillIds=[];
  const levels=devOptions.merchant==='capped'?{blade:20,focus:6,stability:6,frost:6,double:5}:{blade:3,focus:2,heal:3,thunder:2};
  game.lv={...levels};game.rawMaxHp=65+PR.baseValue(meta,'life')+15*lvl('heal');adjustRelicMaxHp();game.hp=game.maxHp;
@@ -876,7 +891,7 @@ function renderRoom(){
   $('roomTitle').textContent=item.name;
   $('roomDescription').textContent='対象を選んで購入 · '+item.cost+' 🪙（この挑戦だけ有効）';
   $('roomActions').innerHTML=merchantTargets(itemId).map(target=>{
-   if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,r.desc+' → '+r.polishedDesc,game.towerCoins<item.cost)}
+   if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)),game.towerCoins<item.cost)}
    const skill=SK[target],cap=skillCap(target),next=cap+(itemId==='breakthrough'?1:0);
    return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),
     skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1)+' / 上限 '+cap+' → '+next+
@@ -898,7 +913,7 @@ function renderRoom(){
   $('roomDescription').textContent='研磨する所持遺物を選択';
   $('roomActions').innerHTML=merchantTargets('polish').map(target=>{
    const r=RR.BY_ID[target];
-   return roomActionButton('target:'+target,r.icon+' '+r.name,r.desc+' → '+r.polishedDesc);
+   return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)));
   }).join('')+roomActionButton('back','← 金床の選択に戻る');
   return;
  }
@@ -930,7 +945,7 @@ function renderRoom(){
     disabled=!game.relics.length||!RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
     description='所持遺物1つを選び、風化・秘宝から3択。';
    }
-   if(event.id==='chest'&&item.id==='open')description='失敗してもHP1で生存。';
+   if(event.id==='chest'&&item.id==='open')description=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+25・引き直し+1）。失敗してもHP1で生存。';
    if(event.id==='sanctuary'&&item.id==='resonate'){
     disabled=availableSkills().length===0;
     description='共鳴相方のスキルを引き当てて1つ習得。';
@@ -951,7 +966,7 @@ function renderRoom(){
    if(event.id==='forge'&&item.id==='scrap')description='塔貨+14。';
    if(event.id==='scales'&&item.id==='toSouls'){
     disabled=game.towerCoins<16;
-    description='塔貨16枚を消費し、魂の欠片+20 ✧を得る。';
+    description='塔貨16枚を消費し、魂の欠片+'+soulReward(20)+' ✧を得る。';
    }
    if(event.id==='scales'&&item.id==='toCoins'){
     disabled=game.hp<=1;
@@ -975,7 +990,14 @@ function resonancePool(){
  const avail=availableSkills();
  const partners=avail.filter(s=>SYNERGIES.some(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)));
  const count=Math.min(runBonus('choice4')||3,avail.length);
- const picked=[...partners].slice(0,count);
+ const rarityWeight={common:5.4,rare:2.9,epic:1.05};
+ const pool=[...partners],picked=[];
+ while(picked.length<count&&pool.length){
+  const weights=pool.map(s=>(rarityWeight[s.rarity]??rarityWeight.common)*(lvl(s.id)?1.17:1));
+  let r=Math.random()*weights.reduce((a,b)=>a+b,0),idx=0;
+  for(;idx<weights.length-1;idx++){r-=weights[idx];if(r<=0)break;}
+  picked.push(pool.splice(idx,1)[0]);
+ }
  if(picked.length<count){
   for(const r of choosePool()){if(picked.length>=count)break;if(!picked.some(p=>p.id===r.id))picked.push(r);}
  }
@@ -992,15 +1014,12 @@ function skillCardMeta(s){
  const cur=lvl(s.id),next=cur+1;
  const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${s.desc(cur)}）</span>`:'';
  const readySynergies=cur===0?SYNERGIES.filter(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)):[];
- const synHtml=readySynergies.map(syn=>{
-  const partner=SK[syn.a===s.id?syn.b:syn.a];
-  return `<span class="synergy-ready-badge">✦ SYNERGY READY: ${syn.name}（+${partner.name}）</span>`;
- }).join('');
+ const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴解放可能！</span>':'';
  return {diffHtml,synHtml};
 }
 function renderEventSkillOffer(){
  const pool=game.routeSkillSet.map(id=>SK[id]);
- $('routeSkillTitle').textContent=game.routeSkillTitle;
+ $('routeSkillTitle').textContent=game.routeSkillTitle||'スキルをひとつ選べ';
  $('routeSkillCards').innerHTML=pool.map(skill=>{const meta=skillCardMeta(skill);return `<button class="reward-card ${skill.rarity}" type="button" data-route-skill="${skill.id}">
  <span class="rarity">${skill.rarity.toUpperCase()} · ${lvl(skill.id)?'LEVEL UP':'NEW SKILL'}</span>
  <span class="emoji">${skill.icon}</span><span class="rname">${skill.name} <small>Lv.${lvl(skill.id)+1}</small></span>
@@ -1009,7 +1028,11 @@ function renderEventSkillOffer(){
 }
 function takeEventSkill(id){
  if(game.mode!=='routeSkill'||!game.routeSkillSet.includes(id)||!SK[id]||lvl(id)>=skillCap(id))return;
- game.routeSkillSet=[];gainSkillLevel(id);sound(800,.18,'triangle',.05,130);finishNoncombatRoom();
+ game.routeSkillSet=[];gainSkillLevel(id);sound(800,.18,'triangle',.05,130);
+ if(game.currentRoom==='merchant'){
+  renderBuild();setMode('room');showRoomResult(SK[id].name+'がLv.'+lvl(id)+'になった！',true);return;
+ }
+ finishNoncombatRoom();
 }
 function roomAction(action){
  if(game.mode!=='room')return;
@@ -1053,7 +1076,7 @@ function roomAction(action){
   if(!merchantAvailable(item.id))return;
   if(['training','breakthrough','polish'].includes(item.id)){game.roomStage='target:'+item.id;renderRoom();return}
   game.towerCoins-=item.cost;game.merchantBought.push(item.id);syncHUD();
-  if(item.id==='elixir'){const old=game.charge;game.charge=Math.min(7,old+3);showRoomResult('奥義ゲージ '+old+' → '+game.charge+' / 7。次のJUSTパリィで力を解き放て！',true);}
+  if(item.id==='elixir'){const old=game.charge;game.charge=Math.min(7,old+3);showRoomResult('奥義ゲージ '+old+' → '+game.charge+' / 7。次のパリィで力を解き放て！',true);}
   else if(item.id==='reroll'){game.rerolls++;showRoomResult('運命の札を購入した。引き直し+1。',true);}
   else if(item.id==='barrier'){
    const prev=game.shield;relicShield(20);
@@ -1111,8 +1134,13 @@ function roomAction(action){
   if(opt==='coins'){game.towerCoins+=10;showRoomResult('宝箱は開けず、塔貨10枚を拾った。');}
   else if(opt==='open'){
    game.roomLocked=true;
-   if(Math.random()<.4&&RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')){
-    game.relicReturn='room';showRelicRewards('special');
+   if(Math.random()<.4){
+    if(RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')){
+     game.relicReturn='room';showRelicRewards('special');
+    }else{
+     game.towerCoins+=25;game.rerolls++;
+     showRoomResult('めぼしい遺物は残っていないようだ。塔貨+25・引き直し+1を得た。');
+    }
    }else{
     const lost=EV.chestDamage(game.hp,game.maxHp);
     game.hp-=lost;showRoomResult('宝箱の罠が発動！ HPを'+Math.round(lost)+'失った（死亡しない）。');
@@ -1145,8 +1173,9 @@ function roomAction(action){
  }else if(event.id==='scales'){
   if(opt==='toSouls'){
    if(game.towerCoins<16)return;
-   game.towerCoins-=16;meta.coins+=20;game.bonusSouls+=20;save();
-   showRoomResult('祭器に塔貨を捧げ、魂の欠片+20 ✧を得た。');
+   const gain=soulReward(20);
+   game.towerCoins-=16;meta.coins+=gain;game.bonusSouls+=gain;save();
+   showRoomResult('祭器に塔貨を捧げ、魂の欠片+'+gain+' ✧を得た。');
   }else if(opt==='toCoins'){
    if(game.hp<=1)return;
    const cost=Math.min(game.hp-1,Math.max(1,Math.ceil(game.hp*.2)));
@@ -1337,7 +1366,8 @@ function finishParryRecovery(){
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
  if(hasRelic('emperor_conduit')&&['⚡','雷鳴','雷霆','過充電','雷導','雷帝'].includes(label))n*=1+relicPower('emperor_conduit');
- const damage=Math.max(1,Math.round(n)),dealt=Math.min(Math.max(0,e.hp-(game.tutorial&&!game.tutorialFinishing?1:0)),damage);
+ const phaseFloor=e.finalBoss&&e.phase===1&&e.phaseRhythm&&e.hp>Math.floor(e.maxHp*.5)?Math.max(1,Math.floor(e.maxHp*.5)):(game.tutorial&&!game.tutorialFinishing?1:0);
+ const damage=Math.max(1,Math.round(n)),dealt=Math.min(Math.max(0,e.hp-phaseFloor),damage);
  e.hp-=dealt;game.damage+=damage;
  // Guard reflection is outside the successful-parry scope; burn ticks bypass damageEnemy.
  if(game.parryDamageActive)game.parryDamage+=dealt;
@@ -1372,7 +1402,7 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
   if(!lvl('aegis'))game.charge=0;
   applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
   if(game.mode!=='combat')return;
-  if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射')}feedback('GUARD','#f6c473');
+  if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射');if(game.mode!=='combat')return;}feedback('GUARD','#f6c473');
 }else if(kind==='miss'){
   game.lastTimingDeltaMs=game.lastAttemptDelta===null?null:Math.round(game.lastAttemptDelta);game.lastTimingKind='miss';
   game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');if(!splitContact())sound(145,.21,'sawtooth',.045,-85);shake=12;
@@ -1452,8 +1482,7 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
    damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
    if(game.mode!=='combat')return;
   }
-  if(perfect&&game.charge>=7){game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.92;flashColor='#e5c8ff';shake=Math.max(shake,10);puff(w*.7,h*.55,'#f7df94',36,1.8);sound(660,.33,'sawtooth',.05,-340)}
-  else if(game.charge>=7&&!perfect){showText('JUSTで奥義発動!',w*.5,h*.22,'#e2c4ff',15)}
+  if(game.charge>=7){game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#dcafff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}flash=.92;flashColor='#e5c8ff';shake=Math.max(shake,10);puff(w*.7,h*.55,'#f7df94',36,1.8);sound(660,.33,'sawtooth',.05,-340)}
   finishParryRecovery();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);flash=.67;flashColor='#a0e8ff';shake=Math.max(shake,5)}else{flash=Math.max(flash,.18);flashColor='#9accff'};
 }
@@ -1549,9 +1578,8 @@ function die(){
  const rescue=grantRescueRewards();
  save(); // Reward currency and claim mask are saved together.
  const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
- const timingLine=game.lastTimingKind==='miss'?(game.lastTimingDeltaMs===null?'<br><small class="muted">最終被弾：入力なし</small>':`<br><small class="muted">最終被弾：${game.lastTimingDeltaMs<0?'早すぎ ':'遅すぎ '}${Math.abs(game.lastTimingDeltaMs)}ms</small>`):'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
- $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。${timingLine}<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
+ $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
  $('deathRecords').innerHTML=records();
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
@@ -1563,8 +1591,11 @@ function showRelicRewards(kind){
   if(game.relicReturn==='mirror'){
    game.relicReturn=null;game.relicMirrorTarget=null;game.roomLocked=false;game.roomStage=null;
    setMode('room');renderRoom();
-  }else if(game.relicReturn==='room')finishNoncombatRoom();
-  else showRewards();
+  }else if(game.relicReturn==='room'){
+   game.relicReturn=null;
+   if(game.currentRoom==='merchant'){setMode('room');showRoomResult('めぼしい遺物は残っていないようだ。',true);}
+   else finishNoncombatRoom();
+  }else showRewards();
   return;
  }
  game.relicOffer=choices.map(r=>r.id);
@@ -1580,7 +1611,7 @@ function renderRelicReward(){
  $('relicOfferTitle').textContent=selected?'交換する遺物を選べ':'遺物をひとつ選べ';
  $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD;
  $('relicOfferCards').innerHTML=selected?'':
-  offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc}</span><small>相性：${r.affinity}</small></button>`).join('');
+  offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc+relicScaledSuffix(r.id,false)}</span><small>相性：${r.affinity}</small></button>`).join('');
  $('relicReplaceList').hidden=!selected;
  $('relicReplaceList').innerHTML=selected?
   `<p class="relic-replace-note">${selected.icon} ${selected.name} と交換する遺物</p>`+
@@ -1632,6 +1663,9 @@ function finishRelicReward(acquired=false){
  game.relicReturn=null;game.relicMirrorTarget=null;
  if(returned==='mirror'&&!acquired){
   game.roomLocked=false;game.roomStage=null;setMode('room');renderRoom();return;
+ }
+ if(returned==='room'&&game.currentRoom==='merchant'){
+  setMode('room');showRoomResult(acquired?'遺物箱から遺物を手に入れた！':'遺物箱の遺物を見送った。',true);return;
  }
  if(returned==='mirror'||returned==='room'){finishNoncombatRoom();return;}
  showRewards();
@@ -1701,9 +1735,13 @@ function populatePracticeEnemies(selected,allowUnseen=false){
  else if(options.length)select.value=options[0].bookKey;
 }
 function renderSkillCodex(){
- $('codexSummary').textContent=SKILLS.length+' スキル · '+SYNERGIES.length+' 共鳴';
+ const unlockedCount=SKILLS.filter(s=>permanent.unlockedSkills.includes(s.id)).length;
+ $('codexSummary').textContent=unlockedCount+' / '+SKILLS.length+' 解放 · '+SYNERGIES.length+' 共鳴';
  if($('codexFilter'))$('codexFilter').hidden=true;
  $('codexList').innerHTML=SKILLS.map(s=>{
+  if(!permanent.unlockedSkills.includes(s.id)){
+   return `<div class="codex-card locked"><div class="codex-symbol">🔒</div><strong>未解放</strong><small>${s.rarity.toUpperCase()} · ショップで解放後に登録</small></div>`;
+  }
   const syns=SYNERGIES.filter(syn=>syn.a===s.id||syn.b===s.id).map(syn=>{
    const partner=SK[syn.a===s.id?syn.b:syn.a];
    return `<div class="codex-synergy-hint"><b>${syn.name}</b>（+${partner.icon}${partner.name}）：${syn.desc}</div>`;
@@ -1873,6 +1911,98 @@ function drawBackground(now){const g=ctx.createLinearGradient(0,0,0,h);g.addColo
   paintDeepZone(now,P.zoneForFloor(game.floor||1).scene);
   if(game.enemy?.boss){let gl=ctx.createRadialGradient(w*.71,h*.56,4,w*.71,h*.56,h*.55);gl.addColorStop(0,'#d77f4537');gl.addColorStop(1,'#f59f4800');ctx.fillStyle=gl;ctx.fillRect(0,0,w,h)}
 }
+function heroAnchors(now,poseInput,s,x,y,lift,push,hurt){
+ const HP=window.ParryHeroPuppet;
+ if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.readyFor(game.enemy)&&HP){
+  const m=game.enemy?motionFor(game.enemy):undefined,l=KNIGHT_PUPPET.layout(w,h,game.enemy,m);
+  const q=HP.pose(poseInput),edits=window.ParryArtEdits,baseParts=HP.placements(q);
+  const editTime=q.action>0?q.phase*240:0,u=HP.SCALE||.16;
+  const parts=edits?.placements('hero',baseParts,HP.placements(HP.pose()),editTime,u)||baseParts;
+  const whole=edits?.whole('hero')||{x:0,y:0,scale:1};
+  const sh=parts.shield,piv=HP.PIVOTS.shieldContact;
+  const vx=(piv[0]-sh.pivot[0])*u*(sh.sx||1),vy=(piv[1]-sh.pivot[1])*u*(sh.sy||1);
+  const rx=vx*Math.cos(sh.angle)-vy*Math.sin(sh.angle),ry=vx*Math.sin(sh.angle)+vy*Math.cos(sh.angle);
+  return {
+   illustrated:true,layout:l,m,
+   footX:l.heroX+(q.slide+whole.x*u)*l.heroScale,
+   footY:l.ground+whole.y*u*l.heroScale,
+   scale:l.heroScale*whole.scale,
+   shieldX:l.heroX+(q.slide+(sh.at.x+rx)*whole.scale+whole.x*u)*l.heroScale,
+   shieldY:l.ground+((sh.at.y+ry)*whole.scale+whole.y*u)*l.heroScale,
+   shieldAngle:q.shieldAngle||0
+  };
+ }
+ const fx=x-hurt*8-push*4,fy=y+Math.sin(now/390)*1.6+hurt*5+push*2;
+ return {
+  illustrated:false,layout:null,m:null,
+  footX:fx,footY:fy,scale:s,
+  shieldX:fx+(21+lift*18-push*5)*s,
+  shieldY:fy+(-48-lift*10+push*2)*s,
+  shieldAngle:-.16+lift*.18-push*.23
+ };
+}
+function drawHeroBehindFX(now,anchors,poseInput){
+ const hasBolt=lvl('overcharge')>0&&(game.overchargeCount||0)>=2;
+ const hasMask=hasRelic('duet_mask')&&!!game.relicMaskReady;
+ if(hasBolt){
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  for(let b=0;b<3;b++){
+   const seed=Math.floor(now/75)+b*17,baseX=anchors.footX+(b-1)*18*anchors.scale,startY=anchors.footY-12*anchors.scale;
+   const pts=[[baseX,startY]];let cx=baseX,cy=startY;
+   for(let seg=1;seg<=5;seg++){
+    const hash=Math.sin(seed*12.9898+seg*78.233)*43758.5453;
+    cx+=((hash-Math.floor(hash))-.5)*22*anchors.scale;
+    cy-=(18+(seg%2)*5)*anchors.scale;
+    pts.push([cx,cy]);
+   }
+   ctx.strokeStyle='#38d6ff';ctx.shadowColor='#00b7ff';ctx.shadowBlur=12;
+   ctx.lineWidth=3.2*anchors.scale;ctx.lineCap='round';ctx.lineJoin='miter';ctx.globalAlpha=.78;
+   ctx.beginPath();pts.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.stroke();
+   ctx.strokeStyle='#e8fbff';ctx.lineWidth=1.3*anchors.scale;ctx.stroke();
+   if(pts[2]){
+    ctx.beginPath();ctx.moveTo(pts[2][0],pts[2][1]);
+    ctx.lineTo(pts[2][0]+(b%2?12:-12)*anchors.scale,pts[2][1]-11*anchors.scale);ctx.stroke();
+   }
+  }
+  ctx.restore();
+ }
+ if(hasMask&&anchors.illustrated&&window.ParryHeroPuppet){
+  const cloneLayout={...anchors.layout,heroX:anchors.layout.heroX-22*anchors.layout.heroScale,ground:anchors.layout.ground-3*anchors.layout.heroScale};
+  ctx.save();ctx.globalAlpha=.68+.12*Math.sin(now/220);
+  if('filter' in ctx)ctx.filter='brightness(0.30) sepia(1) hue-rotate(235deg) saturate(320%) drop-shadow(0 0 6px #9e47ff)';
+  window.ParryHeroPuppet.drawHero(ctx,{width:w,height:h,e:game.enemy,m:anchors.m,now:now-90,skin:visualSkin(),layout:cloneLayout,counterPhase:-1,counterTarget:null,pose:{...poseInput,lastStrikeKind:'guard'}});
+  ctx.restore();
+ }
+}
+function drawHeroFrontFX(now,anchors){
+ if(lvl('frost')>0&&game.frostWard){
+  const sx=anchors.shieldX+9*anchors.scale,sy=anchors.shieldY+2*anchors.scale,sw=18*anchors.scale,sh=38*anchors.scale;
+  ctx.save();ctx.translate(sx,sy);ctx.rotate((anchors.shieldAngle||0)-.08);ctx.globalCompositeOperation='lighter';
+  const hex=[[0,-sh],[sw*.95,-sh*.52],[sw*1.05,sh*.42],[0,sh],[-sw*.65,sh*.48],[-sw*.65,-sh*.52]];
+  const iceGrad=ctx.createLinearGradient(-sw,-sh,sw,sh);
+  iceGrad.addColorStop(0,'rgba(185,248,255,.46)');iceGrad.addColorStop(.5,'rgba(95,215,255,.24)');iceGrad.addColorStop(1,'rgba(210,252,255,.52)');
+  ctx.fillStyle=iceGrad;ctx.strokeStyle='#d6fbff';ctx.shadowColor='#5ce1ff';ctx.shadowBlur=12;ctx.lineWidth=2*anchors.scale;
+  ctx.beginPath();hex.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(235,254,255,.65)';ctx.lineWidth=1.1*anchors.scale;
+  ctx.beginPath();ctx.moveTo(0,-sh);ctx.lineTo(sw*.25,0);ctx.lineTo(0,sh);
+  ctx.moveTo(-sw*.65,-sh*.52);ctx.lineTo(sw*1.05,sh*.42);
+  ctx.moveTo(sw*.95,-sh*.52);ctx.lineTo(-sw*.65,sh*.48);ctx.stroke();
+  ctx.restore();
+ }
+ if(['combat','phase','victory'].includes(game.mode)){
+  const charge=game.charge||0,isMax=charge>=7,rx=45*anchors.scale,ry=9*anchors.scale,cy=anchors.footY+9*anchors.scale;
+  ctx.save();
+  for(let i=0;i<7;i++){
+   const t=1-(i/6),angle=Math.PI*(.15+.70*t);
+   const px=anchors.footX+Math.cos(angle)*rx,py=cy+Math.sin(angle)*ry,lit=i<charge;
+   ctx.beginPath();ctx.arc(px,py,lit?(isMax?4.8:4.0):2.6,0,Math.PI*2);
+   if(lit){ctx.fillStyle=isMax?'#e6b8ff':'#7ceeff';ctx.shadowColor=isMax?'#c466ff':'#44ccff';ctx.shadowBlur=isMax?14:8;}
+   else{ctx.fillStyle='rgba(140,165,205,.28)';ctx.shadowBlur=0;}
+   ctx.fill();
+  }
+  ctx.restore();
+ }
+}
 function hero(now){
  const s=Math.min(w/550,h/470)*1.23,x=w*.28,y=h*.80;
  const since=now-(game.parryAnimAt||-99999);
@@ -1888,37 +2018,82 @@ function hero(now){
  const contact=splitContact()?attackPresentation.contact:null,impactAt=contact?.at??game.lastImpactAt,visibleKind=contact?(contact.result||'contact'):game.lastStrikeKind;
  const age=now-(impactAt??-99999),push=(age>=0&&age<160&&(contact||game.lastStrikeKind!=='miss')?Math.sin(Math.PI*age/160):0)*(contact?(contact.guard?.75:.45):(game.lastStrikeKind==='just'?1:game.lastStrikeKind==='guard'?.75:.45));
  const ultActive=(now-(game.lastUltimateAt??-99999))>=0&&(now-(game.lastUltimateAt??-99999))<260;
+ const poseInput={lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt};
+ const anchors=heroAnchors(now,poseInput,s,x,y,lift,push,hurt);
+ drawHeroBehindFX(now,anchors,poseInput);
+ const hasFort=lvl('fortitude')>0&&!!game.fortitudeReady;
+ ctx.save();
+ if(hasFort&&'filter' in ctx){
+  const pulse=(.8+.2*Math.sin(now/180)).toFixed(2);
+  ctx.filter=`drop-shadow(0 0 4px rgba(255,190,70,${pulse})) drop-shadow(0 0 10px rgba(235,105,15,${pulse}))`;
+ }
+ let drawn=false;
  if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
    counterWave:!ultActive,
    attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,
-   pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
- if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,
-  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
- if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,
-  pose:{lift,heldLift,push,action,hurt,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}}))return;
- ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
- ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
- if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
- if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt})){ctx.restore();return;}
- fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
- fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
- fillPoly([[-21,-5],[-2,-5],[-1,2],[-23,2]],'#29384c');fillPoly([[5,-5],[25,-5],[29,2],[4,2]],'#29384c');
- fillPoly([[-19,-83],[13,-85],[26,-40],[9,-30],[-18,-37]],'#738aa8');fillPoly([[-12,-78],[7,-78],[7,-40],[-8,-40]],'#263950');line([[-18,-68],[24,-54]],'#bad9e1',2.6);round(3,-57,5,'#eac791');
- fillPoly([[-17,-107],[6,-117],[20,-98],[13,-80],[-14,-81]],'#b7c6d4');fillPoly([[-16,-107],[-7,-115],[4,-118],[1,-91],[-18,-91]],'#526781');fillPoly([[4,-101],[18,-98],[13,-89],[3,-90]],'#142b3f');round(9,-95,2,'#76eff3');
- // 盾は敵のいる右側。押している間は迎撃位置で保持し、100msで構え切る。
- ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);
- if(game.guardHeld&&heldLift>=1){ctx.shadowColor='#84bbef';ctx.shadowBlur=12;}ctx.rotate(-.16+lift*.18-push*.23);
- fillPoly([[-16,-25],[17,-25],[14,5],[0,24],[-14,5]],'#b5ced9');
- fillPoly([[-11,-19],[12,-19],[10,4],[0,17],[-10,4]],'#273d59');line([[0,-13],[0,10]],'#8ff0f3',3);line([[-8,-2],[8,-2]],'#8ff0f3',3);
- if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<170){ctx.shadowColor='#8ef4ff';ctx.shadowBlur=32;round(0,0,23,'#74deff35','#dcfaff',3);ctx.shadowBlur=0}
+   pose:poseInput}))drawn=true;
+ else if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,pose:poseInput}))drawn=true;
+ else if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,pose:poseInput}))drawn=true;
+ if(!drawn){
+  ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
+  ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
+  if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  else if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  else if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  else if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  else if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  if(!drawn){
+   fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
+   fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
+   fillPoly([[-21,-5],[-2,-5],[-1,2],[-23,2]],'#29384c');fillPoly([[5,-5],[25,-5],[29,2],[4,2]],'#29384c');
+   fillPoly([[-19,-83],[13,-85],[26,-40],[9,-30],[-18,-37]],'#738aa8');fillPoly([[-12,-78],[7,-78],[7,-40],[-8,-40]],'#263950');line([[-18,-68],[24,-54]],'#bad9e1',2.6);round(3,-57,5,'#eac791');
+   fillPoly([[-17,-107],[6,-117],[20,-98],[13,-80],[-14,-81]],'#b7c6d4');fillPoly([[-16,-107],[-7,-115],[4,-118],[1,-91],[-18,-91]],'#526781');fillPoly([[4,-101],[18,-98],[13,-89],[3,-90]],'#142b3f');round(9,-95,2,'#76eff3');
+   // 盾は敵のいる右側。押している間は迎撃位置で保持し、100msで構え切る。
+   ctx.save();ctx.translate(21+lift*18-push*5,-48-lift*10+push*2);
+   if(game.guardHeld&&heldLift>=1){ctx.shadowColor='#84bbef';ctx.shadowBlur=12;}ctx.rotate(-.16+lift*.18-push*.23);
+   fillPoly([[-16,-25],[17,-25],[14,5],[0,24],[-14,5]],'#b5ced9');
+   fillPoly([[-11,-19],[12,-19],[10,4],[0,17],[-10,4]],'#273d59');line([[0,-13],[0,10]],'#8ff0f3',3);line([[-8,-2],[8,-2]],'#8ff0f3',3);
+   if(game.lastStrikeKind==='just'&&now-game.lastImpactAt<170){ctx.shadowColor='#8ef4ff';ctx.shadowBlur=32;round(0,0,23,'#74deff35','#dcfaff',3);ctx.shadowBlur=0}
+   ctx.restore();
+   ctx.save();ctx.translate(12,-65);ctx.rotate(action*.65+.07-lift*.1);line([[0,6],[12,-43]],'#edfcff',7);line([[0,6],[12,-43]],'#77d7ec',3);line([[-12,7],[12,10]],'#e8c28f',6);line([[0,7],[-2,23]],'#554b5e',6);ctx.restore();
+  }
+  ctx.restore();
+  // The legacy renderer has no painted counter wave of its own.
+  if(game.enemy&&!ultActive&&PR.extraEnabled(permanent,'slashTint'))COMBAT_ART?.counterSlash?.(ctx,{kind:game.lastStrikeKind,phase:(now-(game.lastDeflectAt??-99999))/240,
+   origin:{x:w*.28,y:h*.80-65*s},target:{x:w*.65,y:h*.80-65*s},scale:s,tint:PR.extraOption(permanent,'slashTint')});
+ }
  ctx.restore();
- ctx.save();ctx.translate(12,-65);ctx.rotate(action*.65+.07-lift*.1);line([[0,6],[12,-43]],'#edfcff',7);line([[0,6],[12,-43]],'#77d7ec',3);line([[-12,7],[12,10]],'#e8c28f',6);line([[0,7],[-2,23]],'#554b5e',6);ctx.restore();ctx.restore();
- // The legacy renderer has no painted counter wave of its own.
- if(game.enemy&&PR.extraEnabled(permanent,'slashTint'))COMBAT_ART?.counterSlash?.(ctx,{kind:game.lastStrikeKind,phase:(now-(game.lastDeflectAt??-99999))/240,
-  origin:{x:w*.28,y:h*.80-65*s},target:{x:w*.65,y:h*.80-65*s},scale:s,tint:PR.extraOption(permanent,'slashTint')});
+ drawHeroFrontFX(now,anchors);
+}
+function drawHeavyAuraC(ax,ay,groundY,ew,eh,scale,charge,p,now,front){
+ if(charge<=.02&&p<=.01)return;
+ const intensity=Math.min(1,charge*1.15+p*.9);
+ ctx.save();ctx.globalCompositeOperation='lighter';
+ if(!front){
+  const rx=ew*(1.38-charge*.34),ry=10*scale;
+  ctx.strokeStyle='#ff5577';ctx.shadowColor='#ff3b6b';ctx.shadowBlur=14;
+  ctx.lineWidth=2.6*scale;ctx.globalAlpha=intensity*.88;
+  ctx.beginPath();ctx.ellipse(ax,groundY+2,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ffc2d1';ctx.lineWidth=1.4*scale;ctx.globalAlpha=intensity*.65;
+  ctx.beginPath();ctx.ellipse(ax,groundY+2,rx*.72,ry*.72,0,0,Math.PI*2);ctx.stroke();
+ }else{
+  for(let k=0;k<3;k++){
+   const phase=(charge*.85+k*.33+now/1400)%1,r=Math.max(10,(1-phase)*eh*.68);
+   ctx.strokeStyle=k===0?'#ffc2d1':'#ff3b6b';ctx.shadowColor='#ff3b6b';ctx.shadowBlur=12;
+   ctx.lineWidth=(1.6+phase*1.8)*scale;ctx.globalAlpha=intensity*Math.sin(phase*Math.PI)*.85;
+   ctx.beginPath();ctx.arc(ax,ay-eh*.52,r,0,Math.PI*2);ctx.stroke();
+  }
+ }
+ ctx.restore();
+}
+function drawSampledHeavyAura(sampled,e,now,front){
+ if(!sampled)return;
+ const {l,x,q,s}=sampled,id=window.ParryEnemyPuppet?.idFor?.(e)||'knight';
+ const whole=window.ParryArtEdits?.whole?.(id)||{x:0,y:0,scale:1};
+ const u=s?window.ParryEnemyPuppet.unit(s):(KNIGHT_PUPPET.SCALE||.16),floatY=q?.float||0;
+ const ax=x+whole.x*u*l.enemyScale,ay=l.ground+(floatY+whole.y*u)*l.enemyScale,scale=l.enemyScale*whole.scale;
+ const eh=(s?.height||174)*scale,ew=(s?s.height*(s.motion==='slime'?.57:.29):48)*scale;
+ drawHeavyAuraC(ax,ay,l.ground,ew,eh,scale,q?.charge||0,sampled.t?.p||0,now,front);
 }
 function enemy(now){
  let e=game.enemy;if(!e)return;
@@ -1934,9 +2109,17 @@ function enemy(now){
  const shownResult=attackPresentation.contact?.result;
  const presentedKind=splitContact()?(['just','parry'].includes(shownResult)?shownResult:'contact'):(awaitingInput?'':game.lastStrikeKind);
  const d=attackAt-now;
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-   attackAt,attackSpan:span,lastImpactAt,
-   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
+ const isHeavy=game.mode==='combat'&&(e.boss||e.elite)&&!opening&&(span/(score.beat*1000))>=2.99;
+ if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.readyFor(e)){
+  const enemyData={e,m,now,width:w,height:h,attackAt,attackSpan:span,lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind};
+  const sampleFn=window.ParryEnemyPuppet?.supports?.(e)?window.ParryEnemyPuppet.sample:KNIGHT_PUPPET.sample;
+  const sampled=isHeavy&&sampleFn?sampleFn(enemyData):null;
+  if(sampled)drawSampledHeavyAura(sampled,e,now,false);
+  if(KNIGHT_PUPPET.drawEnemy(ctx,enemyData)){
+   if(sampled)drawSampledHeavyAura(sampled,e,now,true);
+   return;
+  }
+ }
  if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
   attackAt,attackSpan:span,lastImpactAt,
   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
@@ -2088,7 +2271,7 @@ function enemy(now){
   ctx.restore();
  }
  ctx.restore();
-
+ if(isHeavy)drawHeavyAuraC(x,y,ground,48*scale,140*scale,scale,charge,p,now,true);
 }
 
 function clashPosition(){
@@ -2299,7 +2482,7 @@ function update(now,dt){const m=game.mode;
   game.cuePlayed=true;sfxSwing();
  }
  }
- if(game.enemy?.burn>0){const burnTick=game.enemy.burn*dt/1000*.55;if(burnTick>0){game.enemy.hp-=burnTick;game.damage+=burnTick;if(game.enemy.hp<=0){game.enemy.hp=0;clearFloor()}}}
+ if(game.enemy?.burn>0){const e=game.enemy,burnTick=e.burn*dt/1000*.55;if(burnTick>0){const phase1=!!(e.finalBoss&&e.phase===1&&e.phaseRhythm),minHp=phase1?Math.max(1,Math.floor(e.maxHp*.5)):(game.tutorial&&!game.tutorialFinishing?1:0),actual=Math.max(0,e.hp-Math.max(minHp,e.hp-burnTick));e.hp-=actual;game.damage+=actual;if(phase1&&e.hp<=minHp)beginFinalPhase();else if(e.hp<=0){e.hp=0;clearFloor()}}}
  if(game.mode==='combat'&&!game.attackResolved&&now>=game.attackAt){
   // Remember the guard at physical contact; releasing it during a positive
   // input offset must not erase it, and a guard raised afterwards is too late.

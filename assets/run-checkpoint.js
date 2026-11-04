@@ -49,7 +49,7 @@
   if(g.mode==='routeSkill'&&!g.routeSkillSet.length)return null;
   const safe=JSON.parse(JSON.stringify(raw));for(const key of transient)delete safe.game[key];
   safe.game.bonuses.wardInheritance??=0;safe.game.bonuses.coinGain??=0;safe.game.relicBulwarkUsed??=false;
-  safe.game.merchantBought??=[];safe.game.floorPerfects??=0;safe.game.lastEventId??=null;
+  safe.game.merchantBought??=[];safe.game.floorPerfects??=0;safe.game.lastEventId??=null;safe.game.routeSkillTitle=typeof g.routeSkillTitle==='string'&&g.routeSkillTitle.length<=80?g.routeSkillTitle:'スキルをひとつ選べ';
   return safe;
  }
  const API=Object.freeze({KEY,MODES,capture,validate});

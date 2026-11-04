@@ -60,10 +60,8 @@
        <div class="upgrade-top"><h2>ショップ</h2><button class="secondary" id="upgradeCloseBtn">戻る</button></div>
        <div class="upgrade-wallet">魂の欠片 <strong id="upgradeCoins">0 ✧</strong></div>
        <div class="upgrade-tabs" id="upgradeTabs" role="group" aria-label="ショップの分類">
-        <button class="upgrade-tab active" type="button" data-tab="loadout" aria-pressed="true">スキル装備</button>
-        <button class="upgrade-tab" type="button" data-tab="skills" aria-pressed="false">スキル解放</button>
-        <button class="upgrade-tab" type="button" data-tab="base" aria-pressed="false">基礎強化</button>
-        <button class="upgrade-tab" type="button" data-tab="special" aria-pressed="false">特殊強化</button>
+        <button class="upgrade-tab active" type="button" data-tab="loadout" aria-pressed="true">初期スキル</button>
+        <button class="upgrade-tab" type="button" data-tab="base" aria-pressed="false">能力強化</button>
         <button class="upgrade-tab" type="button" data-tab="seal" aria-pressed="false">🔮 封印</button>
         <button class="upgrade-tab" type="button" data-tab="bonus" aria-pressed="false">おまけ</button>
        </div>
@@ -88,7 +86,7 @@
      <div class="cover" id="confirmCover" hidden><div class="modal"><h2>新しく挑戦する？</h2><p>今の中断データを置き換え、1Fから始めます。</p><div class="actionrow"><button type="button" class="primary" id="newRunConfirm">新しく始める</button><button type="button" class="secondary" id="newRunCancel">戻る</button></div></div></div>
      <div class="cover" id="pauseCover" hidden><div class="modal"><div class="modal-symbol">⏸</div><h2>一時停止</h2><p id="pauseStatus" role="status" hidden></p><button class="primary" id="resumeBtn">戦闘に戻る</button><button class="secondary" id="suspendBtn">中断してタイトルへ</button></div></div>
     </div>
-    <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b></span><span class="battle-wallet"><span class="tower-money">🪙 塔貨 <strong id="towerCoinsLabel">0</strong></span><span class="soul-money">✧ 魂の欠片 <strong id="soulFragmentsLabel">0</strong></span></span></div></div>
+    <div class="battlefoot"><div class="bars"><div><div class="barhead"><span>♡ PLAYER <span id="shieldText"></span></span><strong id="hpText">100 / 100</strong></div><div class="progress"><i class="hpfill" id="hpFill"></i><i class="shieldfill" id="shieldFill" style="width:0%"></i></div></div><div><div class="barhead"><span>⚔ <span id="enemyBarName">ENEMY</span></span><strong id="enemyHpText">—</strong></div><div class="progress"><i class="enemyfill" id="enemyHpFill" style="width:0%"></i></div></div></div><div class="battlehint"><span>♫ <b id="trackLabel">DUNGEON GROOVE · 112 BPM</b></span><span class="battle-wallet"><span class="tower-money">🪙 塔貨 <strong id="towerCoinsLabel">0</strong></span><span class="soul-money">✧ 魂の欠片 <strong id="soulFragmentsLabel">0</strong></span></span></div></div>
    </section>
    
   </main>

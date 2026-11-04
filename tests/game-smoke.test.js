@@ -864,7 +864,7 @@ test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as sep
  assert.equal(g.el.get('upgradeCover').hidden,true);
  g.press('upgradeOpenBtn');
  assert.equal(g.state().mode,'upgrade');
- assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="loadout">スキル装備<\/button>/);
+ assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="loadout">初期スキル<\/button>/);
  assert.equal(g.el.get('upgradeCover').hidden,false);
  assert.equal(g.state().permanent.slots,0);
  assert.match(g.el.get('upgradeList').innerHTML,/スロット 1/);
@@ -1788,7 +1788,7 @@ test('merchant skill scroll uses existing sealed skill pool and gives only ONE s
  assert.ok(g.state().routeSkillSet.length>=1);
  const id=g.state().routeSkillSet[0],before=g.state().runSkills[id]||0;
  g.routeSkillSelect('blood');
- assert.equal(g.state().mode,'routeSkill','invalid or sealed choice cannot be purchased');
+ assert.equal(g.state().mode,'routeSkill','invalid or sealed choice cannot be purchased');g.routeSkillSelect(id);assert.equal(g.state().mode,'room');g.roomChoose('continue');
  g.routeSkillSelect(id);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().floor,5);
@@ -1805,7 +1805,7 @@ test('merchant relic chest costs 42, offers nonlegendary relics and never adds a
  assert.equal(offer.length,3);
  const RR=require('../assets/relics.js');
  assert.ok(offer.every(id=>RR.BY_ID[id].rarity!=='legendary'));
- g.relicSelect(offer[0]);
+ g.relicSelect(offer[0]);assert.equal(g.state().mode,'room');g.roomChoose('continue');
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().floor,5);
  assert.equal(g.state().relics.length,1);
@@ -3779,5 +3779,48 @@ test('v0.9.9: reward cards display synergy ready badge and level-up diff, and de
  g.press('healBtn');
  d.setHp(1);d.setShield(0);const c=g.state().attackAt;g.clock(c-120);g.parry();g.frame(c+100);
  assert.equal(g.state().mode,'gameover');
- assert.match(g.el.get('deathSummary').innerHTML,/最終被弾：早すぎ/);
+ assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/最終被弾/);
+});
+
+
+test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purchases, chest fallback gives 25 coins + 1 reroll, and 80F phase 1 HP floor holds at 50%',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('rune',1);d.setCharge(4);d.setEnemyHp(10000);
+ resolveBloodParry(g,0);
+ assert.equal(d.hits().some(h=>h.label.includes('奥義')),false,'charge 4 + 2 = 6 does not fire ultimate');
+ assert.equal(g.state().charge,6,'charge 4 + 2 from JUST = 6');
+ d.resetHits();resolveBloodParry(g,0);
+ assert.equal(d.hits().some(h=>h.label.includes('奥義')),true,'charge 6 + 2 -> 7 fires ultimate immediately in v0.9.8 spec');
+ assert.equal(g.state().charge,0,'ultimate resets charge to 0');
+
+ const m=makeCrossroads();
+ m.d.setTowerCoins(100);m.g.routeSelect('merchant');
+ m.g.roomChoose('buy:skill');
+ assert.equal(m.g.state().mode,'routeSkill');
+ m.g.routeSkillSelect(m.g.state().routeSkillSet[0]);
+ assert.equal(m.g.state().mode,'room');
+ m.g.roomChoose('buy:relic');
+ assert.equal(m.g.state().mode,'relic');
+ m.g.relicSelect(m.g.state().relicOffer[0]);
+ assert.equal(m.g.state().mode,'room');
+ assert.equal(m.g.state().relics.length,1);
+ m.g.roomChoose('continue');
+ assert.equal(m.g.state().mode,'combat');
+
+ const c=makeCrossroads(8);
+ const RR=require('../assets/relics.js');
+ c.d.setRelicFlag('relicDiscarded',RR.RELICS.filter(r=>r.rarity!=='legendary').map(r=>r.id));
+ c.g.random(0);c.g.routeSelect('event');c.d.setEvent('chest');
+ const beforeCoins=c.g.state().towerCoins,beforeRerolls=c.g.state().rerolls;
+ c.g.roomChoose('event:open');
+ assert.equal(c.g.state().towerCoins,beforeCoins+25);
+ assert.equal(c.g.state().rerolls,beforeRerolls+1);
+
+ const b=makeHarness();b.random(.99);b.press('startBtn');const bd=b.bloodTest();
+ bd.jumpFloor(80);
+ const half=Math.floor(b.state().enemyMaxHp*0.5);
+ bd.setBaseAttack(99999);
+ resolveBloodParry(b,0);
+ assert.equal(b.state().enemyHp,half,'80F boss phase 1 clamps HP at 50%');
+ assert.equal(b.state().mode,'phase','80F boss transitions to phase 2');
 });
