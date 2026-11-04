@@ -97,7 +97,7 @@
  function equipSkin(progress,id,skills=[]){
   const p=normalize(progress,skills);if(!SKINS.some(s=>s.id===id)||!ownsSkin(p,id))return null;
   p.equippedSkin=id;
-  if(id!=='normal')p.enabledExtras=p.enabledExtras.filter(other=>other!=='legacyVisual');
+  p.enabledExtras=p.enabledExtras.filter(other=>other!=='legacyVisual');
   return p;
  }
  const EXTRAS=Object.freeze([
