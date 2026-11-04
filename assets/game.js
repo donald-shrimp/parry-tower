@@ -82,7 +82,7 @@ const SKILLS=[
 {id:'execute',icon:'💀',name:'処刑人',rarity:'rare',max:6,desc:l=>`残HP35%以下の敵への攻撃 +${l*23}%`,hint:'炎と共鳴'},
 {id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`BGMと敵のBPM −${tempoReduction(l)}`,hint:'テンポ操作'},
 {id:'pulse',icon:'🌟',name:'共鳴波',rarity:'rare',max:6,desc:l=>`${8}コンボごとに衝撃波 +${scaleSkillDmg(l*42)} ダメージ`,hint:'コンボ特化'},
-{id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${scaleSkillDmg(l*45)}`,hint:'集中と共鳴'},
+{id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${Math.round(l*45*baseAttackScale())}`,hint:'集中と共鳴'},
 {id:'gamble',icon:'🥀',name:'背水',rarity:'rare',max:6,desc:l=>`自分のHPが半分未満なら攻撃 +${l*30}%`,hint:'危険な火力'},
 {id:'heal',icon:'💗',name:'生命の器',rarity:'common',max:10,desc:l=>`最大HP +${l*15}、取得時にも回復`,hint:'持久戦'},
 {id:'double',icon:'🎲',name:'双撃',rarity:'epic',max:5,desc:l=>`${14+l*9}% の確率で反撃が2倍`,hint:'一撃の爆発力'},
@@ -93,7 +93,8 @@ const SKILLS=[
  {id:'frost',icon:'❄️',name:'氷結',rarity:'rare',max:6,startCost:90,desc:l=>`4パリィで氷の加護。次の被攻撃 -${frostReduction(l)}%`,hint:'被ダメージ軽減'},
  {id:'king',icon:'👑',name:'王の一撃',rarity:'epic',max:4,startCost:300,desc:l=>`10コンボごとに基礎攻撃 ${2+l}倍 の追撃`,hint:'コンボ特化'}
 ];
-function skillAtkScale(){return ((game?.baseAtk||25)/25)*(1+lvl('blade')*.25)}
+function baseAttackScale(){return (game?.baseAtk||25)/25}
+function skillAtkScale(){return baseAttackScale()*(1+lvl('blade')*.25)}
 function scaleSkillDmg(raw){return Math.max(1,Math.round(raw*skillAtkScale()))}
 function hpSkillScale(){return 1+((game?.lifeBonus||0)+lvl('heal')*15)/100}
 function tempoReduction(level){return Math.min(6,Math.max(0,Math.floor(Number(level)||0)))*2}
@@ -278,12 +279,12 @@ function scoreFinalKick(t,accent=false){
  }
 }
 const NOTES=[73.42,82.41,87.31,98,110,116.54,130.81,146.83,164.81,174.61,196,220,233.08,261.63,293.66,329.63,349.23,392,440,466.16,523.25,587.33];
-function playComboLayer(n,t){
- if(devMusicAudition||game?.mode!=='combat'||(game?.combo||0)<15)return;
+function playBgmArrangement(n,t){
+ if(!devMusicAudition&&!['combat','phase'].includes(game?.mode))return;
  const ix=n%8;
- if(ix%2===1)scoreNoise(t,.038,.042,4200);
- if(ix===0)scoreNoise(t,.065,.048,2600);
- if(!DEV_MODE&&(ix===2||ix===6))scoreTone(NOTES[(n+3)%NOTES.length]*2,score.beat*.22,.028,t,'triangle',6);
+ // Adopted mock 4: offbeat hats and sustained D/A harmony, from the first bar.
+ if(ix%2===1)scoreNoise(t,.035,.045,5200);
+ if(ix===0){scoreTone(293.66,score.beat*1.8,.032,t,'sine');scoreTone(440,score.beat*1.8,.024,t,'sine');}
 }
 function playMusicStep(n,t){
  if(!audioEnabled)return;
@@ -293,7 +294,7 @@ function playMusicStep(n,t){
   if(n<score.musicStartStep)return;
   for(const event of FINAL_MUSIC.step(score.music,n-score.musicStartStep,score.beat,game.enemy?.phase||1))
    FINAL_MUSIC.play(audioContext,event,t+event.offset,score.bus,score.noise);
-  playComboLayer(n-score.musicStartStep,t);
+  playBgmArrangement(n-score.musicStartStep,t);
   return;
  }
  // Preserve the existing count-in suppression for the eight adopted themes.
@@ -306,7 +307,7 @@ function playMusicStep(n,t){
     scoreTone(event.frequency*ratio,event.duration*decay,event.volume*level,at,'sine');
    else scoreTone(event.frequency,event.duration,event.volume,at,event.type,event.bend);
   }
-  playComboLayer(n,t);
+  playBgmArrangement(n,t);
   return;
  }
  const ix=n%8,bar=Math.floor(n/8),root=score.boss?[0,3,2,5][Math.floor(bar/2)%4]:[0,5,3,2][Math.floor(bar/2)%4];const low=NOTES[root];
@@ -318,7 +319,7 @@ function playMusicStep(n,t){
  if(ix===3||ix===7){const melody=score.boss?[1,5,7,4][bar%4]:[3,7,5,9][bar%4];scoreTone(NOTES[Math.min(NOTES.length-1,root+melody)],score.beat*.43,score.boss?.12:.09,t,'triangle',8)}
  if(ix===0&&bar%2===0){scoreTone(low*4,score.beat*3.5,.042,t,'sine');scoreTone(low*6,score.beat*3.5,.025,t,'sine')}
  if(score.boss&&(ix===1||ix===5))scoreTone(low*2,.12,.04,t,'sawtooth',-45);
- playComboLayer(n,t);
+ playBgmArrangement(n,t);
 }
 function stopScore(){stopFutureContacts();score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
  const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
@@ -507,6 +508,12 @@ function recordSkinRun(finished=false){
 }
 
 function runBonus(id){return game.bonuses?.[id]??PR.value(permanent,id)}
+function towerCoinReward(raw){return Math.round(raw*(1+runBonus('coinGain')/100))}
+function awardTowerCoins(raw){
+ const gained=towerCoinReward(raw);
+ game.towerCoins+=gained;game.towerCoinsEarned+=gained;
+ return gained;
+}
 function soulReward(n){return Math.ceil(n*(1+runBonus('soulGain')/100))}
 // Deferred until defeat: avoids unexpectedly rewriting old saves on page load.
 // Prior completed attempts still count when an older save first earns a bonus.
@@ -946,7 +953,7 @@ function renderRoom(){
     disabled=!game.relics.length||!RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
     description='所持遺物1つを選び、風化・秘宝から3択。';
    }
-   if(event.id==='chest'&&item.id==='open')description=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+25・引き直し+1）。失敗してもHP1で生存。';
+   if(event.id==='chest'&&item.id==='open')description=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+towerCoinReward(25)+'・引き直し+1）。失敗してもHP1で生存。';
    if(event.id==='sanctuary'&&item.id==='resonate'){
     disabled=availableSkills().length===0;
     description='共鳴相方のスキルを引き当てて1つ習得。';
@@ -964,17 +971,18 @@ function renderRoom(){
     disabled=game.towerCoins<15;
     description='塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。';
    }
-   if(event.id==='forge'&&item.id==='scrap')description='塔貨+14。';
+   if(event.id==='forge'&&item.id==='scrap')description='塔貨+'+towerCoinReward(14)+'。';
    if(event.id==='scales'&&item.id==='toSouls'){
     disabled=game.towerCoins<16;
     description='塔貨16枚を消費し、魂の欠片+'+soulReward(20)+' ✧を得る。';
    }
    if(event.id==='scales'&&item.id==='toCoins'){
     disabled=game.hp<=1;
-    description='現在HPの20%（死亡しない）を払い、塔貨+24・引き直し+1。';
+    description='現在HPの20%（死亡しない）を払い、塔貨+'+towerCoinReward(24)+'・引き直し+1。';
    }
    if(event.id==='scales'&&item.id==='leave')description='障壁+10を得て先へ進む。';
-   return roomActionButton('event:'+item.id,item.label,description,disabled);
+   const label=item.label.replace(/塔貨\+(\d+)/g,(_,raw)=>'塔貨+'+towerCoinReward(Number(raw)));
+   return roomActionButton('event:'+item.id,label,description,disabled);
   });
   $('roomActions').innerHTML=options.join('');
  }
@@ -989,7 +997,7 @@ function finishNoncombatRoom(){
 }
 function resonancePool(){
  const avail=availableSkills();
- const partners=avail.filter(s=>SYNERGIES.some(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)));
+ const partners=avail.filter(s=>lvl(s.id)===0&&SYNERGIES.some(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)));
  const count=Math.min(runBonus('choice4')||3,avail.length);
  const rarityWeight={common:5.4,rare:2.9,epic:1.05};
  const pool=[...partners],picked=[];
@@ -1123,24 +1131,24 @@ function roomAction(action){
    eventSkillOffer('血の祭壇 — スキルをひとつ選べ');
   }else if(opt==='ward'){const old=game.shield;relicShield(12);showRoomResult('祭壇が障壁+'+Math.round(game.shield-old)+'を授けた。');}
  }else if(event.id==='mirror'){
-  if(opt==='coins'){game.towerCoins+=12;showRoomResult('鏡を背にし、塔貨12枚を手に入れた。');}
+  if(opt==='coins'){const gained=awardTowerCoins(12);showRoomResult('鏡を背にし、塔貨'+gained+'枚を手に入れた。');}
   else if(opt==='swap'){
    if(!game.relics.length||!RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary'))return;
    game.roomStage='mirror';renderRoom();
   }
  }else if(event.id==='traveler'){
-  if(opt==='coins'){game.towerCoins+=18;showRoomResult('旅人の遺品から塔貨18枚を手に入れた。');}
+  if(opt==='coins'){const gained=awardTowerCoins(18);showRoomResult('旅人の遺品から塔貨'+gained+'枚を手に入れた。');}
   else if(opt==='ward'){const old=game.shield;relicShield(10);game.rerolls++;showRoomResult('障壁+'+Math.round(game.shield-old)+'、引き直し+1を得た。');}
  }else if(event.id==='chest'){
-  if(opt==='coins'){game.towerCoins+=10;showRoomResult('宝箱は開けず、塔貨10枚を拾った。');}
+  if(opt==='coins'){const gained=awardTowerCoins(10);showRoomResult('宝箱は開けず、塔貨'+gained+'枚を拾った。');}
   else if(opt==='open'){
    game.roomLocked=true;
    if(Math.random()<.4){
     if(RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')){
      game.relicReturn='room';showRelicRewards('special');
     }else{
-     game.towerCoins+=25;game.rerolls++;
-     showRoomResult('めぼしい遺物は残っていないようだ。塔貨+25・引き直し+1を得た。');
+     const gained=awardTowerCoins(25);game.rerolls++;
+     showRoomResult('めぼしい遺物は残っていないようだ。塔貨+'+gained+'・引き直し+1を得た。');
     }
    }else{
     const lost=EV.chestDamage(game.hp,game.maxHp);
@@ -1168,8 +1176,8 @@ function roomAction(action){
    const before=game.shield;relicShield(15);
    showRoomResult('武具を打ち直し、基礎攻撃力+3、障壁+'+Math.round(game.shield-before)+'を得た。');
   }else if(opt==='scrap'){
-   game.towerCoins+=14;
-   showRoomResult('金床の鉄屑から塔貨14枚を得た。');
+   const gained=awardTowerCoins(14);
+   showRoomResult('金床の鉄屑から塔貨'+gained+'枚を得た。');
   }
  }else if(event.id==='scales'){
   if(opt==='toSouls'){
@@ -1180,8 +1188,8 @@ function roomAction(action){
   }else if(opt==='toCoins'){
    if(game.hp<=1)return;
    const cost=Math.min(game.hp-1,Math.max(1,Math.ceil(game.hp*.2)));
-   game.hp-=cost;game.towerCoins+=24;game.rerolls++;
-   showRoomResult('血の捧げ物（HP-'+cost+'）を捧げ、塔貨24枚と引き直し+1を得た。');
+   game.hp-=cost;const gained=awardTowerCoins(24);game.rerolls++;
+   showRoomResult('血の捧げ物（HP-'+cost+'）を捧げ、塔貨'+gained+'枚と引き直し+1を得た。');
   }else if(opt==='leave'){
    const before=game.shield;relicShield(10);
    showRoomResult('祭器に触れず先へ進み、障壁+'+Math.round(game.shield-before)+'を得た。');
@@ -1367,7 +1375,7 @@ function finishParryRecovery(){
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
  if(hasRelic('emperor_conduit')&&['⚡','雷鳴','雷霆','過充電','雷導','雷帝'].includes(label))n*=1+relicPower('emperor_conduit');
- const phaseFloor=e.finalBoss&&e.phase===1&&e.phaseRhythm&&e.hp>Math.floor(e.maxHp*.5)?Math.max(1,Math.floor(e.maxHp*.5)):(game.tutorial&&!game.tutorialFinishing?1:0);
+ const phaseFloor=e.finalBoss&&e.phase===1&&e.phaseRhythm?Math.max(1,Math.floor(e.maxHp*.5)):(game.tutorial&&!game.tutorialFinishing?1:0);
  const damage=Math.max(1,Math.round(n)),dealt=Math.min(Math.max(0,e.hp-phaseFloor),damage);
  e.hp-=dealt;game.damage+=damage;
  // Guard reflection is outside the successful-parry scope; burn ticks bypass damageEnemy.
@@ -1484,7 +1492,7 @@ function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.ene
    if(game.mode!=='combat')return;
   }
   let ultFired=false;
-  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*skillAtkScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110)}
+  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*baseAttackScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110)}
   finishParryRecovery();
   if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);if(!ultFired){flash=.67;flashColor='#a0e8ff';}shake=Math.max(shake,5)}else if(!ultFired){flash=Math.max(flash,.18);flashColor='#9accff'};
 }
@@ -1504,8 +1512,7 @@ function clearFloor(){
   if(bonus){game.bonusSouls+=bonus;meta.coins+=bonus;save();showText((firstBonus?'初討伐! ':'')+'魂の欠片 +'+bonus,w*.52,h*.34,'#ffe19a',21)}
   const techCoins=Math.min(4,Math.floor(floorPerfects/2));
   const rawCoins=RT.towerCoins(defeated,game.routeTrial)+techCoins;
-  const gained=Math.round(rawCoins*(1+runBonus('coinGain')/100));
-  game.towerCoins+=gained;game.towerCoinsEarned+=gained;
+  const gained=awardTowerCoins(rawCoins);
   showText('塔貨 +'+gained+(techCoins?' (技量+'+techCoins+')':''),w*.52,h*.25,'#f8cd79',16);
   game.relicRewardKind=RR.rewardType(game.floor,defeated,Math.random);
   const recovery=runBonus('regen');
@@ -1765,8 +1772,8 @@ function renderCodex(){
   if(m.rare)return {m,base:P.findByKey(m.id+':rare'),elite:null};
   return {m,base:P.findByKey(m.id+':normal'),elite:P.findByKey(m.id+':elite')};
  });
- const knownSpecies=groups.filter(g=>book.seen[g.base.bookKey]||(g.elite&&book.seen[g.elite.bookKey])).length;
- $('codexSummary').textContent=knownSpecies+' / '+groups.length+' 種発見';
+ const entries=P.codexEntries(),discovered=entries.filter(e=>book.seen[e.bookKey]).length;
+ $('codexSummary').textContent=discovered+' / '+entries.length+' 発見';
  const filter=$('codexFilter').value;
  const filtered=groups.filter(g=>{
   const seenBase=!!book.seen[g.base.bookKey],seenElite=!!(g.elite&&book.seen[g.elite.bookKey]);
@@ -2461,7 +2468,7 @@ function drawScreen(now){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h
  if(game.mode==='combat'&&!game.practice){ctx.save();ctx.globalAlpha=.035;ctx.fillStyle=P.zoneForFloor(game.floor).accent;ctx.fillRect(0,0,w,h*.72);ctx.restore()}
  if(game.artLoading){ctx.restore();textDraw('立ち絵を読み込み中…',w*.5,h*.5,Math.min(20,w*.05),'#cfdff5');return;}
  const ultAge=now-(game.lastUltimateAt??-99999);
- if(ultAge>=0&&ultAge<260){ctx.save();ctx.fillStyle=`rgba(3,6,18,${.72*(1-ultAge/260)})`;ctx.fillRect(0,0,w,h);ctx.restore();}
+ if(preferences.flash&&ultAge>=0&&ultAge<260){ctx.save();ctx.fillStyle=`rgba(3,6,18,${.72*(1-ultAge/260)})`;ctx.fillRect(0,0,w,h);ctx.restore();}
  const poseTime=combatPoseTime(now);enemy(poseTime);drawComboGlow(poseTime);hero(poseTime);ctx.restore();if(ultAge<0||ultAge>=520)drawClashFX(now);drawUltimateFX(now);
  // Reserve separate, stable vertical lanes: the combo stays above the floor-entry title.
  // 0.055h vs 0.14h leaves a legible gap even on the 345px-tall mobile canvas.
