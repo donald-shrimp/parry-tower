@@ -3947,3 +3947,26 @@ test('review fixes: codex keeps 50 variant discoveries while grouping 26 species
   assert.equal((g.el.get('codexList').innerHTML.match(/class="codex-card/g)||[]).length,26);assert.deepEqual([...g.storage],saved);
  }
 });
+
+test('latter-half stage BGM activates from the 5th floor of each zone (5F/15F/25F+) and supports Dev preview/practice',()=>{
+ const g=makeHarness({},true),themes=require('../assets/stage-music').themes;
+ g.press('startBtn');
+ for(const theme of themes){
+  g.bloodTest().jumpFloor(theme.from);
+  assert.equal(g.dev().musicState().latter,false,theme.id+' first half');
+  g.bloodTest().jumpFloor(theme.from+5);
+  assert.equal(g.dev().musicState().latter,true,theme.id+' latter half (X6F)');
+  assert.ok(g.el.get('trackLabel').textContent.includes(theme.latterName));
+ }
+ for(const theme of themes){
+  g.clearAudioEvents();assert.equal(g.dev().previewMusic(theme.id,'normal'),true);
+  assert.equal(g.dev().musicState().latter,false);
+  g.frame(g.now+2000);const normalEvents=g.audioEvents();
+  g.clearAudioEvents();assert.equal(g.dev().previewMusic(theme.id,'latter'),true);
+  assert.equal(g.dev().musicState().latter,true);assert.equal(g.state().bpm,112);
+  g.frame(g.now+2000);const latterEvents=g.audioEvents();
+  assert.notDeepEqual(latterEvents,normalEvents,theme.id+' latter audition must differ from normal');
+  assert.equal(g.dev().practiceMusic(theme.id,'latter'),true);
+  assert.equal(g.state().floor,theme.from+5);assert.equal(g.dev().musicState().latter,true);
+ }
+});
