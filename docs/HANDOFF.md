@@ -1,10 +1,16 @@
-# 継続状態（2026-11-04）
+# 継続状態（2026-11-05）
 
-## 現在：v0.9.9 公開準備
+## 最新：v0.9.9 公開完了
 
-ユーザーの「公開までお願い」により、PR #31と7件修正82d5159のmain統合・push・公開・配信確認まで承認済み。表示・query・診断・CI・契約テストをv0.9.9へ統一し、PRで変更されたフォントのキャッシュ識別子を7→8へ更新する。版更新の契約20件成功。ゲーム機能は全Node495件成功の82d5159と同じ。詳細は[V099](./V099.md)。次はPR更新とCI、main統合、Pages・本番CIと配信一致・GUIの確認。
+ユーザーの「公開までお願い」で、[PR #31](https://github.com/donald-shrimp/parry-tower/pull/31)をmainへ統合し公開。公開コードは **2b558535b4809e5369678a5d33b2995ad1ecd69b**。7件修正82d5159と版・フォント更新599c475を含み、レビュー済み候補とmerge後のGit treeは同一。奥義は通常PARRYでも発動するv0.9.8仕様を維持。詳細は[V099](./V099.md)。
 
-## 現在：PR #31 のモック・QA照合後の7件修正
+PRの[41823536601](https://github.com/donald-shrimp/parry-tower/actions/runs/41823536601)とpushの[41823528767](https://github.com/donald-shrimp/parry-tower/actions/runs/41823528767)は全Node495件・画像8件・フォント2件を含む全チェック成功。[Pages 41860861916](https://github.com/donald-shrimp/parry-tower/actions/runs/41860861916)も成功。配信39ファイルのSHA-256が公開コミットと一致し、別レビューでもGit blobから再照合済み。mainの[41860865030](https://github.com/donald-shrimp/parry-tower/actions/runs/41860865030)も全Node495件・画像8件・フォント2件・構文・SVG・試算・配信参照の全検証ステップ成功をログで確認（全体の集計表示は確認時点で実行中）。
+
+公開本編のv0.9.9、既存記録読み込み、図鑑4/50、公開Devの80階・効果ありヒヨコ・142 BPM・描画と一時停止・警告なしを確認。通常挑戦開始・購入・保存設定は操作していない。原画・工房データ・保存キーは維持。BGMは発音予約を検証し、実スピーカーでの聴感・遅延は未評価。証跡 `test-results/pr31/` の `release-*-ci.json`、`live-assets-v099.json`、`live-*-v099.jpg` はGit対象外。
+
+公開先：[本編](https://donald-shrimp.github.io/parry-tower/?v=v0.9.9) ／ [公開Dev](https://donald-shrimp.github.io/parry-tower/dev.html?v=v0.9.9&floor=80&enemy=endking%3Aelite&practice=1&skin=chick&skinEffects=1)。本編はタイトル、Devは一時停止の確認タブを残した。次は公開後のプレイ感へのフィードバックに対応する。以下は採用前の記録。
+
+## 採用前：PR #31 のモック・QA照合後の7件修正
 
 `feat/v099-review-improvements` の e0d291b をレビューし、ユーザー依頼で7件を修正。8008の提案20件だけでなく、`/mocks.html` の保存コメント・設定と `/qa-review.html` の後続指示15件を正本として照合する。**通常PARRYでも即奥義（v0.9.8仕様）、死亡時の誤差行削除、血闘の開幕コンボ+3は承認済み**。以前の提案文へ戻さない。
 
