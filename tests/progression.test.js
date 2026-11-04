@@ -80,7 +80,10 @@ test('permanent modifiers have explicit level caps and price steps',()=>{
  assert.equal(P.costNext({revive:1},'revive'),Infinity);
  assert.equal(P.costNext({},'nonexistent'),Infinity);
  assert.equal(P.SLOT_COSTS.length,2);
- assert.equal(P.UPGRADES.length,8);
+ assert.equal(P.UPGRADES.length,9);
+ assert.equal(P.defaults().coinGain,0);
+ assert.deepEqual([0,1,2,3,4].map(l=>P.value({coinGain:l},'coinGain')),[0,10,20,30,45]);
+ assert.deepEqual([0,1,2,3,4].map(l=>P.costNext({coinGain:l},'coinGain')),[25,55,100,160,Infinity]);
 });
 
 test('v0.5.8 seal upgrade uses four priced levels and preserves pre-v0.5.8 saves',()=>{

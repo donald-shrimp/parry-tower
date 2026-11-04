@@ -35,7 +35,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .codex-modal p{margin:4px 0 8px}
 .codex-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-bottom:7px;font-size:12px;color:#bbcce5}
 .codex-toolbar select{background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:8px;padding:7px 9px}
-.codex-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;overflow-y:auto;min-height:0;max-height:clamp(175px,43vh,350px);padding:4px 5px 8px;text-align:left;scrollbar-gutter:stable}
+.codex-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;overflow-y:auto;min-height:0;max-height:clamp(220px,52vh,430px);padding:4px 5px 8px;text-align:left;scrollbar-gutter:stable}
 .codex-card{background:linear-gradient(140deg,#1e3146,#13233a);border:1px solid #44607b;border-radius:11px;padding:12px;display:flex;flex-direction:column;align-items:stretch;gap:7px;min-height:0;min-width:0;height:auto;overflow:visible}
 .codex-card .codex-symbol{width:35px;height:35px;border-radius:8px;background:#2c4762;display:grid;place-items:center;font-size:20px;color:#fff0b3}
 .codex-card strong{font-size:14px;color:#f4f4ff;overflow-wrap:anywhere}
@@ -189,7 +189,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
-     url("./fonts/cp-period-display.woff2?v=7") format("woff2");
+     url("./fonts/cp-period-display.woff2?v=8") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
 .brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{
@@ -273,3 +273,18 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .settings-modal>.upgrade-top{position:sticky;top:0;background:#152038;z-index:1;padding:6px 0;border-bottom:1px solid #34425c}
 
 .save-warning{font-size:12px;color:#ffdfad;border:1px solid #947d52;background:#392c24;padding:10px;border-radius:9px}
+.synergy-ready-badge{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:6px;background:linear-gradient(135deg,#4f3b69,#2e2444);border:1px solid #f4c772;color:#ffe6a6;font-size:10px;font-weight:850;letter-spacing:.04em}
+.levelup-diff{display:block;margin-top:5px;padding-top:4px;border-top:1px dashed #ffffff24;color:#a8e6cf;font-size:10px;line-height:1.45}
+.codex-tabs{display:flex;justify-content:center;gap:6px;margin:2px 0 6px}
+.codex-practice-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.codex-practice-row .codex-practice{margin-top:0;padding:8px 6px;font-size:11px}
+.codex-practice.elite-btn{border-color:#e58ca3;background:#4d283b;color:#ffd4df}
+.codex-practice.elite-btn:hover{background:#66354e}
+.codex-synergy-hint{display:block;margin-top:4px;padding:5px 7px;border-radius:7px;background:#1a2942;border:1px solid #486388;color:#f5dca4;font-size:10px;line-height:1.45}
+.quick-equip-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;background:#101d30;border:1px solid #3b4e67;border-radius:9px;padding:8px 10px;font-size:11px;color:#c9d8ef}
+.quick-equip-actions{display:flex;gap:5px;flex-shrink:0;align-items:center}
+.quick-equip-btn{background:#243552;color:#dce8ff;border:1px solid #597298;border-radius:7px;padding:6px 8px;font-size:10px;font-weight:800}
+.quick-equip-btn.equipped{background:#3a3442;border-color:#e0bf81;color:#ffe4ac}
+.hpfill.shielded{box-shadow:0 0 14px #76e4f166,inset 0 0 0 1px #9ef6ff88}
+.progress{position:relative}
+.shieldfill{position:absolute;top:0;left:0;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#3fa2d9a8,#8ceeffd8);box-shadow:0 0 10px #76e4f166;pointer-events:none;transition:width .15s}

@@ -310,7 +310,7 @@
   }
   ctx.restore();
   const counterPhase=data.counterPhase??(q.action>0?q.phase:-1);
-  if(counterPhase>.30&&counterPhase<272/240&&['parry','just'].includes(input.lastStrikeKind)&&data.counterTarget){
+  if(data.counterWave!==false&&counterPhase>.30&&counterPhase<272/240&&['parry','just'].includes(input.lastStrikeKind)&&data.counterTarget){
    // Use a stable release direction while the sword follows through, so the
    // enemy-front crescent cannot flip back as the hand circles behind us.
    const releasePhase=.22,release=pose({...input,action:1-releasePhase,lift:1,hurt:0,

@@ -6,7 +6,7 @@ const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
 
 function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
  let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],contactEvents=[],tailEvents=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
+ const audioEvents=[],metalEvents=[],contactEvents=[],tailEvents=[],blackouts=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
  const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
  const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -36,6 +36,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  const noop=()=>{};
  const ctx=new Proxy({globalAlpha:1},{
   get(target,k){
+   if(k==='fillRect')return (...args)=>{if(String(target.fillStyle).startsWith('rgba(3,6,18,'))blackouts.push({color:target.fillStyle,args});};
    if(k==='createLinearGradient'||k==='createRadialGradient')return ()=>({addColorStop:noop});
    if(k==='measureText')return ()=>({width:36});
    return target[k]??noop;
@@ -213,6 +214,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,enemySample:()=>lastEnemySample,
   contactEvents:()=>contactEvents.map(e=>({...e})),tailEvents:()=>tailEvents.map(e=>({...e})),
   audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
+  blackouts:()=>blackouts.map(x=>({...x})),clearBlackouts:()=>{blackouts.length=0},
   press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
    upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
    upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
@@ -279,6 +281,7 @@ test('survival: overflowing parry heals share one conversion budget and preserve
 
 test('survival: chalice excludes outside healing and clear regeneration but includes the killing parry',()=>{
  const {g,d}=survivalHarness(['overflow_chalice'],{blood:1});
+ d.jumpFloor(1); // Test killing-blow recovery on an enemy without a phase boundary.
  d.recoverOutside(100);assert.equal(g.state().shield,0);
  d.setRunBonus('regen',20);d.setEnemyHp(1);resolveBloodParry(g,20);
  assert.equal(g.state().mode,'victory');assert.equal(g.state().shield,1,'only 2-point parry heal overflows; clear regen does not');
@@ -577,8 +580,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.8"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.8&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.9"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.9&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -864,7 +867,7 @@ test('v0.5.6 uses dedicated upgrades screen, with slot and skill purchase as sep
  assert.equal(g.el.get('upgradeCover').hidden,true);
  g.press('upgradeOpenBtn');
  assert.equal(g.state().mode,'upgrade');
- assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="loadout">スキル装備<\/button>/);
+ assert.match(g.el.get('upgradeTabs').innerHTML,/data-tab="loadout">初期スキル<\/button>/);
  assert.equal(g.el.get('upgradeCover').hidden,false);
  assert.equal(g.state().permanent.slots,0);
  assert.match(g.el.get('upgradeList').innerHTML,/スロット 1/);
@@ -1125,7 +1128,7 @@ test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.8/);
+  assert.match(html,/v0\.9\.9/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1322,8 +1325,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.8"/);
-  assert.match(html,/v0\.9\.8/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9"/);
+  assert.match(html,/v0\.9\.9/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1641,8 +1644,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.8"'),asset);
-  assert.match(html,/v0\.9\.8/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9"'),asset);
+  assert.match(html,/v0\.9\.9/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1677,7 +1680,7 @@ test('rest recovers 35 percent, consumes room and resets combo, without ordinary
  d.setCombo(18);d.setJustStreak(2);d.setHp(10);
  g.routeSelect('rest');
  assert.equal(g.state().mode,'room');
- assert.equal(g.state().combo,0);
+ assert.equal(g.state().combo,18);
  assert.equal(g.state().justStreak,0);
  const originalSkills=JSON.stringify(g.state().runSkills);
  g.roomChoose('rest:heal');
@@ -1708,7 +1711,7 @@ test('rest meditation grants capped shield and one reroll; future 8F rest leads 
  assert.equal(g.state().floor,9);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().encounterElite,true);
- assert.equal(g.state().combo,0);
+ assert.equal(g.state().combo,99);
 });
 test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus normal loot',()=>{
  const {g,d}=makeCrossroads();
@@ -1717,7 +1720,7 @@ test('blood trial preserves combo, spawns an elite and pays 14 tower coins plus 
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().routeTrial,true);
  assert.equal(g.state().encounterElite,true);
- assert.equal(g.state().combo,9);
+ assert.equal(g.state().combo,12);
  g.random(.99);
  d.setEnemyHp(1);
  resolveBloodParry(g,20);
@@ -1788,7 +1791,7 @@ test('merchant skill scroll uses existing sealed skill pool and gives only ONE s
  assert.ok(g.state().routeSkillSet.length>=1);
  const id=g.state().routeSkillSet[0],before=g.state().runSkills[id]||0;
  g.routeSkillSelect('blood');
- assert.equal(g.state().mode,'routeSkill','invalid or sealed choice cannot be purchased');
+ assert.equal(g.state().mode,'routeSkill','invalid or sealed choice cannot be purchased');g.routeSkillSelect(id);assert.equal(g.state().mode,'room');g.roomChoose('continue');
  g.routeSkillSelect(id);
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().floor,5);
@@ -1805,7 +1808,7 @@ test('merchant relic chest costs 42, offers nonlegendary relics and never adds a
  assert.equal(offer.length,3);
  const RR=require('../assets/relics.js');
  assert.ok(offer.every(id=>RR.BY_ID[id].rarity!=='legendary'));
- g.relicSelect(offer[0]);
+ g.relicSelect(offer[0]);assert.equal(g.state().mode,'room');g.roomChoose('continue');
  assert.equal(g.state().mode,'combat');
  assert.equal(g.state().floor,5);
  assert.equal(g.state().relics.length,1);
@@ -2035,6 +2038,13 @@ test('80F defeat is immediately recorded as summit completion and the game can c
  assert.equal(g.state().enemy,'endking');
  assert.equal(g.state().encounterElite,true);
  g.random(.99);
+ g.bloodTest().setEnemyHp(Math.floor(g.state().enemyMaxHp*.5)+1);
+ resolveBloodParry(g,20);
+ assert.equal(g.state().mode,'phase','the summit cannot be completed in the first movement');
+ assert.equal(g.state().finalClear,false);
+ g.frame(g.now+1501);
+ const count=g.state();g.frame(count.phaseCountStartAt+4*count.beat*1000+1);
+ assert.equal(g.state().bossPhase,2);assert.equal(g.state().mode,'combat');
  g.bloodTest().setEnemyHp(1);
  resolveBloodParry(g,20);
  assert.equal(g.state().mode,'victory');
@@ -2787,7 +2797,7 @@ test('skin purchases charge approved prices once, preserve currency on failure, 
  mutual.upgradeBuy('skin-equip','normal');assert.equal(mutual.artMode(),'illustrated');assert.deepEqual(Array.from(mutual.state().permanent.enabledExtras),[]);
  assert.match(mutual.el.get('upgradeList').innerHTML,/skin-card selected[\s\S]*?data-key="normal" disabled/);
  const fromGameover=makeHarness({parryTowerPermanent_v1:JSON.stringify({unlockedSkins:['fundoshi'],equippedSkin:'fundoshi',unlockedExtras:['legacyVisual'],enabledExtras:[]})});
- fromGameover.press('startBtn');settleCurrentAttack(fromGameover);assert.equal(fromGameover.state().mode,'gameover');
+ fromGameover.press('startBtn');settleCurrentAttack(fromGameover);assert.equal(fromGameover.state().mode,'gameover');assert.match(fromGameover.el.get('deathSummary').innerHTML,/で力尽きた。[\s\S]*ジャストパリィ[\s\S]*魂の欠片/);
  fromGameover.clock(fromGameover.now+700);fromGameover.frame(fromGameover.now);
  fromGameover.press('deathUpgradeBtn');fromGameover.upgradeTab('bonus');fromGameover.upgradeBuy('bonus-toggle','legacyVisual');
  assert.equal(fromGameover.artMode(),'legacy','switching to legacyVisual from gameover shop updates artMode immediately');
@@ -2918,7 +2928,7 @@ test('elixir caps at seven and waits until the next successful counter to trigge
  const {g,d}=makeCrossroads();d.setCharge(6);d.setTowerCoins(50);g.routeSelect('merchant');
  g.roomChoose('buy:elixir');assert.equal(g.state().charge,7);assert.equal(g.state().towerCoins,32);
  assert.equal(d.hits().length,0);g.roomChoose('continue');d.setEnemyHp(100000);
- resolveBloodParry(g,20);assert.equal(d.hits().filter(x=>x.label==='奥義').length,1);assert.equal(g.state().charge,0);
+ resolveBloodParry(g,0);assert.equal(d.hits().filter(x=>x.label==='奥義').length,1);assert.equal(g.state().charge,0);
  revisitMerchant(g);d.setCharge(7);g.roomChoose('buy:elixir');assert.equal(g.state().towerCoins,150);
 });
 
@@ -2967,7 +2977,7 @@ test('polished relics apply their improved damage, recovery, shields and guard r
  x=polishedFight('conduit_stone');for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷導').dealt,18);
  x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
  x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
- x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,20);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
+ x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,0);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
  x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
  x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
  x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
@@ -3748,5 +3758,192 @@ test('production keeps fighting with legacy or unavailable combat SFX instead of
   assert.equal(g.state().lastStrikeKind,'just');assert.equal(g.state().hp,hp);assert.ok(g.state().attackAt>C);
   assert.equal(g.contactEvents().length,0);assert.equal(g.tailEvents().length,0);
   if(legacy)assert.equal(g.metalEvents().at(-1).kind,'just');else assert.ok(g.audioEvents().length>0);
+ }
+});
+
+test('v0.9.9: merchant allows multiple distinct purchases per visit, and sanctuary/forge/scales events work',()=>{
+ const {g,d}=makeCrossroads();d.setTowerCoins(60);g.routeSelect('merchant');
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,48);assert.equal(g.state().roomStage,'result');
+ g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,32);assert.equal(g.state().shield,20);
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,32,'cannot buy same item twice in one visit');
+ g.roomChoose('continue');assert.equal(g.state().mode,'combat');
+ const s1=makeCrossroads(8);s1.d.gainSkill('blade');s1.g.random(.6);s1.g.routeSelect('event');
+ assert.equal(s1.g.state().eventId,'sanctuary');s1.g.roomChoose('event:train');s1.g.roomChoose('target:blade');
+ assert.equal(s1.g.state().runSkills.blade,2);
+ const s2=makeCrossroads(8);s2.d.grantRelic('rusty_crest');s2.g.random(.75);s2.g.routeSelect('event');
+ assert.equal(s2.g.state().eventId,'forge');s2.g.roomChoose('event:polish');s2.g.roomChoose('target:rusty_crest');
+ assert.deepEqual(Array.from(s2.g.state().polishedRelics),['rusty_crest']);
+ const s3=makeCrossroads(8);s3.d.setTowerCoins(20);const beforeSouls=s3.g.state().souls;s3.g.random(.95);s3.g.routeSelect('event');
+ assert.equal(s3.g.state().eventId,'scales');s3.g.roomChoose('event:toSouls');
+ assert.equal(s3.g.state().towerCoins,4);assert.equal(s3.g.state().souls,beforeSouls+20);
+});
+
+test('v0.9.9: boss and elite 3-beat heavy strikes trigger HEAVY BREAK (+3 charge, 1.25x damage) on JUST parry',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ d.jumpFloor(25);d.setEnemyHp(100000);d.setCharge(0);
+ resolveBloodParry(g,0);
+ const normalJustDealt=d.hits()[0].dealt;
+ assert.equal(g.state().charge,2,'opening strike is not heavy break');
+ d.resetHits();resolveBloodParry(g,0);
+ assert.equal(g.state().charge,5,'dirgekeeper index 0 is 3-beat heavy strike -> +3 charge');
+ assert.ok(d.hits()[0].dealt>normalJustDealt,'heavy break deals 1.25x damage');
+});
+
+test('v0.9.9: first boss defeat grants guaranteed bonus souls, and 2+ JUST parries grant technical bonus coins',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ const beforeSouls=g.state().souls;
+ d.jumpFloor(5);d.setEnemyHp(100000);
+ resolveBloodParry(g,0);d.setEnemyHp(1);resolveBloodParry(g,0);
+ assert.equal(g.state().mode,'victory');
+ assert.equal(g.state().towerCoins,11,'boss base 10 + 1 technical coin from 2 JUST parries');
+ assert.equal(g.state().souls,beforeSouls+6,'first boss kill grants +6 guaranteed bonus souls');
+});
+
+test('v0.9.9: death screen omits the removed miss timing explanation',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('blade',1);d.setSkill('fury',0);d.setEnemyHp(1);resolveBloodParry(g,0);
+ g.frame(g.now+950);assert.equal(g.state().mode,'reward');
+ g.press('healBtn');
+ d.setHp(1);d.setShield(0);const c=g.state().attackAt;g.clock(c-120);g.parry();g.frame(c+100);
+ assert.equal(g.state().mode,'gameover');
+ assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/最終被弾/);
+});
+
+
+test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purchases, chest fallback gives 25 coins + 1 reroll, and 80F phase 1 HP floor holds at 50%',()=>{
+ const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
+ d.setSkill('rune',1);d.setCharge(4);d.setEnemyHp(10000);
+ resolveBloodParry(g,0);
+ assert.equal(d.hits().some(h=>h.label.includes('奥義')),false,'charge 4 + 2 = 6 does not fire ultimate');
+ assert.equal(g.state().charge,6,'charge 4 + 2 from JUST = 6');
+ d.resetHits();resolveBloodParry(g,0);
+ assert.equal(d.hits().some(h=>h.label.includes('奥義')),true,'charge 6 + 2 -> 7 fires ultimate immediately in v0.9.8 spec');
+ assert.equal(g.state().charge,0,'ultimate resets charge to 0');
+
+ const m=makeCrossroads();
+ m.d.setTowerCoins(100);m.g.routeSelect('merchant');
+ m.g.roomChoose('buy:skill');
+ assert.equal(m.g.state().mode,'routeSkill');
+ m.g.routeSkillSelect(m.g.state().routeSkillSet[0]);
+ assert.equal(m.g.state().mode,'room');
+ m.g.roomChoose('buy:relic');
+ assert.equal(m.g.state().mode,'relic');
+ m.g.relicSelect(m.g.state().relicOffer[0]);
+ assert.equal(m.g.state().mode,'room');
+ assert.equal(m.g.state().relics.length,1);
+ m.g.roomChoose('continue');
+ assert.equal(m.g.state().mode,'combat');
+
+ const c=makeCrossroads(8);
+ const RR=require('../assets/relics.js');
+ c.d.setRelicFlag('relicDiscarded',RR.RELICS.filter(r=>r.rarity!=='legendary').map(r=>r.id));
+ c.g.random(0);c.g.routeSelect('event');c.d.setEvent('chest');
+ const beforeCoins=c.g.state().towerCoins,beforeRerolls=c.g.state().rerolls;
+ c.g.roomChoose('event:open');
+ assert.equal(c.g.state().towerCoins,beforeCoins+25);
+ assert.equal(c.g.state().rerolls,beforeRerolls+1);
+
+ const b=makeHarness();b.random(.99);b.press('startBtn');const bd=b.bloodTest();
+ bd.jumpFloor(80);
+ const half=Math.floor(b.state().enemyMaxHp*0.5);
+ bd.setBaseAttack(99999);
+ resolveBloodParry(b,0);
+ assert.equal(b.state().enemyHp,half,'80F boss phase 1 clamps HP at 50%');
+ assert.equal(b.state().mode,'phase','80F boss transitions to phase 2');
+});
+// Added regressions for the director/mock review fixes.
+test('review fixes: phase 1 protects the boundary against every hit in one counter, then phase 2 can be defeated',()=>{
+ for(const extra of [false,true]){
+  const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();d.jumpFloor(80);
+  d.setBaseAttack(46);for(const [id,level]of Object.entries({blade:20,precision:10,fury:6,gamble:6,echo:6,...(extra?{thunder:12,rune:6}: {})}))d.setSkill(id,level);
+  d.setCombo(120);d.setHp(20);if(extra)d.setCharge(7);
+  const half=Math.floor(g.state().enemyMaxHp/2);resolveBloodParry(g,0);
+  assert.equal(g.state().enemyHp,half);assert.equal(g.state().mode,'phase');assert.equal(g.state().bossPhase,2);
+  assert.equal(d.hits()[0].dealt,half);assert.ok(d.hits().slice(1).length>0);assert.ok(d.hits().slice(1).every(h=>h.dealt===0));
+  g.frame(g.now+1501);const s=g.state();g.frame(s.phaseCountStartAt+4*s.beat*1000+1);
+  assert.equal(g.state().mode,'combat');d.setBaseAttack(99999);resolveBloodParry(g,0);
+  assert.equal(g.state().mode,'victory');assert.equal(g.state().enemyHp,0);
+ }
+ const burn=makeHarness();burn.press('startBtn');const bd=burn.bloodTest();bd.jumpFloor(80);
+ const half=Math.floor(burn.state().enemyMaxHp/2);bd.setEnemyHp(half+1);bd.setBurn(1000);burn.frame(burn.now+16);
+ assert.equal(burn.state().enemyHp,half);assert.equal(burn.state().mode,'phase');
+});
+
+test('review fixes: rune uses permanent attack scaling and exactly one blade multiplier, including its resonance',()=>{
+ for(const baseAtk of [25,50])for(const blade of [0,4]){
+  const damage=[];
+  for(const rune of [0,1]){
+   const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();d.setEnemyHp(1000000);
+   d.setBaseAttack(baseAtk);d.setSkill('blade',blade);d.setSkill('rune',rune);d.setSkill('precision',1);d.setCharge(7);
+   resolveBloodParry(g,20);assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().charge,0);
+   const ult=d.hits().find(h=>h.label==='奥義').dealt;damage.push(ult);
+   const expected=Math.round((baseAtk*1.5+rune*45*(baseAtk/25))*(1+blade*.25)*1.012);
+   assert.equal(ult,expected);
+   if(rune)assert.equal(d.hits().find(h=>h.label==='時空切断').dealt,Math.round(expected*.65));
+  }
+  assert.ok(Math.abs((damage[1]-damage[0])-45*(baseAtk/25)*(1+blade*.25)*1.012)<=1);
+ }
+});
+
+test('review fixes: adopted D/A harmony plays from combo zero in main, Dev combat and Dev audition',()=>{
+ const assertHarmony=(g,at)=>{
+  for(const hz of [293.66,440])assert.ok(g.audioEvents().some(e=>e.type==='sine'&&e.frequency===hz&&Math.abs(e.time-at)<1e-6),'adopted chord '+hz+' at '+at);
+ };
+ for(const floor of [1,11,80])for(const dev of [false,true]){
+  const g=makeHarness({},dev);g.press('startBtn');g.bloodTest().jumpFloor(floor);g.bloodTest().setEnemyHp(1000000);
+  const s=g.state();assert.equal(s.combo,0);g.frame(s.scoreOrigin*1000-100);assertHarmony(g,s.scoreOrigin);
+  g.bloodTest().setCombo(15);g.clearAudioEvents();const next=s.scoreOrigin+4*s.beat;g.frame(next*1000-100);g.frame(next*1000+1);assertHarmony(g,next);
+ }
+ const g=makeHarness({},true),saved=[...g.storage];
+ for(const theme of [...g.dev().musicList(),...g.dev().musicReviews()]){
+  g.clearAudioEvents();assert.equal(g.dev().previewMusic(theme.id),true);const origin=g.state().scoreOrigin;g.frame(origin*1000-100);assertHarmony(g,origin);
+  assert.equal(g.dev().stopMusic(),true);g.clearAudioEvents();g.frame(g.now+1000);assert.equal(g.audioEvents().length,0);
+ }
+ assert.deepEqual([...g.storage],saved);
+});
+
+test('review fixes: sanctuary offers unowned partners before completed pairs and survives reload',()=>{
+ for(const skills of [{},{thunder:1},{thunder:1,echo:1,blood:1,fury:1}]){
+  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(8);for(const [id,n]of Object.entries(skills))d.setSkill(id,n);
+  g.routeSelect('event');d.setEvent('sanctuary');g.random(0);g.roomChoose('event:resonate');
+  assert.equal(g.state().mode,'routeSkill');const offered=g.state().routeSkillSet;
+  if(skills.thunder&&!skills.echo){assert.ok(offered.includes('echo'));assert.ok(offered.includes('overcharge'));}
+  if(skills.echo){assert.ok(offered.includes('overcharge'));assert.ok(offered.includes('bloodlust'));}
+  d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.deepEqual(Array.from(re.state().routeSkillSet),Array.from(offered));
+  const chosen=offered[0],before=re.state().runSkills[chosen]||0;re.routeSkillSelect(chosen);re.routeSkillSelect(chosen);assert.equal(re.state().runSkills[chosen],before+1);
+ }
+});
+
+test('review fixes: golden intuition scales every event coin reward, display and earned total exactly once',()=>{
+ const cases=[['mirror','coins',12],['traveler','coins',18],['chest','coins',10],['chest','open',25],['forge','scrap',14],['scales','toCoins',24]];
+ for(const bonus of [0,45])for(const [event,action,raw]of cases){
+  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(8);d.setRunBonus('coinGain',bonus);
+  if(action==='open')d.setRelicFlag('relicDiscarded',require('../assets/relics').RELICS.filter(r=>r.rarity!=='legendary').map(r=>r.id));
+  g.routeSelect('event');d.setEvent(event);g.random(0);const expected=Math.round(raw*(1+bonus/100));
+  assert.match(g.el.get('roomActions').innerHTML,new RegExp('塔貨\\+'+expected));
+  const before=g.state();g.roomChoose('event:'+action);assert.equal(g.state().towerCoins,before.towerCoins+expected);assert.equal(g.state().towerCoinsEarned,before.towerCoinsEarned+expected);
+  assert.match(g.el.get('roomDescription').textContent,new RegExp('塔貨\\+?'+expected));
+  d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');re.roomChoose('event:'+action);
+  assert.equal(re.state().towerCoins,g.state().towerCoins);assert.equal(re.state().towerCoinsEarned,g.state().towerCoinsEarned);
+ }
+ const g=makeHarness();g.press('startBtn');g.bloodTest().setRunBonus('coinGain',45);g.bloodTest().setEnemyHp(1);resolveBloodParry(g,20);
+ assert.equal(g.state().towerCoins,Math.round(6*1.45));assert.equal(g.state().towerCoinsEarned,g.state().towerCoins);
+});
+
+test('review fixes: flash off removes full-screen ultimate blackout without suppressing the ultimate',()=>{
+ for(const enabled of [false,true]){
+  const g=makeHarness({[SETTINGS_KEY]:JSON.stringify({bgm:100,sfx:100,flash:enabled,shake:false})});g.press('startBtn');const d=g.bloodTest();
+  d.setEnemyHp(1000000);d.setCharge(6);g.clearBlackouts();resolveBloodParry(g,20);
+  assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().charge,0);assert.ok(d.hits().some(h=>h.label==='奥義'));
+  assert.equal(g.blackouts().length>0,enabled);
+ }
+});
+
+test('review fixes: codex keeps 50 variant discoveries while grouping 26 species without changing saves',()=>{
+ const entries=P.codexEntries();assert.equal(entries.length,50);
+ for(const keys of [['slime:normal'],['slime:normal','slime:elite'],entries.map(e=>e.bookKey)]){
+  const seed={parryTowerBestiary_v1:JSON.stringify({version:2,seen:Object.fromEntries(keys.map(key=>[key,{encounters:1,firstFloor:1}])),defeated:{}})};
+  const g=makeHarness(seed),saved=[...g.storage];g.press('practiceBtn');assert.equal(g.el.get('codexSummary').textContent,keys.length+' / 50 発見');
+  assert.equal((g.el.get('codexList').innerHTML.match(/class="codex-card/g)||[]).length,26);assert.deepEqual([...g.storage],saved);
  }
 });
