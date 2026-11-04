@@ -2351,12 +2351,6 @@ function drawClashFX(now){
   ctx.shadowBlur=just?14:7;ctx.shadowColor=color;ctx.globalAlpha=fade*(1-t)*(.72-i*.22);ctx.stroke();
  }
  ctx.shadowBlur=0;
- if(just&&age<150){
-  ctx.globalAlpha=fade*(1-age/150)*.8;
-  ctx.strokeStyle='#d9faff';ctx.lineWidth=(8-age*.035)*base;
-  ctx.beginPath();ctx.moveTo(x-w*.29,y+h*.13);ctx.lineTo(x+w*.36,y-h*.20);ctx.stroke();
-  ctx.strokeStyle='#558fff';ctx.lineWidth=2*base;ctx.beginPath();ctx.moveTo(x-w*.33,y+h*.16);ctx.lineTo(x+w*.39,y-h*.22);ctx.stroke();
- }
  const n=just?20:normal?11:5;
  for(let i=0;i<n;i++){
   const a=i*2.399963+(.12*i),distance=(9+age*(just?.34:.19))*(.62+(i%7)*.105)*energy;
