@@ -22,6 +22,13 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    click(){this.listeners.click?.()},scrollIntoView(){},focus(){},
    getBoundingClientRect(){return {width:800,height:500}},
    querySelectorAll(selector){
+    if(id==='codexTabs'&&selector==='[data-codex-tab]'){
+     if(!this.children.length)this.children=['monsters','skills'].map(tab=>({
+      dataset:{codexTab:tab},className:'upgrade-tab',attributes:{},
+      setAttribute(k,value){this.attributes[k]=value}
+     }));
+     return this.children;
+    }
     if(selector==='[data-practice]'){
      return [...this.innerHTML.matchAll(/data-practice="([^"]+)"/g)].map(m=>{
       const key=m[1],b={dataset:{practice:key},addEventListener(type,cb){clickers.set(key,cb)}};return b;
@@ -402,18 +409,45 @@ test('survival: sigil stays consumed through the final second movement',()=>{
  assert.equal(g.state().mode,'combat');assert.equal(d.bulwarkUsed(),true);assert.equal(g.state().shield,before,'phase count-in does not replenish inheritance');
 });
 
-test('bestiary UI has no obsolete arena actions and practice buttons stay within card layouts',()=>{
- const html=fs.readFileSync('index.html','utf8');
+test('codex uses a viewport-height scrollable panel, a neutral title and shared selection buttons',()=>{
  const js=fs.readFileSync('assets/game.js','utf8');
  const css=fs.readFileSync('assets/style.css','utf8');
- assert.match(html,/魔物図鑑・稽古場/);
- assert.doesNotMatch(html,/闘技場|arenaResultCover|id="codexBtn"/);
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  assert.match(html,/id="codexTitle">図鑑・稽古場/);
+  assert.doesNotMatch(html,/魔物図鑑・稽古場|THE BESTIARY · PRACTICE/);
+  assert.doesNotMatch(html,/闘技場|arenaResultCover|id="codexBtn"/);
+  assert.ok(html.indexOf('id="codexCover"')>html.indexOf('<footer class="site-footer"'),'codex should not be clipped by battle arena');
+  assert.match(html,/class="modal codex-modal" role="dialog" aria-modal="true"/);
+  assert.match(html,/id="codexToolbar"/);
+  assert.match(html,/data-codex-tab="monsters"[^>]*>📖 魔物</);
+  assert.match(html,/data-codex-tab="skills"[^>]*>📜 スキル</);
+ }
  assert.doesNotMatch(js,/闘技場|data-arena|arenaResult|finishArena|startArena/);
  assert.match(js,/data-practice/);
- assert.match(css,/\.codex-list\{[^}]*grid-auto-rows:max-content/);
+ assert.match(css,/#codexCover\{position:fixed/);
+ assert.match(css,/height:100dvh/);
+ assert.match(css,/\.codex-list\{[^}]*grid-auto-rows:max-content[^}]*flex:1 1 auto[^}]*overflow-y:auto[^}]*max-height:none/);
  assert.match(css,/\.codex-card\{[^}]*height:auto/);
  assert.match(css,/\.codex-practice\{[^}]*width:100%/);
  assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
+ assert.match(css,/\.codex-tabs \.upgrade-tab\{/);
+ const g=makeHarness();g.press('practiceBtn');
+ const tabs=g.el.get('codexTabs').querySelectorAll('[data-codex-tab]');
+ assert.equal(g.el.get('codexToolbar').hidden,false);
+ assert.equal(tabs[0].className,'upgrade-tab active');
+ assert.equal(tabs[1].className,'upgrade-tab');
+ g.el.get('codexList').scrollTop=150;
+ g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[1]}});
+ assert.equal(g.el.get('codexToolbar').hidden,true,'skill codex should not show the monster filter label');
+ assert.equal(tabs[0].className,'upgrade-tab');
+ assert.equal(tabs[1].className,'upgrade-tab active');
+ assert.equal(tabs[1].attributes['aria-pressed'],'true');
+ assert.equal(g.el.get('codexList').scrollTop,0,'switching tabs should start from the first entry');
+ assert.match(g.el.get('codexSummary').textContent,/解放/);
+ g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[0]}});
+ assert.equal(g.el.get('codexToolbar').hidden,false);
+ assert.equal(tabs[0].className,'upgrade-tab active');
 });
 test('a cold start warms title assets and waits for artwork before drawing or starting the combat clock',async()=>{
  let loaded=false,finish,warmups=0,draws=0;
