@@ -19,7 +19,7 @@
   <button type="button" id="devReset">↻ タイトルに戻る</button>
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
  </div>
- <div class="dev-status-row"><p id="devStatus" role="status">フロアと敵を選んで開始。戦闘画面へすぐ移動します。</p><button type="button" id="devShowPlay">戦闘画面へ ↓</button></div>
+ <div class="dev-status-row"><p id="devStatus" role="status"></p><button type="button" id="devShowPlay">戦闘画面へ ↓</button></div>
  <div class="dev-foldouts">
  <details class="dev-foldout">
   <summary>スキン・緩慢の呪い</summary>
@@ -30,7 +30,7 @@
 
   </div>
  <p id="devSkinStatus" class="dev-note" role="status"></p>
- <p class="dev-note">設定を変えたら「指定条件で開始」。無敵練習中はふんどしでも死にません。効果をOFFにすると外見だけを比較できます。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
+ <p class="dev-note">無敵練習中はふんどしでも死にません。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
   </div>
  </details>
  <details class="dev-foldout">
@@ -40,7 +40,7 @@
    <label for="devTimingMode">振りかぶりのタイミング<select id="devTimingMode"><option value="half">半拍前</option><option value="full">一拍前</option><option value="onehalf">1.5拍前</option><option value="previous">以前（旧方式）</option></select></label>
    <label for="devInputOffset">開始時の入力補正（ms）<input id="devInputOffset" type="number" min="-180" max="180" step="1" value="0"></label>
   </div>
-  <p class="dev-note">選んで「指定条件で開始」。半拍前・一拍前・1.5拍前は、初撃と2拍以上空く攻撃の振りかぶりの音・動作開始をそろえ、拍でタップ・接触。1.5拍以内の追撃は振りかぶりなし。以前は旧方式どおり、接触の100ms前にタップ。入力補正は保存しません。</p>
+  <p class="dev-note">半拍前・一拍前・1.5拍前は、初撃と2拍以上空く攻撃の振りかぶりの音・動作開始をそろえ、拍でタップ・接触。1.5拍以内の追撃は振りかぶりなし。以前は旧方式どおり、接触の100ms前にタップ。入力補正は保存しません。</p>
   </div>
  </details>
  <details class="dev-foldout">
@@ -52,7 +52,7 @@
  <div class="dev-volume">
   <label for="devSfxVolume">パリィ系効果音の音量 <output id="devSfxVolumeValue" for="devSfxVolume">100%</output></label>
   <div class="dev-volume-row"><input id="devSfxVolume" type="range" min="0" max="100" step="1" value="100"><button type="button" id="devSfxOriginal">本編の音量（100%）</button></div>
-  <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編（試遊で選んだ旧音量の25%を採用済み）。BGMの音量は変わりません。戦闘中も変更できます。</p>
+  <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編（試遊で選んだ旧音量の25%を採用済み）。BGMの音量は変わりません。</p>
  </div>
   </div>
  </details>
@@ -90,7 +90,7 @@
  <div class="dev-foldout-body">
  <div class="dev-music-prototypes" aria-label="75階と80階の採用曲">
   <strong>75階 → 80階：終王の主題〈本編採用〉</strong>
-  <p class="dev-note">同じ旋律が、行進から本気の最終決戦へ。ボタンで音楽だけを試聴できます。</p>
+  <p class="dev-note">同じ旋律が、行進から本気の最終決戦へ。</p>
   <div class="dev-controls dev-music-actions"><button type="button" id="devRoyalMarch">75階 · 王の行進 · 136 BPM</button><button type="button" id="devRoyalAwakening">80階 · 終王の覚醒 · 142 BPM</button><button type="button" id="devRoyalFinale">80階 · 第二楽章 · 142 BPM</button></div>
  </div>
  <div class="dev-controls">
@@ -171,7 +171,6 @@
       <section class="timing-calibration"><h3>タイミング調整</h3>
        <label for="latencySlider" class="latency-title">入力補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0">
        <small class="latency-note">＋：遅めの入力 / −：早めの入力</small>
-       <p>音の拍に合わせて押して、おすすめの補正を測れます。</p>
        <div class="calibration-pulse" id="calibrationPulse" aria-hidden="true">♫</div>
        <div class="actionrow"><button type="button" class="secondary" id="calibrationStart">おすすめ補正を測る</button><button type="button" class="primary" id="calibrationTap" disabled>拍に合わせてタップ</button></div>
        <p id="calibrationStatus" role="status">3 → 2 → 1 → GO のあと、16回タップ。</p>
