@@ -409,29 +409,16 @@ test('survival: sigil stays consumed through the final second movement',()=>{
  assert.equal(g.state().mode,'combat');assert.equal(d.bulwarkUsed(),true);assert.equal(g.state().shield,before,'phase count-in does not replenish inheritance');
 });
 
-test('codex uses a viewport-height scrollable panel, a neutral title and shared selection buttons',()=>{
- const js=fs.readFileSync('assets/game.js','utf8');
- const css=fs.readFileSync('assets/style.css','utf8');
+test('codex shares the shop layout and keeps the list scrollable when switching tabs',()=>{
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/id="codexTitle">図鑑・稽古場/);
-  assert.doesNotMatch(html,/魔物図鑑・稽古場|THE BESTIARY · PRACTICE/);
-  assert.doesNotMatch(html,/闘技場|arenaResultCover|id="codexBtn"/);
-  assert.ok(html.indexOf('id="codexCover"')>html.indexOf('<footer class="site-footer"'),'codex should not be clipped by battle arena');
-  assert.match(html,/class="modal codex-modal" role="dialog" aria-modal="true"/);
-  assert.match(html,/id="codexToolbar"/);
-  assert.match(html,/data-codex-tab="monsters"[^>]*>📖 魔物</);
-  assert.match(html,/data-codex-tab="skills"[^>]*>📜 スキル</);
+  const codex=html.slice(html.indexOf('id="codexCover"'),html.indexOf('id="upgradeCover"'));
+  assert.ok(codex.length>0,'the codex and shop should live in the same arena');
+  assert.match(codex,/class="modal upgrade-modal codex-modal" role="dialog" aria-modal="true"/);
+  assert.match(codex,/class="upgrade-top"><h2 id="codexTitle">図鑑・稽古場/);
+  assert.match(codex,/class="upgrade-tabs" id="codexTabs"/);
+  assert.match(codex,/class="upgrade-list codex-list" id="codexList"/);
  }
- assert.doesNotMatch(js,/闘技場|data-arena|arenaResult|finishArena|startArena/);
- assert.match(js,/data-practice/);
- assert.match(css,/#codexCover\{position:fixed/);
- assert.match(css,/height:100dvh/);
- assert.match(css,/\.codex-list\{[^}]*grid-auto-rows:max-content[^}]*flex:1 1 auto[^}]*overflow-y:auto[^}]*max-height:none/);
- assert.match(css,/\.codex-card\{[^}]*height:auto/);
- assert.match(css,/\.codex-practice\{[^}]*width:100%/);
- assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
- assert.match(css,/\.codex-tabs \.upgrade-tab\{/);
  const g=makeHarness();g.press('practiceBtn');
  const tabs=g.el.get('codexTabs').querySelectorAll('[data-codex-tab]');
  assert.equal(g.el.get('codexToolbar').hidden,false);

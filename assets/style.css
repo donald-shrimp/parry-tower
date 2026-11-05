@@ -29,28 +29,35 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 
 /* v0.5.3: zone hint, encounter bestiary and the existing safe practice mode */
 .zone-label{font-size:10px;letter-spacing:.02em;margin-left:12px;font-weight:650;text-transform:none}
-/* Codex lives outside the battle canvas, so its list uses the viewport instead of the arena height. */
-#codexCover{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;z-index:100;overflow:hidden;padding:clamp(10px,2vw,20px);background:linear-gradient(145deg,#080e1af0,#111b32f5);align-items:center;justify-content:center}
-body:has(#codexCover:not([hidden])){overflow:hidden}
-.codex-modal{width:min(100%,880px);height:100%;max-height:100%;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden;text-align:left;padding:14px 16px;border:1px solid #435573;border-radius:16px;background:linear-gradient(160deg,#18253d,#0d182a);box-shadow:0 18px 55px #000b}
-.codex-modal *{box-sizing:border-box}
-.codex-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:0 0 auto}.codex-modal .codex-top h2{margin:0;font-size:clamp(20px,3vw,27px);line-height:1.3;letter-spacing:.04em}
-.codex-modal .codex-top p{margin:3px 0 0;font-size:12px;line-height:1.3;color:#aabbd3}.codex-top .secondary{flex-shrink:0;min-height:38px}.codex-controls{display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.codex-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin:0;font-size:12px;color:#bbcce5}
-.codex-toolbar select{max-width:100%;background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:9px;padding:9px 10px;font-size:12px;min-height:40px}
-.codex-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0;max-height:none;padding:4px 5px 12px;text-align:left;scrollbar-gutter:stable}
-.codex-card{background:linear-gradient(140deg,#1e3146,#13233a);border:1px solid #44607b;border-radius:11px;padding:12px;display:flex;flex-direction:column;align-items:stretch;gap:7px;min-height:0;min-width:0;height:auto;overflow:visible}
-.codex-card .codex-symbol{width:35px;height:35px;border-radius:8px;background:#2c4762;display:grid;place-items:center;font-size:20px;color:#fff0b3}
-.codex-card strong{font-size:14px;color:#f4f4ff;overflow-wrap:anywhere}
-.codex-card small{font-size:10px;color:#a1b8ce;line-height:1.5;overflow-wrap:anywhere}
-.codex-card p{font-size:11px;line-height:1.5;color:#ced9e8;margin:0;flex:0 0 auto;max-width:none;overflow-wrap:anywhere}
-.codex-card.rare{border-color:#ddae5c;background:linear-gradient(140deg,#403321,#21283c)}
-.codex-card.elite{border-color:#b26377}
-.codex-card.boss{border-color:#a398ed}
-.codex-card.locked{opacity:.52;align-items:center;justify-content:center;text-align:center;border-style:dashed;background:#111b2b}
-.codex-card.locked .codex-symbol{color:#8190a7;background:#243044}
-.codex-practice{display:block;box-sizing:border-box;position:relative;flex:0 0 auto;align-self:stretch;width:100%;max-width:100%;min-height:38px;border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-weight:850;padding:9px 10px;font-size:12px;line-height:1.35;margin:6px 0 0;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
-.codex-practice:hover{background:#654765}
+.codex-modal{display:flex;flex-direction:column;overflow:hidden}
+.codex-modal>.upgrade-top,.codex-modal>.upgrade-tabs,.codex-status{flex-shrink:0}
+.codex-status,.codex-toolbar{display:flex;align-items:center;gap:8px}
+.codex-status{justify-content:space-between;flex-wrap:wrap}
+.codex-toolbar select{max-width:100%;background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:9px;padding:7px 8px;font:inherit}
+.codex-modal .codex-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:3px}
+.codex-card{flex-shrink:0}
+.codex-card .upgrade-main{align-items:flex-start;overflow-wrap:anywhere}
+.codex-card .upgrade-main>div{min-width:0}
+.codex-monster{background:linear-gradient(140deg,#1e3146,#13233a);border:1px solid #44607b;border-radius:11px;padding:12px;display:flex;flex-direction:column;gap:7px;min-width:0;overflow-wrap:anywhere}
+.codex-monster .codex-symbol{width:35px;height:35px;border-radius:8px;background:#2c4762;display:grid;place-items:center;font-size:20px;color:#fff0b3}
+.codex-monster strong{font-size:14px;color:#f4f4ff}
+.codex-monster small{font-size:10px;color:#a1b8ce;line-height:1.5}
+.codex-modal .codex-monster p{font-size:11px;line-height:1.5;color:#ced9e8;margin:0;max-width:none}
+.codex-monster.rare{border-color:#ddae5c;background:linear-gradient(140deg,#403321,#21283c)}
+.codex-monster.elite{border-color:#b26377}
+.codex-monster.boss{border-color:#a398ed}
+.codex-monster.locked{opacity:.52;align-items:center;text-align:center;border-style:dashed;background:#111b2b}
+.codex-monster.locked .codex-symbol{color:#8190a7;background:#243044}
+.codex-practice-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:4px}
+.codex-practice{min-height:38px;border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-size:11px;font-weight:850;line-height:1.35;padding:8px 6px;text-align:center;overflow-wrap:anywhere}
+.codex-practice:only-child{grid-column:1/-1}
+.codex-practice:hover:not(:disabled){background:#654765}
+.codex-practice.elite-btn{border-color:#e58ca3;background:#4d283b;color:#ffd4df}
+.codex-practice.elite-btn:hover:not(:disabled){background:#66354e}
+@media(max-width:520px){
+ .codex-modal .upgrade-tabs{justify-content:center}
+ .codex-modal .upgrade-tab{flex:0 1 auto;min-height:36px;padding:8px 12px;font-size:11px}
+}
 @media(max-width:760px){.zone-label{display:block;margin:3px 0 0;font-size:9px}}
 
 
@@ -277,11 +284,6 @@ body:has(#codexCover:not([hidden])){overflow:hidden}
 .save-warning{font-size:12px;color:#ffdfad;border:1px solid #947d52;background:#392c24;padding:10px;border-radius:9px}
 .synergy-ready-badge{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:6px;background:linear-gradient(135deg,#4f3b69,#2e2444);border:1px solid #f4c772;color:#ffe6a6;font-size:10px;font-weight:850;letter-spacing:.04em}
 .levelup-diff{display:block;margin-top:5px;padding-top:4px;border-top:1px dashed #ffffff24;color:#a8e6cf;font-size:10px;line-height:1.45}
-.codex-tabs{display:flex;flex-wrap:nowrap;gap:6px;margin:0;min-width:0}.codex-tabs .upgrade-tab{min-width:112px;min-height:40px;padding:9px 13px;border-radius:9px;font-size:12px}.codex-tabs .upgrade-tab:not(.active):hover{background:#263750}
-.codex-practice-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
-.codex-practice-row .codex-practice{margin-top:0;padding:8px 6px;font-size:11px}
-.codex-practice.elite-btn{border-color:#e58ca3;background:#4d283b;color:#ffd4df}
-.codex-practice.elite-btn:hover{background:#66354e}
 .codex-synergy-hint{display:block;margin-top:4px;padding:5px 7px;border-radius:7px;background:#1a2942;border:1px solid #486388;color:#f5dca4;font-size:10px;line-height:1.45}
 .quick-equip-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;background:#101d30;border:1px solid #3b4e67;border-radius:9px;padding:8px 10px;font-size:11px;color:#c9d8ef}
 .quick-equip-actions{display:flex;gap:5px;flex-shrink:0;align-items:center}
@@ -290,7 +292,3 @@ body:has(#codexCover:not([hidden])){overflow:hidden}
 .hpfill.shielded{box-shadow:0 0 14px #76e4f166,inset 0 0 0 1px #9ef6ff88}
 .progress{position:relative}
 .shieldfill{position:absolute;top:0;left:0;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#3fa2d9a8,#8ceeffd8);box-shadow:0 0 10px #76e4f166;pointer-events:none;transition:width .15s}
-
-
-/* Mobile codex overrides follow shared shop-button styles. */
-@media(max-width:520px){#codexCover{padding:max(8px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left))}.codex-modal{padding:11px 10px;border-radius:12px;gap:8px}.codex-modal .codex-top h2{font-size:21px}.codex-list{grid-template-columns:1fr;scrollbar-gutter:auto}.codex-controls{gap:8px}.codex-tabs{width:100%}.codex-tabs .upgrade-tab{flex:1;min-width:0;padding:9px 7px}.codex-toolbar{margin-left:auto}.codex-card{padding:11px}}

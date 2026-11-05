@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a101e">
 <meta name="parry-build" content="v0.9.9">
 <title>パリィの塔 | 開発者テスト v0.9.9</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.9&font=8&codex=1">
+<link rel="stylesheet" href="./assets/style.css?v=v0.9.9&font=8&codex=cards">
 <link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.9&beat-contact=1&layout=2&music=1">
 </head>
 <body>
@@ -142,6 +142,21 @@
        
       </div></div>
      <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="deathPracticeBtn">⚔ この敵で稽古</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ ショップ</button></div></div></div>
+     <div class="cover" id="codexCover" hidden><div class="modal upgrade-modal codex-modal" role="dialog" aria-modal="true" aria-labelledby="codexTitle">
+       <div class="upgrade-top"><h2 id="codexTitle">図鑑・稽古場</h2><button class="secondary" type="button" id="codexCloseBtn">戻る</button></div>
+       <div class="upgrade-wallet codex-status">
+        <span id="codexSummary">0 / 50 発見</span>
+        <label class="codex-toolbar" id="codexToolbar">表示 <select id="codexFilter">
+          <option value="all">すべて</option><option value="discovered">登録済みのみ</option>
+          <option value="normal">通常・ボス</option><option value="elite">精鋭</option><option value="rare">レア</option>
+        </select></label>
+       </div>
+       <div class="upgrade-tabs" id="codexTabs" role="group" aria-label="図鑑の切り替え">
+        <button class="upgrade-tab active" type="button" data-codex-tab="monsters" aria-pressed="true">📖 魔物</button>
+        <button class="upgrade-tab" type="button" data-codex-tab="skills" aria-pressed="false">📜 スキル</button>
+       </div>
+       <div class="upgrade-list codex-list" id="codexList" tabindex="0" aria-label="図鑑の一覧"></div>
+     </div></div>
      <div class="cover" id="upgradeCover" hidden><div class="modal upgrade-modal">
        <div class="upgrade-top"><h2>ショップ</h2><button class="secondary" id="upgradeCloseBtn">戻る</button></div>
        <div class="upgrade-wallet">魂の欠片 <strong id="upgradeCoins">0 ✧</strong></div>
@@ -185,27 +200,6 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<div class="cover" id="codexCover" hidden>
- <div class="modal codex-modal" role="dialog" aria-modal="true" aria-labelledby="codexTitle">
-  <div class="codex-top">
-   <div><h2 id="codexTitle">図鑑・稽古場</h2><p id="codexSummary">0 / 50 発見</p></div>
-   <button class="secondary" type="button" id="codexCloseBtn">戻る</button>
-  </div>
-  <div class="codex-controls">
-   <div class="codex-tabs" id="codexTabs" role="group" aria-label="図鑑の切り替え">
-    <button class="upgrade-tab active" type="button" data-codex-tab="monsters" aria-pressed="true">📖 魔物</button>
-    <button class="upgrade-tab" type="button" data-codex-tab="skills" aria-pressed="false">📜 スキル</button>
-   </div>
-   <div class="codex-toolbar" id="codexToolbar">
-    <label for="codexFilter">表示</label><select id="codexFilter">
-     <option value="all">すべて</option><option value="discovered">登録済みのみ</option>
-     <option value="normal">通常・ボス</option><option value="elite">精鋭</option><option value="rare">レア</option>
-    </select>
-   </div>
-  </div>
-  <div class="codex-list" id="codexList" tabindex="0" aria-label="図鑑の一覧"></div>
- </div>
-</div>
 <script src="./assets/diagnostics.js?v=v0.9.9" defer></script>
 <script src="./assets/encounters.js?v=v0.9.9&cue=1" defer></script>
 <script src="./assets/enemy-motions.js?v=v0.9.9" defer></script>
@@ -235,7 +229,7 @@
 <script src="./assets/audio-clock.js?v=v0.9.9" defer></script>
 <script src="./assets/player-settings.js?v=v0.9.9&timing=2" defer></script>
 <script src="./assets/run-checkpoint.js?v=v0.9.9&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.9&timing=2&tempo=1&beat-contact=1&cue=1&music=1&finale=2&combo=1&contact=1&copy=1&codex=1" defer></script>
+<script src="./assets/game.js?v=v0.9.9&timing=2&tempo=1&beat-contact=1&cue=1&music=1&finale=2&combo=1&contact=1&copy=1&codex=cards" defer></script>
 <script src="./assets/dev-tools.js?v=v0.9.9&tempo=1&beat-contact=1&cue=1&layout=2&music=1" defer></script>
 </body>
 </html>
