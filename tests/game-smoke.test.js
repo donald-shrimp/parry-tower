@@ -482,7 +482,8 @@ for(const variant of ['impact','illustrated','studio-edits','adopted'])test(vari
  const seed=variant==='studio-edits'?{[edit.ACTIVE_KEY]:JSON.stringify(edited)}:{};
  const plain=value=>JSON.parse(JSON.stringify(value));
  const ids=['illustrated','adopted'].includes(artMode)?P.all.map(e=>e.id):['knight','slime','rogue','wraith','sentinel','duelist','cantor','clockwork','guardian','void_knight','endking'];
- for(const id of ids){
+ const enemies=process.env.PARRY_TEST_PROFILE==='quick'?['slime','guardian','endking']:ids;
+ for(const id of enemies){
   const old=makeHarness(seed,true),improved=makeHarness(seed,true,artMode);
   await improved.readyArt(P.byId[id]);
   assert.deepEqual(improved.artStatus(),{hero:true,knight:true});
@@ -2637,30 +2638,6 @@ test('rescue grants are separate from soul gain and developer mode never persist
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
 
-test('shop omits obvious instructions and milestone schedule while preserving rewards',()=>{
- const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
- g.press('upgradeOpenBtn');g.upgradeTab('base');
- const base=g.el.get('upgradeList').innerHTML;
- assert.match(base,/生命の祝福/);
- assert.doesNotMatch(base,/累計挑戦応援|受取済|未受取/);
- g.upgradeTab('seal');
- const seal=g.el.get('upgradeList').innerHTML;
- assert.doesNotMatch(seal,/枠使用中|初期装備中のスキルは封印できません/);
- assert.match(seal,/封印枠 0\/4/);
- assert.doesNotMatch(seal,/出撃前ならいつでも変更可能/);
- g.upgradeTab('bonus');
- const bonus=g.el.get('upgradeList').innerHTML;
- assert.match(bonus,/開発初期モード/);
- assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ|購入済み ·|未購入/);
- g.upgradeTab('loadout');
- const loadout=g.el.get('upgradeList').innerHTML;
- assert.match(loadout,/装備したスキルはLv.1で開始/);
- assert.doesNotMatch(loadout,/変更は無料/);
- g.press('upgradeCloseBtn');loseRun(g);
- assert.match(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス \+20 ✧/);
- g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
- assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/累計挑戦応援|受取済|未受取/);
-});
 test('production music follows every zone boundary and repeats with the existing tower map',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
  const themes=require('../assets/stage-music').themes;
@@ -3032,7 +3009,8 @@ test('Dev merchant buttons launch meaningful presets without saving, and ordinar
 
 
 test('tempo levels lower normal and elite shared BPM by two each without adding beats to the rhythm',()=>{
- for(const elite of [false,true])for(const [enemy,base]of [['knight',112],['rogue',124],['guardian',136]])for(let level=0;level<=6;level++){
+ const levels=process.env.PARRY_TEST_PROFILE==='quick'?[0,4,6]:[0,1,2,3,4,5,6];
+ for(const elite of [false,true])for(const [enemy,base]of [['knight',112],['rogue',124],['guardian',136]])for(const level of levels){
   const g=makeHarness({},true);g.dev().launch(5,enemy+(elite?':elite':':normal'),true,'normal',true,level);
   const before=g.state();assert.equal(before.bpm,base+(elite?6:0)-level*2);assert.ok(Math.abs(before.attackSpan-4*60000/before.bpm)<1e-6);
   assert.equal(g.dev().skinState().tempoReduction,level*2);

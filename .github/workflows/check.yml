@@ -1,17 +1,32 @@
 name: Static checks
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Check JS syntax
         run: |
           for script in assets/*.js scripts/*.js; do node --check "$script"; done
       - name: Verify gameplay, adopted artwork, tools and asset contracts
-        run: node --test tests/*.test.js
+        run: |
+          profile=full
+          # A PR checkout is GitHub's merge commit. Unknown diffs use the full profile.
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]] &&
+             git diff --quiet HEAD^1 HEAD -- . \
+               ':(exclude)docs/**' ':(exclude)*.md' \
+               ':(exclude)index.html' ':(exclude)dev.html' ':(exclude)credits.html' \
+               ':(exclude)assets/style.css' ':(exclude)assets/dev-tools.css'; then
+            profile=quick
+          fi
+          echo "Test profile: $profile"
+          PARRY_TEST_PROFILE="$profile" node --test tests/*.test.js
       - name: Verify deterministic image processing
         run: |
           python -m pip install Pillow numpy "fonttools[woff]"
