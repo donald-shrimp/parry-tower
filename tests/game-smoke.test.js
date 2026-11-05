@@ -2590,9 +2590,9 @@ test('rescue payments at 3, 8, and 15 defeated attempts are one-time and use sav
   assert.equal(result.rescueClaimMask,item.nextMask);
   assert.equal(result.coins,103+item.bonus,'floor one death grants 3 basic plus fixed rescue reward');
   if(item.bonus){
-   assert.match(g.el.get('deathSummary').innerHTML,new RegExp('挑戦回数ボーナス！ 魂の欠片 \\+'+item.bonus));
+   assert.match(g.el.get('deathSummary').innerHTML,new RegExp('累計挑戦ボーナス \\+'+item.bonus));
   }else{
-   assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/挑戦回数ボーナス！ 魂の欠片/);
+   assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス/);
   }
   g.frame(g.now+500);g.press('retryBtn');
   loseRun(g);
@@ -2629,7 +2629,7 @@ test('shop omits obvious instructions and milestone schedule while preserving re
  assert.match(bonus,/開発初期モード/);
  assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ/);
  g.press('upgradeCloseBtn');loseRun(g);
- assert.match(g.el.get('deathSummary').innerHTML,/挑戦回数ボーナス！ 魂の欠片 \+20 ✧/);
+ assert.match(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス \+20 ✧/);
  g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
  assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/累計挑戦応援|受取済|未受取/);
 });
