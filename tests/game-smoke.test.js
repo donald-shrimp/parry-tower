@@ -2590,9 +2590,9 @@ test('rescue payments at 3, 8, and 15 defeated attempts are one-time and use sav
   assert.equal(result.rescueClaimMask,item.nextMask);
   assert.equal(result.coins,103+item.bonus,'floor one death grants 3 basic plus fixed rescue reward');
   if(item.bonus){
-   assert.match(g.el.get('deathSummary').innerHTML,new RegExp('累計挑戦ボーナス \\+'+item.bonus));
+   assert.match(g.el.get('deathSummary').innerHTML,new RegExp('挑戦回数ボーナス！ 魂の欠片 \\+'+item.bonus));
   }else{
-   assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス/);
+   assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/挑戦回数ボーナス！ 魂の欠片/);
   }
   g.frame(g.now+500);g.press('retryBtn');
   loseRun(g);
@@ -2614,23 +2614,25 @@ test('rescue grants are separate from soul gain and developer mode never persist
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
 
-test('base upgrade panel advertises run milestones and updates claimed states after defeat',()=>{
+test('shop omits obvious instructions and milestone schedule while preserving rewards',()=>{
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
- const early=g.el.get('upgradeList').innerHTML;
- assert.match(early,/累計挑戦応援（現在 2回）/);
- assert.match(early,/○ 未受取 3回：\+20 ✧/);
- assert.match(early,/○ 未受取 8回：\+35 ✧/);
- assert.match(early,/○ 未受取 15回：\+60 ✧/);
+ const base=g.el.get('upgradeList').innerHTML;
+ assert.match(base,/生命の祝福/);
+ assert.doesNotMatch(base,/累計挑戦応援|受取済|未受取/);
+ g.upgradeTab('seal');
+ const seal=g.el.get('upgradeList').innerHTML;
+ assert.match(seal,/初期装備中のスキルは封印できません/);
+ assert.doesNotMatch(seal,/出撃前ならいつでも変更可能/);
+ g.upgradeTab('bonus');
+ const bonus=g.el.get('upgradeList').innerHTML;
+ assert.match(bonus,/開発初期モード/);
+ assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ/);
  g.press('upgradeCloseBtn');loseRun(g);
+ assert.match(g.el.get('deathSummary').innerHTML,/挑戦回数ボーナス！ 魂の欠片 \+20 ✧/);
  g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
- const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/累計挑戦応援（現在 3回）/);
- assert.match(after,/✓ 受取済 3回：\+20 ✧/);
- assert.match(after,/○ 未受取 8回：\+35 ✧/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/累計挑戦応援|受取済|未受取/);
 });
-
-
 test('production music follows every zone boundary and repeats with the existing tower map',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
  const themes=require('../assets/stage-music').themes;
