@@ -577,7 +577,7 @@ function renderUpgradeScreen(){
  }else if(upgradeTab==='bonus'&&bonusView==='skins'){
   $('upgradeList').innerHTML=renderSkinPicker();
  }else if(upgradeTab==='bonus'){
-  $('upgradeList').innerHTML=bonusNavigation()+'<p class="upgrade-note">購入は一度だけ。購入後はここで無料でオン・オフできます。</p>'+PR.EXTRAS.map(item=>{
+  $('upgradeList').innerHTML=bonusNavigation()+PR.EXTRAS.map(item=>{
    const owned=permanent.unlockedExtras.includes(item.id),enabled=PR.extraEnabled(permanent,item.id);
    const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
    return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div><div class="upgrade-effect">'+(owned?'購入済み · '+(enabled?'ON':'OFF'):'未購入')+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
@@ -592,7 +592,7 @@ function renderUpgradeScreen(){
    const label=sealed?'封印を解く':equipped?'装備中':limit===0?'枠未解放':seals.length>=limit?'枠が満杯':'封印する';
    return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中 · 戦利品に出現しません':skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
   }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。出撃前ならいつでも変更可能。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
+  $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
  }else{
   const legacy=LEGACY_OFFERS.map(o=>{
    const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
@@ -607,9 +607,7 @@ function renderUpgradeScreen(){
     :o.description(nextValue);
    return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
   });
-  // Make rescue milestones discoverable; claiming still happens only on game over.
-  const rescueNote=`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`;
-  $('upgradeList').innerHTML=rescueNote+legacy.concat(extra).join('');
+  $('upgradeList').innerHTML=legacy.concat(extra).join('');
  }
 }
 function openUpgrade(){
@@ -1588,7 +1586,7 @@ function die(){
  save(); // Reward currency and claim mask are saved together.
  const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
- $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
+ $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`<br>🎁 挑戦回数ボーナス！ 魂の欠片 +${rescue} ✧`:''}`;
  $('deathRecords').innerHTML=records();runLegacyVisual=null;
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
