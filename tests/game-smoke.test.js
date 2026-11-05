@@ -2484,7 +2484,7 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  html=g.el.get('upgradeList').innerHTML;
  assert.match(html,/Lv.12\/12/);
  assert.match(html,/Lv.8\/8/);
- assert.match(html,/最大強化/);
+ assert.doesNotMatch(html,/最大強化/);
  assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
  assert.equal((html.match(/aria-valuenow="12"/g)||[]).length,2);
  assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
@@ -2622,12 +2622,17 @@ test('shop omits obvious instructions and milestone schedule while preserving re
  assert.doesNotMatch(base,/累計挑戦応援|受取済|未受取/);
  g.upgradeTab('seal');
  const seal=g.el.get('upgradeList').innerHTML;
- assert.match(seal,/初期装備中のスキルは封印できません/);
+ assert.doesNotMatch(seal,/枠使用中|初期装備中のスキルは封印できません/);
+ assert.match(seal,/封印枠 0\/4/);
  assert.doesNotMatch(seal,/出撃前ならいつでも変更可能/);
  g.upgradeTab('bonus');
  const bonus=g.el.get('upgradeList').innerHTML;
  assert.match(bonus,/開発初期モード/);
- assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ/);
+ assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ|購入済み ·|未購入/);
+ g.upgradeTab('loadout');
+ const loadout=g.el.get('upgradeList').innerHTML;
+ assert.match(loadout,/装備したスキルはLv.1で開始/);
+ assert.doesNotMatch(loadout,/変更は無料/);
  g.press('upgradeCloseBtn');loseRun(g);
  assert.match(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス \+20 ✧/);
  g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
@@ -2677,7 +2682,8 @@ test('bonus tab requires exactly 1000 fragments, unlocks once and persists free 
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0);assert.equal(g.state().permanent.unlockedExtras[0],'legacyVisual');
  assert.equal(g.state().permanent.enabledExtras.length,0,'purchase starts OFF');
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0,'no repeat charge');
- assert.match(g.el.get('upgradeList').innerHTML,/購入済み · OFF/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/購入済み · OFF|未購入/);
+ assert.match(g.el.get('upgradeList').innerHTML,/OFF → ON/);
  g.upgradeBuy('bonus-toggle','legacyVisual');assert.equal(g.artMode(),'legacy');assert.equal(g.state().souls,0);
  assert.match(g.el.get('upgradeList').innerHTML,/aria-pressed="true"/);
  let saved=JSON.parse(g.storage.get(perm));assert.deepEqual(saved.enabledExtras,['legacyVisual']);
