@@ -413,7 +413,7 @@ function setMode(mode){
  syncDeathInputLock();
  $('settingsBtn').disabled=['loading','phase','confirm'].includes(mode);
  syncTutorial();checkpoint();
- $('runStateLabel').textContent={title:'READY',loading:'LOADING',combat:game.practice?'PRACTICE':'IN BATTLE',phase:'SECOND MOVEMENT',victory:'CLEARED',reward:'LEVEL UP',relic:'RELIC OFFER',route:'CROSSROADS',room:'EVENT ROOM',routeSkill:'SKILL GIFT',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',upgrade:'UPGRADES'}[mode]||'';
+ $('runStateLabel').textContent={title:'READY',loading:'LOADING',combat:game.practice?'PRACTICE':'IN BATTLE',phase:'SECOND MOVEMENT',victory:'CLEARED',reward:'LEVEL UP',relic:'RELIC OFFER',route:'CROSSROADS',room:'EVENT ROOM',routeSkill:'SKILL GIFT',gameover:'GAME OVER',pause:'PAUSED',codex:'CODEX',upgrade:'UPGRADES'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
  $('floorBadge').textContent=game.practice?'⚔ PRACTICE':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
@@ -1745,28 +1745,27 @@ function populatePracticeEnemies(selected,allowUnseen=false){
 function renderSkillCodex(){
  const unlockedCount=SKILLS.filter(s=>permanent.unlockedSkills.includes(s.id)).length;
  $('codexSummary').textContent=unlockedCount+' / '+SKILLS.length+' 解放 · '+SYNERGIES.length+' 共鳴';
- if($('codexFilter'))$('codexFilter').hidden=true;
  $('codexList').innerHTML=SKILLS.map(s=>{
   if(!permanent.unlockedSkills.includes(s.id)){
-   return `<div class="codex-card locked"><div class="codex-symbol">🔒</div><strong>未解放</strong><small>${s.rarity.toUpperCase()} · ショップで解放後に登録</small></div>`;
+   return `<div class="codex-card upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">未解放</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · ショップで解放後に登録</div></div></div></div>`;
   }
   const syns=SYNERGIES.filter(syn=>syn.a===s.id||syn.b===s.id).map(syn=>{
    const partner=SK[syn.a===s.id?syn.b:syn.a];
    return `<div class="codex-synergy-hint"><b>${syn.name}</b>（+${partner.icon}${partner.name}）：${syn.desc}</div>`;
   }).join('');
-  return `<div class="codex-card ${s.rarity}"><div class="codex-symbol">${s.icon}</div><strong>${s.name}</strong><small>${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</small><p>${s.desc(1)}</p>${syns}</div>`;
+  return `<div class="codex-card upgrade-row ${s.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${s.icon}</span><div><div class="upgrade-name">${s.name}</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</div><div class="upgrade-effect">${s.desc(1)}</div>${syns}</div></div></div>`;
  }).join('');
 }
 function renderCodex(){
+ $('codexToolbar').hidden=codexTab==='skills';
  if($('codexTabs')){
   for(const btn of $('codexTabs').querySelectorAll('[data-codex-tab]')){
    const active=btn.dataset.codexTab===codexTab;
-   btn.className='codex-tab'+(active?' active':'');
+   btn.className='upgrade-tab'+(active?' active':'');
    btn.setAttribute('aria-pressed',String(active));
   }
  }
  if(codexTab==='skills'){renderSkillCodex();return;}
- if($('codexFilter'))$('codexFilter').hidden=false;
  const groups=P.all.map(m=>{
   if(m.rare)return {m,base:P.findByKey(m.id+':rare'),elite:null};
   return {m,base:P.findByKey(m.id+':normal'),elite:P.findByKey(m.id+':elite')};
@@ -1784,7 +1783,7 @@ function renderCodex(){
  });
  $('codexList').innerHTML=filtered.map(g=>{
   const seenBase=book.seen[g.base.bookKey],seenElite=g.elite?book.seen[g.elite.bookKey]:null;
-  if(!seenBase&&!seenElite)return '<div class="codex-card locked"><div class="codex-symbol">？</div><strong>未遭遇</strong></div>';
+  if(!seenBase&&!seenElite)return '<div class="codex-card codex-monster locked"><div class="codex-symbol">？</div><strong>未遭遇</strong></div>';
   const winsBase=book.defeated[g.base.bookKey]?.wins||0,winsElite=g.elite?(book.defeated[g.elite.bookKey]?.wins||0):0;
   const firstF=Math.min(seenBase?.firstFloor||999,seenElite?.firstFloor||999);
   const rank=g.m.rare?'rare':g.m.boss?'boss':seenElite?'elite':'normal';
@@ -1795,13 +1794,13 @@ function renderCodex(){
   const btns=g.m.rare
    ?`<div class="codex-practice-row"><button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 稽古場で練習</button></div>`
    :`<div class="codex-practice-row">${seenBase?`<button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 通常で稽古</button>`:'<button class="codex-practice" disabled>未遭遇 (通常)</button>'}${seenElite?`<button class="codex-practice elite-btn" data-practice="${g.elite.bookKey}">⚔ 精鋭で稽古</button>`:'<button class="codex-practice elite-btn" disabled>未遭遇 (精鋭)</button>'}</div>`;
-  return '<div class="codex-card '+rank+'"><div class="codex-symbol">'+(g.m.rare?'✦':g.m.boss?'♛':seenElite?'◆':'⚔')+'</div><strong>'+g.m.name+'</strong><small>'+stats+'</small><p>'+g.m.desc+'</p>'+btns+'</div>';
+  return '<div class="codex-card codex-monster '+rank+'"><div class="codex-symbol">'+(g.m.rare?'✦':g.m.boss?'♛':seenElite?'◆':'⚔')+'</div><strong>'+g.m.name+'</strong><small>'+stats+'</small><p>'+g.m.desc+'</p>'+btns+'</div>';
  }).join('')||'<div class="empty">該当する敵はまだいません。</div>';
  for(const btn of $('codexList').querySelectorAll('[data-practice]'))btn.addEventListener('click',()=>startPractice(btn.dataset.practice));
 }
 function openCodex(){
  if(deathInputBlocked()||!['title','gameover','codex'].includes(game.mode))return;
- stopScore();setMode('codex');renderCodex();
+ stopScore();setMode('codex');renderCodex();$('codexList').scrollTop=0;$('codexCloseBtn').focus?.();
 }
 function startPractice(key){
  if(!book.seen[key]||!P.findByKey(key))return;
@@ -2570,7 +2569,7 @@ $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode===
  const key=$('practiceEnemy').value;
  if((!DEV_MODE&&!book.seen[key])||!P.findByKey(key))return;
  clearGuardInput();game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
- }});$('startBtn').addEventListener('click',()=>requestStart(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('deathPracticeBtn')?.addEventListener('click',()=>{if(!deathInputBlocked()&&game.enemy?.bookKey&&book.seen[game.enemy.bookKey])startPractice(game.enemy.bookKey)});$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('codexTabs')?.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-codex-tab]');if(!btn)return;codexTab=btn.dataset.codexTab==='skills'?'skills':'monsters';renderCodex()});$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
+ }});$('startBtn').addEventListener('click',()=>requestStart(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('deathPracticeBtn')?.addEventListener('click',()=>{if(!deathInputBlocked()&&game.enemy?.bookKey&&book.seen[game.enemy.bookKey])startPractice(game.enemy.bookKey)});$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',()=>{renderCodex();$('codexList').scrollTop=0;});$('codexTabs')?.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-codex-tab]');if(!btn)return;codexTab=btn.dataset.codexTab==='skills'?'skills':'monsters';renderCodex();$('codexList').scrollTop=0});$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-relic]');
  if(btn)selectRelic(btn.dataset.relic);
 });
