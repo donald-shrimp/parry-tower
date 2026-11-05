@@ -1,4 +1,12 @@
-# 継続状態（2026-11-05）
+# 継続状態（2026-11-06）
+
+## 最新：v0.9.9の文言整理を公開
+
+[PR #34](https://github.com/donald-shrimp/parry-tower/pull/34)をレビューし、ショップ・封印・非戦闘部屋・設定・Devの重複説明を整理して公開。レビュー修正59fa540で、封印枠の行に使用数を残し、削除した見出しを探していたテストを更新。変更した本編・DevのJS参照に `copy=1` を付けた。公開コミットは997ae4fbf73fce4f3772e47b78736a1b30984ddd。PR候補と統合後のツリーは一致。
+
+ローカルと[PR CI 42061636111](https://github.com/donald-shrimp/parry-tower/actions/runs/42061636111)で全497件・画像8件・フォント2件・静的参照と試算が成功。聖堂・金床の対象選択、戻る、結果表示、中断再開を追加確認。[Pages 42063349756](https://github.com/donald-shrimp/parry-tower/actions/runs/42063349756)成功。本編・DevのHTMLと両画面が参照するJSの6 URLが公開コミットと一致。Work設定でブラウザー操作が無効のため、公開確認は配信ファイル照合と自動テストを使用。証跡は `test-results/pr34/`。統合後の[自動チェック 42063352090](https://github.com/donald-shrimp/parry-tower/actions/runs/42063352090)は記録時点で実行中。
+
+[本編](https://donald-shrimp.github.io/parry-tower/?copy=1) ／ [公開Dev](https://donald-shrimp.github.io/parry-tower/dev.html?copy=1)。文言PRの作業ツリーを分けてレビュー・統合した。次は公開後のフィードバック対応。
 
 ## 最新：v0.9.9 公開完了
 
