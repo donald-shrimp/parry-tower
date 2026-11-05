@@ -1,5 +1,11 @@
 # 継続状態（2026-11-06）
 
+## 最新：図鑑・稽古場のレイアウトを公開
+
+[PR #35](https://github.com/donald-shrimp/parry-tower/pull/35)を本編とDevに公開。見出し・戻るボタン・分類タブをショップに揃え、一覧だけをスクロールできるようにした。スマホ幅の分類タブは中央揃えで、魔物は元の縦型カードと均等幅の稽古ボタンを採用。公開コミットは `fb82495e25fd5fb117cae0fecdc9022facef042b`。
+
+ローカルの全497テスト・画像8件・フォント2件と[PRの静的チェック](https://github.com/donald-shrimp/parry-tower/actions/runs/42068762468)が成功。[Pagesの配信](https://github.com/donald-shrimp/parry-tower/actions/runs/42070567530)も成功。本編・DevのHTMLと変更したCSS・JSの7 URLを公開コミットの内容と照合した。ローカルの390px幅でタブの中央揃えと稽古ボタンの幅を確認。本番ブラウザーで既存の発見記録、魔物カード、スキルへの切り替えと絞り込みの非表示を確認した。
+
 ## 最新：v0.9.9の文言整理を公開
 
 [PR #34](https://github.com/donald-shrimp/parry-tower/pull/34)をレビューし、ショップ・封印・非戦闘部屋・設定・Devの重複説明を整理して公開。レビュー修正59fa540で、封印枠の行に使用数を残し、削除した見出しを探していたテストを更新。変更した本編・DevのJS参照に `copy=1` を付けた。公開コミットは997ae4fbf73fce4f3772e47b78736a1b30984ddd。PR候補と統合後のツリーは一致。
