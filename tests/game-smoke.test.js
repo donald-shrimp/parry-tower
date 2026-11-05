@@ -1147,7 +1147,7 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
   'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null]})};
  const g=makeHarness(seed);
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
- assert.match(g.el.get('upgradeList').innerHTML,/運命の封印/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 0\/4/);
  g.upgradeBuy('seal','thorns');
  assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'cannot select without a purchased slot');
  g.upgradeBuy('extra','sealSlots');
@@ -1170,6 +1170,8 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
  g.press('upgradeCloseBtn');
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
  assert.match(g.el.get('upgradeList').innerHTML,/封印中/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 2\/4/);
+ assert.match(g.el.get('upgradeList').innerHTML,/使用 2枠/);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')).sealedSkills,['overcharge','thorns']);
  g.press('upgradeCloseBtn');g.press('startBtn');
  assert.deepEqual(Array.from(g.state().sealedSkillIds),['overcharge','thorns']);
@@ -1644,7 +1646,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9"'),asset);
+  for(const [asset,query] of [['routes','&copy=1'],['events','']])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9'+query+'"'),asset);
   assert.match(html,/v0\.9\.9/);
  }
  const {g,d}=makeCrossroads(4);
