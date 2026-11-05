@@ -61,7 +61,7 @@ test('shop, routes and room interactions show outcomes without redundant instruc
  assert.match(game,/ラン中の通常抽選は変わりません/);
  assert.match(game,/封印枠 /);
  assert.match(game,/戦利品の抽選から除外/);
- assert.match(game,/初期装備中/,'gameplay can still block equipped seals'); 
+ assert.match(game,/equipped=permanent\.equipped\.includes\(skill\.id\)/,'equipped seals are still blocked in game logic'); 
  assert.match(game,/取り外した遺物は、このランでは再取得できません/);
  assert.match(game,/const rescue=grantRescueRewards\(\)/,'rescue payments remain wired');
  assert.match(game,/累計挑戦ボーナス/,'existing gameover reward presentation stays');
