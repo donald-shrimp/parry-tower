@@ -103,7 +103,7 @@
  }
  const EXTRAS=Object.freeze([
   Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の見た目に。スキンと併用できません。'}),
-  Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。紅・紫・翠から選べます。',choices:Object.freeze([
+  Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。',choices:Object.freeze([
    Object.freeze({id:'crimson',name:'紅',fill:'#fff0f2',glow:'#f15472',edge:'#ff90ad',core:'#fff8fc'}),
    Object.freeze({id:'violet',name:'紫',fill:'#f6eeff',glow:'#a66bff',edge:'#cf9bff',core:'#fff9ff'}),
    Object.freeze({id:'jade',name:'翠',fill:'#effff7',glow:'#35cfaa',edge:'#84efca',core:'#f8fffc'})

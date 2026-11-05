@@ -562,7 +562,7 @@ function renderUpgradeScreen(){
    const selected=permanent.equipped[i];
    const options=owned.filter(skill=>!permanent.equipped.some((id,j)=>j!==i&&id===skill.id))
     .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
-   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
+   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
   }).join('');
   const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
   const skillRows=SKILLS.map(skill=>{
@@ -573,43 +573,41 @@ function renderUpgradeScreen(){
    }).join('')}</div>`:'';
    return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
   }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
+  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
  }else if(upgradeTab==='bonus'&&bonusView==='skins'){
   $('upgradeList').innerHTML=renderSkinPicker();
  }else if(upgradeTab==='bonus'){
-  $('upgradeList').innerHTML=bonusNavigation()+'<p class="upgrade-note">購入は一度だけ。購入後はここで無料でオン・オフできます。</p>'+PR.EXTRAS.map(item=>{
+  $('upgradeList').innerHTML=bonusNavigation()+PR.EXTRAS.map(item=>{
    const owned=permanent.unlockedExtras.includes(item.id),enabled=PR.extraEnabled(permanent,item.id);
    const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
-   return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div><div class="upgrade-effect">'+(owned?'購入済み · '+(enabled?'ON':'OFF'):'未購入')+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
+   return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
   }).join('');
  }else if(upgradeTab==='seal'){
   const limit=PR.value(permanent,'sealSlots'),seals=permanent.sealedSkills;
   const nextCost=PR.costNext(permanent,'sealSlots'),full=!Number.isFinite(nextCost);
-  const upgrade=`<div class="upgrade-row"><div class="upgrade-main"><span class="upgrade-symbol">🔮</span><div><div class="upgrade-name">封印枠 ${limit}/4</div><div class="upgrade-effect">戦利品の抽選から除外。封印と解除は何度でも無料。</div></div></div><button type="button" class="upgrade-buy" data-action="extra" data-key="sealSlots" ${full||meta.coins<nextCost?'disabled':''}>${full?'MAX':nextCost+' ✧'}</button></div>`;
+  const upgrade=`<div class="upgrade-row"><div class="upgrade-main"><span class="upgrade-symbol">🔮</span><div><div class="upgrade-name">封印枠 ${limit}/4</div><div class="upgrade-effect">戦利品の抽選から除外。使用 ${seals.length}枠</div></div></div><button type="button" class="upgrade-buy" data-action="extra" data-key="sealSlots" ${full||meta.coins<nextCost?'disabled':''}>${full?'MAX':nextCost+' ✧'}</button></div>`;
   const rows=SKILLS.map(skill=>{
    const sealed=seals.includes(skill.id),equipped=permanent.equipped.includes(skill.id);
    const blocked=!sealed&&(equipped||seals.length>=limit);
    const label=sealed?'封印を解く':equipped?'装備中':limit===0?'枠未解放':seals.length>=limit?'枠が満杯':'封印する';
-   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中 · 戦利品に出現しません':skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
+   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中':skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
   }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。出撃前ならいつでも変更可能。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
+  $('upgradeList').innerHTML=upgrade+rows;
  }else{
   const legacy=LEGACY_OFFERS.map(o=>{
    const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
    const next=PR.baseValue({...meta,[o.id]:level+1},o.id);
    return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),
-    desc:`現在：${o.effect} +${now}${level===o.max?'（最大強化）':` → Lv.${level+1}：+${next}`}`});
+    desc:`現在：${o.effect} +${now}${level===o.max?'':` → Lv.${level+1}：+${next}`}`});
   });
   const extra=PR.UPGRADES.filter(o=>(o.group==='base'||o.group==='special')&&o.id!=='sealSlots').map(o=>{
    const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
    const desc=o.id==='wardInheritance'
-    ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:'（最大強化）'}（通常上限内）`
+    ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:''}（通常上限内）`
     :o.description(nextValue);
    return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
   });
-  // Make rescue milestones discoverable; claiming still happens only on game over.
-  const rescueNote=`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`;
-  $('upgradeList').innerHTML=rescueNote+legacy.concat(extra).join('');
+  $('upgradeList').innerHTML=legacy.concat(extra).join('');
  }
 }
 function openUpgrade(){
@@ -879,6 +877,7 @@ function renderRoom(){
  $('roomKicker').textContent=id==='event'?'MYSTERIOUS ENCOUNTER':id==='merchant'?'TRAVELLING MERCHANT':'A MOMENT OF RESPITE';
  $('roomIcon').textContent=event?.icon||room.icon;
  $('roomTitle').textContent=event?.name||room.name;
+ $('roomDescription').hidden=false;
  $('roomDescription').textContent=event?.description||room.desc;
  $('roomNote').textContent='🪙 塔貨 '+game.towerCoins+'　♡ '+Math.ceil(game.hp)+' / '+game.maxHp+'　🛡 '+Math.ceil(game.shield);
  if(game.roomStage==='result'){
@@ -897,19 +896,19 @@ function renderRoom(){
  if(id==='merchant'&&game.roomStage?.startsWith('target:')){
   const itemId=game.roomStage.slice(7),item=EV.ITEMS_BY_ID[itemId];
   $('roomTitle').textContent=item.name;
-  $('roomDescription').textContent='対象を選んで購入 · '+item.cost+' 🪙（この挑戦だけ有効）';
+  $('roomDescription').textContent=item.cost+' 🪙';
   $('roomActions').innerHTML=merchantTargets(itemId).map(target=>{
    if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)),game.towerCoins<item.cost)}
    const skill=SK[target],cap=skillCap(target),next=cap+(itemId==='breakthrough'?1:0);
    return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),
     skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1)+' / 上限 '+cap+' → '+next+
     (itemId==='breakthrough'?'（限界突破 '+((game.skillBreaks[target]||0)+1)+'/2）':''),game.towerCoins<item.cost);
-  }).join('')+roomActionButton('back','← 商品一覧に戻る','塔貨は消費しません');
+  }).join('')+roomActionButton('back','← 商品一覧に戻る');
   return;
  }
  if(id==='event'&&game.roomStage==='target:sanctuary_train'){
   $('roomTitle').textContent='共鳴の聖堂 — スキル強化';
-  $('roomDescription').textContent='Lv.+1する習得済みスキルを選択';
+  $('roomDescription').hidden=true;
   $('roomActions').innerHTML=merchantTargets('training').map(target=>{
    const skill=SK[target];
    return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1));
@@ -918,7 +917,7 @@ function renderRoom(){
  }
  if(id==='event'&&game.roomStage==='target:forge_polish'){
   $('roomTitle').textContent='古の金床 — 遺物研磨';
-  $('roomDescription').textContent='研磨する所持遺物を選択';
+  $('roomDescription').hidden=true;
   $('roomActions').innerHTML=merchantTargets('polish').map(target=>{
    const r=RR.BY_ID[target];
    return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)));

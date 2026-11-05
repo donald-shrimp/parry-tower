@@ -1147,7 +1147,7 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
   'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null]})};
  const g=makeHarness(seed);
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
- assert.match(g.el.get('upgradeList').innerHTML,/運命の封印/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 0\/4/);
  g.upgradeBuy('seal','thorns');
  assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'cannot select without a purchased slot');
  g.upgradeBuy('extra','sealSlots');
@@ -1170,6 +1170,8 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
  g.press('upgradeCloseBtn');
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
  assert.match(g.el.get('upgradeList').innerHTML,/封印中/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 2\/4/);
+ assert.match(g.el.get('upgradeList').innerHTML,/使用 2枠/);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')).sealedSkills,['overcharge','thorns']);
  g.press('upgradeCloseBtn');g.press('startBtn');
  assert.deepEqual(Array.from(g.state().sealedSkillIds),['overcharge','thorns']);
@@ -1644,7 +1646,7 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9"'),asset);
+  for(const [asset,query] of [['routes','&copy=1'],['events','']])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9'+query+'"'),asset);
   assert.match(html,/v0\.9\.9/);
  }
  const {g,d}=makeCrossroads(4);
@@ -2484,7 +2486,7 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  html=g.el.get('upgradeList').innerHTML;
  assert.match(html,/Lv.12\/12/);
  assert.match(html,/Lv.8\/8/);
- assert.match(html,/最大強化/);
+ assert.doesNotMatch(html,/最大強化/);
  assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
  assert.equal((html.match(/aria-valuenow="12"/g)||[]).length,2);
  assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
@@ -2614,23 +2616,30 @@ test('rescue grants are separate from soul gain and developer mode never persist
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
 
-test('base upgrade panel advertises run milestones and updates claimed states after defeat',()=>{
+test('shop omits obvious instructions and milestone schedule while preserving rewards',()=>{
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
- const early=g.el.get('upgradeList').innerHTML;
- assert.match(early,/累計挑戦応援（現在 2回）/);
- assert.match(early,/○ 未受取 3回：\+20 ✧/);
- assert.match(early,/○ 未受取 8回：\+35 ✧/);
- assert.match(early,/○ 未受取 15回：\+60 ✧/);
+ const base=g.el.get('upgradeList').innerHTML;
+ assert.match(base,/生命の祝福/);
+ assert.doesNotMatch(base,/累計挑戦応援|受取済|未受取/);
+ g.upgradeTab('seal');
+ const seal=g.el.get('upgradeList').innerHTML;
+ assert.doesNotMatch(seal,/枠使用中|初期装備中のスキルは封印できません/);
+ assert.match(seal,/封印枠 0\/4/);
+ assert.doesNotMatch(seal,/出撃前ならいつでも変更可能/);
+ g.upgradeTab('bonus');
+ const bonus=g.el.get('upgradeList').innerHTML;
+ assert.match(bonus,/開発初期モード/);
+ assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ|購入済み ·|未購入/);
+ g.upgradeTab('loadout');
+ const loadout=g.el.get('upgradeList').innerHTML;
+ assert.match(loadout,/装備したスキルはLv.1で開始/);
+ assert.doesNotMatch(loadout,/変更は無料/);
  g.press('upgradeCloseBtn');loseRun(g);
+ assert.match(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス \+20 ✧/);
  g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
- const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/累計挑戦応援（現在 3回）/);
- assert.match(after,/✓ 受取済 3回：\+20 ✧/);
- assert.match(after,/○ 未受取 8回：\+35 ✧/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/累計挑戦応援|受取済|未受取/);
 });
-
-
 test('production music follows every zone boundary and repeats with the existing tower map',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
  const themes=require('../assets/stage-music').themes;
@@ -2675,7 +2684,8 @@ test('bonus tab requires exactly 1000 fragments, unlocks once and persists free 
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0);assert.equal(g.state().permanent.unlockedExtras[0],'legacyVisual');
  assert.equal(g.state().permanent.enabledExtras.length,0,'purchase starts OFF');
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0,'no repeat charge');
- assert.match(g.el.get('upgradeList').innerHTML,/購入済み · OFF/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/購入済み · OFF|未購入/);
+ assert.match(g.el.get('upgradeList').innerHTML,/OFF → ON/);
  g.upgradeBuy('bonus-toggle','legacyVisual');assert.equal(g.artMode(),'legacy');assert.equal(g.state().souls,0);
  assert.match(g.el.get('upgradeList').innerHTML,/aria-pressed="true"/);
  let saved=JSON.parse(g.storage.get(perm));assert.deepEqual(saved.enabledExtras,['legacyVisual']);
