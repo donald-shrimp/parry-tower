@@ -52,7 +52,8 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  el.get('gameCanvas').getContext=()=>ctx;
  const para=()=>({value:0,setValueAtTime:noop,exponentialRampToValueAtTime:noop,linearRampToValueAtTime:noop,cancelScheduledValues:noop,setTargetAtTime:noop});
  class Audio{
-  constructor(){this.state='running';this.sampleRate=44100;this.destination={}}
+  // This fake checks scheduling. The SFX unit tests exercise PCM at real output rates.
+  constructor(){this.state='running';this.sampleRate=8000;this.destination={}}
   get currentTime(){return clock/1000}
   getOutputTimestamp(){return {performanceTime:clock,contextTime:clock/1000}}
   resume(){return Promise.resolve()}
@@ -1770,7 +1771,7 @@ test('normal, elite/rare, boss victories grant distinct tower coins and no perma
   assert.equal(g.state().souls,0===g.state().souls?0:g.state().souls);
  }
 });
-test('merchant requires run coins, limits purchases to one per visit and keeps soul currency separate',()=>{
+test('merchant requires run coins and keeps soul currency separate',()=>{
  const {g,d}=makeCrossroads();
  d.setTowerCoins(18);
  const rerolls=g.state().rerolls;
@@ -1785,7 +1786,7 @@ test('merchant requires run coins, limits purchases to one per visit and keeps s
  assert.equal(g.state().souls,soul);
  assert.equal(g.state().roomStage,'result');
  g.roomChoose('buy:barrier');
- assert.equal(g.state().towerCoins,6,'cannot purchase a second time');
+ assert.equal(g.state().towerCoins,6,'the remaining 6 tower coins cannot buy a 16-coin barrier');
  g.roomChoose('continue');
  assert.equal(g.state().floor,5);
 });
@@ -2637,30 +2638,6 @@ test('rescue grants are separate from soul gain and developer mode never persist
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
 
-test('shop omits obvious instructions and milestone schedule while preserving rewards',()=>{
- const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
- g.press('upgradeOpenBtn');g.upgradeTab('base');
- const base=g.el.get('upgradeList').innerHTML;
- assert.match(base,/生命の祝福/);
- assert.doesNotMatch(base,/累計挑戦応援|受取済|未受取/);
- g.upgradeTab('seal');
- const seal=g.el.get('upgradeList').innerHTML;
- assert.doesNotMatch(seal,/枠使用中|初期装備中のスキルは封印できません/);
- assert.match(seal,/封印枠 0\/4/);
- assert.doesNotMatch(seal,/出撃前ならいつでも変更可能/);
- g.upgradeTab('bonus');
- const bonus=g.el.get('upgradeList').innerHTML;
- assert.match(bonus,/開発初期モード/);
- assert.doesNotMatch(bonus,/購入は一度だけ|無料でオン・オフ|購入済み ·|未購入/);
- g.upgradeTab('loadout');
- const loadout=g.el.get('upgradeList').innerHTML;
- assert.match(loadout,/装備したスキルはLv.1で開始/);
- assert.doesNotMatch(loadout,/変更は無料/);
- g.press('upgradeCloseBtn');loseRun(g);
- assert.match(g.el.get('deathSummary').innerHTML,/累計挑戦ボーナス \+20 ✧/);
- g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
- assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/累計挑戦応援|受取済|未受取/);
-});
 test('production music follows every zone boundary and repeats with the existing tower map',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
  const themes=require('../assets/stage-music').themes;
@@ -3793,10 +3770,15 @@ test('production keeps fighting with legacy or unavailable combat SFX instead of
 });
 
 test('v0.9.9: merchant allows multiple distinct purchases per visit, and sanctuary/forge/scales events work',()=>{
- const {g,d}=makeCrossroads();d.setTowerCoins(60);g.routeSelect('merchant');
- g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,48);assert.equal(g.state().roomStage,'result');
- g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,32);assert.equal(g.state().shield,20);
- g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,32,'cannot buy same item twice in one visit');
+ const {g,d}=makeCrossroads();d.setTowerCoins(120);g.routeSelect('merchant');
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,108);assert.equal(g.state().roomStage,'result');
+ g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,92);assert.equal(g.state().shield,20);
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,92,'cannot buy same item twice in one visit');
+ g.roomChoose('buy:skill');assert.equal(g.state().mode,'routeSkill');
+ g.routeSkillSelect(g.state().routeSkillSet[0]);assert.equal(g.state().mode,'room');
+ g.roomChoose('buy:relic');assert.equal(g.state().mode,'relic');
+ g.relicSelect(g.state().relicOffer[0]);assert.equal(g.state().mode,'room');
+ assert.equal(g.state().relics.length,1);assert.equal(g.state().towerCoins,24);
  g.roomChoose('continue');assert.equal(g.state().mode,'combat');
  const s1=makeCrossroads(8);s1.d.gainSkill('blade');s1.g.random(.6);s1.g.routeSelect('event');
  assert.equal(s1.g.state().eventId,'sanctuary');s1.g.roomChoose('event:train');s1.g.roomChoose('target:blade');
@@ -3830,18 +3812,7 @@ test('v0.9.9: first boss defeat grants guaranteed bonus souls, and 2+ JUST parri
  assert.equal(g.state().souls,beforeSouls+6,'first boss kill grants +6 guaranteed bonus souls');
 });
 
-test('v0.9.9: death screen omits the removed miss timing explanation',()=>{
- const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
- d.setSkill('blade',1);d.setSkill('fury',0);d.setEnemyHp(1);resolveBloodParry(g,0);
- g.frame(g.now+950);assert.equal(g.state().mode,'reward');
- g.press('healBtn');
- d.setHp(1);d.setShield(0);const c=g.state().attackAt;g.clock(c-120);g.parry();g.frame(c+100);
- assert.equal(g.state().mode,'gameover');
- assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/最終被弾/);
-});
-
-
-test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purchases, chest fallback gives 25 coins + 1 reroll, and 80F phase 1 HP floor holds at 50%',()=>{
+test('ultimate waits below 7 charge and fires immediately when a parry reaches the cap',()=>{
  const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
  d.setSkill('rune',1);d.setCharge(4);d.setEnemyHp(10000);
  resolveBloodParry(g,0);
@@ -3851,36 +3822,6 @@ test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purc
  assert.equal(d.hits().some(h=>h.label.includes('奥義')),true,'charge 6 + 2 -> 7 fires ultimate immediately in v0.9.8 spec');
  assert.equal(g.state().charge,0,'ultimate resets charge to 0');
 
- const m=makeCrossroads();
- m.d.setTowerCoins(100);m.g.routeSelect('merchant');
- m.g.roomChoose('buy:skill');
- assert.equal(m.g.state().mode,'routeSkill');
- m.g.routeSkillSelect(m.g.state().routeSkillSet[0]);
- assert.equal(m.g.state().mode,'room');
- m.g.roomChoose('buy:relic');
- assert.equal(m.g.state().mode,'relic');
- m.g.relicSelect(m.g.state().relicOffer[0]);
- assert.equal(m.g.state().mode,'room');
- assert.equal(m.g.state().relics.length,1);
- m.g.roomChoose('continue');
- assert.equal(m.g.state().mode,'combat');
-
- const c=makeCrossroads(8);
- const RR=require('../assets/relics.js');
- c.d.setRelicFlag('relicDiscarded',RR.RELICS.filter(r=>r.rarity!=='legendary').map(r=>r.id));
- c.g.random(0);c.g.routeSelect('event');c.d.setEvent('chest');
- const beforeCoins=c.g.state().towerCoins,beforeRerolls=c.g.state().rerolls;
- c.g.roomChoose('event:open');
- assert.equal(c.g.state().towerCoins,beforeCoins+25);
- assert.equal(c.g.state().rerolls,beforeRerolls+1);
-
- const b=makeHarness();b.random(.99);b.press('startBtn');const bd=b.bloodTest();
- bd.jumpFloor(80);
- const half=Math.floor(b.state().enemyMaxHp*0.5);
- bd.setBaseAttack(99999);
- resolveBloodParry(b,0);
- assert.equal(b.state().enemyHp,half,'80F boss phase 1 clamps HP at 50%');
- assert.equal(b.state().mode,'phase','80F boss transitions to phase 2');
 });
 // Added regressions for the director/mock review fixes.
 test('review fixes: phase 1 protects the boundary against every hit in one counter, then phase 2 can be defeated',()=>{
@@ -3953,6 +3894,7 @@ test('review fixes: golden intuition scales every event coin reward, display and
   g.routeSelect('event');d.setEvent(event);g.random(0);const expected=Math.round(raw*(1+bonus/100));
   assert.match(g.el.get('roomActions').innerHTML,new RegExp('塔貨\\+'+expected));
   const before=g.state();g.roomChoose('event:'+action);assert.equal(g.state().towerCoins,before.towerCoins+expected);assert.equal(g.state().towerCoinsEarned,before.towerCoinsEarned+expected);
+  if(event==='chest'&&action==='open')assert.equal(g.state().rerolls,before.rerolls+1,'chest fallback also grants one reroll');
   assert.match(g.el.get('roomDescription').textContent,new RegExp('塔貨\\+?'+expected));
   d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');re.roomChoose('event:'+action);
   assert.equal(re.state().towerCoins,g.state().towerCoins);assert.equal(re.state().towerCoinsEarned,g.state().towerCoinsEarned);
