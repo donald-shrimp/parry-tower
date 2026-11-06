@@ -12,8 +12,8 @@
  const SURVIVAL_EXTRA_COSTS=[100,130,165,205,250,300,360,240,340];
  const BASE_UPGRADES=Object.freeze([
   Object.freeze({id:'life',icon:'♡',name:'生命の祝福',effect:'最大HP',
-   max:14,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
-   bonuses:Object.freeze(Array.from({length:14},(_,i)=>(i+1)*10))}),
+   max:17,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS,380,420,460]),
+   bonuses:Object.freeze(Array.from({length:17},(_,i)=>(i+1)*10))}),
   Object.freeze({id:'attack',icon:'⚔',name:'剣の研鑽',effect:'基礎反撃ダメージ',
    max:8,costs:Object.freeze([...ORIGINAL_BASE_COSTS,150,210,285]),
    bonuses:Object.freeze(Array.from({length:8},(_,i)=>i<5?(i+1)*3:15+(i-4)*2))}),

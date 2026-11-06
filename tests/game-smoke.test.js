@@ -2529,7 +2529,7 @@ test('legacy 5/5 purchases continue through the expanded tiers, then stop at cap
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify(prev)});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  let html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/生命の祝福[^]*?Lv.5\/14/);
+ assert.match(html,/生命の祝福[^]*?Lv.5\/17/);
  assert.match(html,/剣の研鑽[^]*?Lv.5\/8/);
  assert.match(html,/守護の祈り[^]*?Lv.5\/14/);
  assert.match(html,/現在：最大HP \+50 → Lv.6：\+60/);
@@ -2542,33 +2542,39 @@ test('legacy 5/5 purchases continue through the expanded tiers, then stop at cap
  assert.equal(g.state().souls,9650,'first extra HP/attack/ward tiers cost 100+150+100');
  for(let i=0;i<8;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
  for(let i=0;i<2;i++)g.upgradeBuy('legacy','attack');
- const expected=10000-((2320-230)*2)-(875-230);
+ assert.match(g.el.get('upgradeList').innerHTML,/現在：最大HP \+140 → Lv.15：\+150/);
+ for(let i=0;i<3;i++)g.upgradeBuy('legacy','life');
+ const expected=10000-(3580-230)-(2320-230)-(875-230);
  assert.equal(g.state().souls,expected);
  const saved=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
- assert.deepEqual([saved.life,saved.attack,saved.ward],[14,8,14]);
+ assert.deepEqual([saved.life,saved.attack,saved.ward],[17,8,14]);
  assert.equal(saved.bestFloor,60);
  assert.equal(saved.runs,25);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),{...PR.defaults(),skinRecords:{normal:{bestFloor:60,bestCombo:0,runs:25}}},
   'legacy upgrades preserve equipment and migrate only the pre-skin normal record');
  html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/Lv.14\/14/);
+ assert.match(html,/生命の祝福[^]*?Lv.17\/17/);
+ assert.match(html,/守護の祈り[^]*?Lv.14\/14/);
  assert.match(html,/Lv.8\/8/);
  assert.doesNotMatch(html,/最大強化/);
  assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
- assert.equal((html.match(/aria-valuenow="14"/g)||[]).length,2);
+ assert.equal((html.match(/aria-valuenow="17"/g)||[]).length,1);
+ assert.equal((html.match(/aria-valuenow="14"/g)||[]).length,1);
  assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
  g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','attack');g.upgradeBuy('legacy','ward');
  g.upgradeBuy('legacy','invalid');
  assert.equal(g.state().souls,expected,'a maxed or unknown upgrade cannot spend currency');
- g.press('upgradeCloseBtn');g.press('startBtn');
- assert.equal(g.state().maxHp,205,'14 HP levels give +140 HP');
- assert.equal(g.state().shield,112,'14 ward levels give +112 initial shield');
- assert.equal(g.state().souls,expected);
- const d=g.bloodTest();
+ const re=reloadHarness(g);re.press('startBtn');
+ assert.equal(re.state().maxHp,235,'17 HP levels give +170 HP');
+ assert.equal(re.state().shield,112,'14 ward levels give +112 initial shield');
+ assert.equal(re.state().souls,expected);
+ const d=re.bloodTest();
+ assert.equal(d.gainSkill('heal'),true);
+ assert.equal(re.state().maxHp,254,'Life Vessel adds 8% of 235 HP, rounded up');
  assert.equal(d.info().baseAtk,46,'five original +3 and three new +2 levels give 25+21 attack');
  d.setEnemyHp(100000);d.setCombo(0);
- resolveBloodParry(g,20);
- assert.ok(g.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
+ resolveBloodParry(re,20);
+ assert.ok(re.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
 });
 test('new base tiers stay affordable only at exact price and maintain old first five prices',()=>{
  const seed={'parryTowerPrototype_v1':JSON.stringify({coins:99,life:5})};
@@ -2593,7 +2599,7 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
  assert.equal(dev.state().souls,640,'level 12 costs 360 shards');
  const invalid=makeHarness({'parryTowerPrototype_v1':JSON.stringify({life:999,ward:999,attack:999,coins:10})});
  invalid.press('startBtn');
- assert.equal(invalid.state().maxHp,205);
+ assert.equal(invalid.state().maxHp,235);
  assert.equal(invalid.state().shield,112);
 });
 
@@ -3383,7 +3389,7 @@ test('life vessel updates an old checkpoint maximum with its frozen blessing and
  for(let i=0;i<3;i++)assert.equal(d.gainSkill('heal'),true);
  d.setHp(100);const old=d.checkpoint();
  Object.assign(old.game,{rawMaxHp:240,maxHp:240});
- const re=makeHarness({[RUN_KEY]:JSON.stringify(old),parryTowerPrototype_v1:JSON.stringify({life:14})});
+ const re=makeHarness({[RUN_KEY]:JSON.stringify(old),parryTowerPrototype_v1:JSON.stringify({life:17})});
  re.press('continueBtn');
  assert.equal(re.state().mode,'combat');
  assert.deepEqual([re.state().maxHp,re.state().hp],[242,100]);

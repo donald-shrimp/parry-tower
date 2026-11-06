@@ -130,7 +130,7 @@ test('Fate Seal load normalizes duplicates, malformed IDs, future removals and e
 test('v0.9.3 baseline stat tiers retain all five original prices and effects',()=>{
  const defs=Object.fromEntries(P.BASE_UPGRADES.map(x=>[x.id,x]));
  assert.equal(P.BASE_UPGRADES.length,3);
- assert.deepEqual(P.BASE_UPGRADES.map(x=>x.max),[14,8,14]);
+ assert.deepEqual(P.BASE_UPGRADES.map(x=>x.max),[17,8,14]);
  for(const id of ['life','attack','ward']){
   assert.deepEqual([...defs[id].costs.slice(0,5)],[8,21,40,65,96]);
   for(let level=0;level<5;level++)
@@ -146,12 +146,13 @@ test('new survivability levels, slowed attack growth, prices and upgrade caps ar
   assert.deepEqual(Array.from({length:9},(_,i)=>P.baseCostNext({[id]:i+5},id)),[100,130,165,205,250,300,360,240,340]);
  assert.deepEqual(Array.from({length:3},(_,i)=>P.baseCostNext({attack:i+5},'attack')),[150,210,285]);
  assert.equal(P.baseCostNext({attack:8},'attack'),Infinity);
- assert.equal(P.baseCostNext({life:14},'life'),Infinity);
+ assert.deepEqual([14,15,16].map(l=>P.baseCostNext({life:l},'life')),[380,420,460]);
+ assert.equal(P.baseCostNext({life:17},'life'),Infinity);
  assert.equal(P.baseCostNext({ward:14},'ward'),Infinity);
- assert.deepEqual([12,13,14].map(l=>P.baseValue({life:l},'life')),[120,130,140]);
+ assert.deepEqual([12,13,14,15,16,17].map(l=>P.baseValue({life:l},'life')),[120,130,140,150,160,170]);
  assert.deepEqual([12,13,14].map(l=>P.baseValue({ward:l},'ward')),[96,104,112]);
  assert.deepEqual([5,6,7,8].map(l=>P.baseValue({attack:l},'attack')),[15,17,19,21]);
- assert.equal(P.BASE_UPGRADES[0].costs.reduce((a,b)=>a+b),2320);
+ assert.equal(P.BASE_UPGRADES[0].costs.reduce((a,b)=>a+b),3580);
  assert.equal(P.BASE_UPGRADES[1].costs.reduce((a,b)=>a+b),875);
 });
 test('base-stat reads normalize legacy, malformed and forged levels without changing permanent-save v1',()=>{
