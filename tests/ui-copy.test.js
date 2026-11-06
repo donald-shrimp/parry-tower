@@ -7,13 +7,16 @@ const read=name=>fs.readFileSync(name,'utf8');
 test('run choices show the consequences of spending, replacing or discarding items',()=>{
  const game=read('assets/game.js');
  const routes=read('assets/routes.js');
+ const shop=require('../assets/shop-view.js');
+ const shopInput={meta:{coins:0},permanent:require('../assets/progression.js').defaults(),
+  bonusView:'items',skillContext:{baseAtk:25,bladeLevel:0,baseHp:65}};
  assert.match(game,/room\.risk/);
  assert.match(game,/交換が確定するまで、元の遺物は失われません。/);
  assert.match(game,/取り外した遺物は、このランでは再取得できません。/);
  assert.match(game,/イベントの支払いは被弾扱いになりません。/);
  assert.match(game,/失敗してもHP1で生存。/);
- assert.match(game,/戦利品の抽選から除外/);
- assert.match(game,/ラン中の通常抽選は変わりません/);
+ assert.match(shop.render({...shopInput,tab:'seal'}).listHtml,/戦利品の抽選から除外/);
+ assert.match(shop.render({...shopInput,tab:'loadout'}).listHtml,/ラン中の通常抽選は変わりません/);
  assert.match(routes,/通常スキル報酬なし・コンボ維持/);
  assert.match(routes,/ラン限定の強化/);
 });

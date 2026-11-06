@@ -69,9 +69,8 @@ function baseAttackScale(){return CombatMath.baseAttackScale(game?.baseAtk);}
 function skillAtkScale(){return CombatMath.skillAtkScale(game?.baseAtk,lvl('blade'));}
 function runBaseHp(){return CombatMath.runBaseHp(game.lifeBonus??PR.baseValue(meta,'life'));}
 function hpSkillScale(){return CombatMath.hpSkillScale(runBaseHp(),lvl('heal'));}
-function describeSkill(id,level){
- return SkillCatalog.describe(id,level,{baseAtk:game?.baseAtk,bladeLevel:lvl('blade'),baseHp:runBaseHp()});
-}
+function skillDescriptionContext(){return {baseAtk:game?.baseAtk,bladeLevel:lvl('blade'),baseHp:runBaseHp()};}
+function describeSkill(id,level){return SkillCatalog.describe(id,level,skillDescriptionContext());}
 let codexTab='monsters';
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
@@ -417,90 +416,14 @@ function grantRescueRewards(){
  return reward.bonus;
 }
 const LEGACY_OFFERS=PR.BASE_UPGRADES;
-function upgradeRow(o){
- const full=o.level>=o.max,price=full?Infinity:o.cost;
- const effect=o.effect?`${o.effect} `:'';
- const next=full?'':` → Lv.${o.level+1}：${o.next}`;
- const desc=`現在：${effect}${o.current}${next}${o.note||''}`;
- const progress=o.max>1
-  ?`<div class="upgrade-progress" role="progressbar" aria-label="${o.name} 強化進捗" aria-valuemin="0" aria-valuemax="${o.max}" aria-valuenow="${o.level}">${Array.from({length:o.max},(_,i)=>`<span class="${i<o.level?'filled':''}"></span>`).join('')}</div>`
-  :'';
- return `<div class="upgrade-row upgrade-tier"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${desc}</div>${progress}</div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
-}
-function bonusNavigation(){
- return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
-}
-function renderSkinPicker(){
- for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const owned=PR.ownsSkin(permanent,skin.id),wearing=!PR.extraEnabled(permanent,'legacyVisual')&&skin.id===permanent.equippedSkin;
-  const action=owned?'skin-equip':'skin-buy';
-  const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':skin.cost+' ✧')+'</button>';
-  const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0};
-  return '<article class="skin-card '+(wearing?'selected':'')+'" style="--skin-color:'+skin.color+'"><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><p class="skin-look">自己記録：'+r.bestFloor+'F / '+r.bestCombo+' COMBO</p><div class="skin-actions">'+buy+'</div></article>';
- }).join('')+'</div>';
-}
 function renderUpgradeScreen(){
- if(upgradeTab==='skills')upgradeTab='loadout';
- if(upgradeTab==='special')upgradeTab='base';
- $('upgradeCoins').textContent=meta.coins+' ✧';
- $('soulFragmentsLabel').textContent=meta.coins;
- const tabs=[['loadout','初期スキル'],['base','能力強化'],['seal','運命の封印'],['bonus','おまけ']];
- $('upgradeTabs').innerHTML=tabs.map(([id,name])=>`<button type="button" class="upgrade-tab ${upgradeTab===id?'active':''}" aria-pressed="${upgradeTab===id}" data-tab="${id}">${name}</button>`).join('');
- if(upgradeTab==='loadout'){
-  const owned=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)&&!permanent.sealedSkills.includes(skill.id));
-  const rows=PR.SLOT_COSTS.map((cost,i)=>{
-   if(i>=permanent.slots){
-    return `<div class="upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">スロット ${i+1}</div><div class="upgrade-effect">未解放</div></div></div><button type="button" class="upgrade-buy" data-action="slot" data-key="${i}" ${i!==permanent.slots||meta.coins<cost?'disabled':''}>${cost} ✧</button></div>`;
-   }
-   const selected=permanent.equipped[i];
-   const options=owned.filter(skill=>!permanent.equipped.some((id,j)=>j!==i&&id===skill.id))
-    .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
-   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
-  }).join('');
-  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
-  const skillRows=SKILLS.map(skill=>{
-   const isOwned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill),sealed=permanent.sealedSkills.includes(skill.id);
-   const quickSlots=isOwned&&permanent.slots>0&&!sealed?`<div class="quick-equip-row">${Array.from({length:permanent.slots},(_,i)=>{
-    const eq=permanent.equipped[i]===skill.id;
-    return `<button type="button" class="quick-equip-btn ${eq?'equipped':''}" data-action="quick-equip" data-key="${i}:${skill.id}">${eq?`✓ スロット${i+1}装備中`:`スロット${i+1}に装備`}</button>`;
-   }).join('')}</div>`:'';
-   return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${describeSkill(skill.id,1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
-  }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
- }else if(upgradeTab==='bonus'&&bonusView==='skins'){
-  $('upgradeList').innerHTML=renderSkinPicker();
- }else if(upgradeTab==='bonus'){
-  $('upgradeList').innerHTML=bonusNavigation()+PR.EXTRAS.map(item=>{
-   const owned=permanent.unlockedExtras.includes(item.id),enabled=PR.extraEnabled(permanent,item.id);
-   const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
-   return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
-  }).join('');
- }else if(upgradeTab==='seal'){
-  const limit=PR.value(permanent,'sealSlots'),seals=permanent.sealedSkills;
-  const nextCost=PR.costNext(permanent,'sealSlots'),full=!Number.isFinite(nextCost);
-  const upgrade=`<div class="upgrade-row"><div class="upgrade-main"><span class="upgrade-symbol">🔮</span><div><div class="upgrade-name">封印枠 ${limit}/4</div><div class="upgrade-effect">戦利品の抽選から除外。使用 ${seals.length}枠</div></div></div><button type="button" class="upgrade-buy" data-action="extra" data-key="sealSlots" ${full||meta.coins<nextCost?'disabled':''}>${full?'MAX':nextCost+' ✧'}</button></div>`;
-  const rows=SKILLS.map(skill=>{
-   const sealed=seals.includes(skill.id),equipped=permanent.equipped.includes(skill.id);
-   const blocked=!sealed&&(equipped||seals.length>=limit);
-   const label=sealed?'封印を解く':equipped?'装備中':limit===0?'枠未解放':seals.length>=limit?'枠が満杯':'封印する';
-   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中':describeSkill(skill.id,1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
-  }).join('');
-  $('upgradeList').innerHTML=upgrade+rows;
- }else{
-  const legacy=LEGACY_OFFERS.map(o=>{
-   const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
-   const next=PR.baseValue({...meta,[o.id]:level+1},o.id);
-   return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),current:`+${now}`,next:`+${next}`});
-  });
-  const extra=PR.UPGRADES.filter(o=>(o.group==='base'||o.group==='special')&&o.id!=='sealSlots').map(o=>{
-   const level=permanent[o.id],max=o.costs.length;
-   const current=level===0&&max===1?'未取得':o.formatValue(PR.value(permanent,o.id));
-   const next=level<max?o.formatValue(o.values[level]):'';
-   return upgradeRow({...o,level,max,cost:PR.costNext(permanent,o.id),action:'extra',current,next});
-  });
-  $('upgradeList').innerHTML=legacy.concat(extra).join('');
- }
+ const view=window.ParryShopView.render({meta,permanent,tab:upgradeTab,bonusView,skillContext:skillDescriptionContext()});
+ upgradeTab=view.tab;
+ $('upgradeCoins').textContent=view.coinsLabel;
+ $('soulFragmentsLabel').textContent=view.coins;
+ $('upgradeTabs').innerHTML=view.tabsHtml;
+ for(const id of view.preloadSkins)window.ParryHeroPuppet?.preloadSkin?.(id);
+ $('upgradeList').innerHTML=view.listHtml;
 }
 function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
@@ -1659,20 +1582,6 @@ function populatePracticeEnemies(selected,allowUnseen=false){
  if(selected&&(allowUnseen||book.seen[selected]))select.value=selected;
  else if(options.length)select.value=options[0].bookKey;
 }
-function renderSkillCodex(){
- const unlockedCount=SKILLS.filter(s=>permanent.unlockedSkills.includes(s.id)).length;
- $('codexSummary').textContent=unlockedCount+' / '+SKILLS.length+' 解放 · '+SYNERGIES.length+' 共鳴';
- $('codexList').innerHTML=SKILLS.map(s=>{
-  if(!permanent.unlockedSkills.includes(s.id)){
-   return `<div class="codex-card upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">未解放</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · ショップで解放後に登録</div></div></div></div>`;
-  }
-  const syns=SYNERGIES.filter(syn=>syn.a===s.id||syn.b===s.id).map(syn=>{
-   const partner=SK[syn.a===s.id?syn.b:syn.a];
-   return `<div class="codex-synergy-hint"><b>${syn.name}</b>（+${partner.icon}${partner.name}）：${syn.desc}</div>`;
-  }).join('');
-  return `<div class="codex-card upgrade-row ${s.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${s.icon}</span><div><div class="upgrade-name">${s.name}</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</div><div class="upgrade-effect">${describeSkill(s.id,1)}</div>${syns}</div></div></div>`;
- }).join('');
-}
 function renderCodex(){
  $('codexToolbar').hidden=codexTab==='skills';
  if($('codexTabs')){
@@ -1682,37 +1591,12 @@ function renderCodex(){
    btn.setAttribute('aria-pressed',String(active));
   }
  }
- if(codexTab==='skills'){renderSkillCodex();return;}
- const groups=P.all.map(m=>{
-  if(m.rare)return {m,base:P.findByKey(m.id+':rare'),elite:null};
-  return {m,base:P.findByKey(m.id+':normal'),elite:P.findByKey(m.id+':elite')};
+ const view=window.ParryCodexView.render({
+  tab:codexTab,filter:$('codexFilter').value,book,
+  unlockedSkills:permanent.unlockedSkills,skillContext:skillDescriptionContext()
  });
- const entries=P.codexEntries(),discovered=entries.filter(e=>book.seen[e.bookKey]).length;
- $('codexSummary').textContent=discovered+' / '+entries.length+' 発見';
- const filter=$('codexFilter').value;
- const filtered=groups.filter(g=>{
-  const seenBase=!!book.seen[g.base.bookKey],seenElite=!!(g.elite&&book.seen[g.elite.bookKey]);
-  if(filter==='discovered')return seenBase||seenElite;
-  if(filter==='rare')return !!g.m.rare;
-  if(filter==='elite')return !!g.elite&&(seenElite||!seenBase);
-  if(filter==='normal')return !g.m.rare;
-  return true;
- });
- $('codexList').innerHTML=filtered.map(g=>{
-  const seenBase=book.seen[g.base.bookKey],seenElite=g.elite?book.seen[g.elite.bookKey]:null;
-  if(!seenBase&&!seenElite)return '<div class="codex-card codex-monster locked"><div class="codex-symbol">？</div><strong>未遭遇</strong></div>';
-  const winsBase=book.defeated[g.base.bookKey]?.wins||0,winsElite=g.elite?(book.defeated[g.elite.bookKey]?.wins||0):0;
-  const firstF=Math.min(seenBase?.firstFloor||999,seenElite?.firstFloor||999);
-  const rank=g.m.rare?'rare':g.m.boss?'boss':seenElite?'elite':'normal';
-  const type=g.m.rare?'RARE':g.m.boss?(seenElite?'BOSS / ELITE':'BOSS'):(seenElite?'NORMAL / ELITE':'NORMAL');
-  const stats=g.m.rare
-   ?`${type} · 遭遇 ${seenBase.encounters}回 · 討伐 ${winsBase}回 · 初遭遇 ${firstF}F`
-   :`${type} · 通常 遭遇${seenBase?.encounters||0}/討伐${winsBase} · 精鋭 遭遇${seenElite?.encounters||0}/討伐${winsElite} · 初遭遇 ${firstF}F`;
-  const btns=g.m.rare
-   ?`<div class="codex-practice-row"><button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 稽古場で練習</button></div>`
-   :`<div class="codex-practice-row">${seenBase?`<button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 通常で稽古</button>`:'<button class="codex-practice" disabled>未遭遇 (通常)</button>'}${seenElite?`<button class="codex-practice elite-btn" data-practice="${g.elite.bookKey}">⚔ 精鋭で稽古</button>`:'<button class="codex-practice elite-btn" disabled>未遭遇 (精鋭)</button>'}</div>`;
-  return '<div class="codex-card codex-monster '+rank+'"><div class="codex-symbol">'+(g.m.rare?'✦':g.m.boss?'♛':seenElite?'◆':'⚔')+'</div><strong>'+g.m.name+'</strong><small>'+stats+'</small><p>'+g.m.desc+'</p>'+btns+'</div>';
- }).join('')||'<div class="empty">該当する敵はまだいません。</div>';
+ $('codexSummary').textContent=view.summary;
+ $('codexList').innerHTML=view.listHtml;
  for(const btn of $('codexList').querySelectorAll('[data-practice]'))btn.addEventListener('click',()=>startPractice(btn.dataset.practice));
 }
 function openCodex(){
