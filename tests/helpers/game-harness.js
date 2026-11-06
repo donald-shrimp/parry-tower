@@ -88,6 +88,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console,Math:math
  };
+ vm.runInNewContext(readProjectFile('assets/music.js'),context,{filename:'music.js'});
  vm.runInNewContext(readProjectFile('assets/combat-sfx.js'),context);
  const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when,destination){metalEvents.push({kind,when:when??ac.currentTime,destination});return metal.play(ac,kind,when,destination);}};
  window.ParryCombatSfx.playContact=(ac,when,destination)=>{const e={when,destination,cancelled:false};contactEvents.push(e);const h=metal.playContact(ac,when,destination),cancel=h.cancel;h.cancel=()=>{e.cancelled=true;cancel();};return h;};

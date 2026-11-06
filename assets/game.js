@@ -16,9 +16,7 @@ function presentContact(){
  attackPresentation.contact={key,at:game.attackAt,audioAt:score.origin+game.attackBeat*score.beat,guard:!!game.guardAtImpact,result:null};
  triggerClashFX('contact',game.attackAt,game.enemy.kind);
 }
-const STAGE_MUSIC=window.ParryStageMusic;
-const FINAL_MUSIC=window.ParryFinalBossMusic;
-const musicDefinition=id=>FINAL_MUSIC?.get(id)||STAGE_MUSIC?.get(id);
+const MUSIC=window.ParryMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
 // Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
 const CHARACTER_ART=window.ParryCharacterArt;
@@ -236,107 +234,37 @@ function ensureAudio(){try{if(audioContext?.state==='closed'){audioContext=null;
  // Warm the longer steel tails before startScore establishes its beat origin.
  window.ParryCombatSfx?.prepare?.(audioContext);
  if(!score.bus){score.bus=audioContext.createGain();score.bus.gain.value=.35*preferences.bgm/100;score.bus.connect(audioContext.destination)}if(!score.noise){const ac=audioContext,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;score.noise=b;}return true}catch(e){return false}}
-function scoreTone(f,d,vol,t,type='triangle',bend=0){if(!audioEnabled||!audioContext||!score.bus)return;const ac=audioContext,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(25,f),t);if(bend)o.frequency.exponentialRampToValueAtTime(Math.max(25,f+bend),t+d*.8);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(score.bus);o.start(t);o.stop(t+d+.015)}
-function scoreNoise(t,d,vol,hpf=1800){if(!audioEnabled||!audioContext||!score.noise)return;const ac=audioContext,src=ac.createBufferSource(),flt=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;flt.type='highpass';flt.frequency.value=hpf;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+d);src.connect(flt);flt.connect(g);g.connect(score.bus);src.start(t);src.stop(t+d+.01)}
-// Cinematic giant-footstep drums: audible impact on small speakers + deep body + short rumble.
-// Four identical hits, slightly accented first. Every layer is scheduled on the same Web Audio beat.
-function scoreFinalKick(t,accent=false){
- if(!audioEnabled||!audioContext||!score.bus)return;
- const ac=audioContext,level=accent?1.12:1;
- // Mid-bass punch (220→92Hz) gives the "DON!" definition that sub-bass alone lacks.
- const punch=ac.createOscillator(),punchGain=ac.createGain();
- punch.type='triangle';
- punch.frequency.setValueAtTime(220,t);
- punch.frequency.exponentialRampToValueAtTime(92,t+.11);
- punchGain.gain.setValueAtTime(.0001,t);
- punchGain.gain.exponentialRampToValueAtTime(.34*level,t+.005);
- punchGain.gain.exponentialRampToValueAtTime(.0001,t+.19);
- punch.connect(punchGain);punchGain.connect(score.bus);
- punch.start(t);punch.stop(t+.20);
- // Chest-sized boom (135→55Hz) hangs under the sharp stomp without masking the next beat.
- const boom=ac.createOscillator(),boomGain=ac.createGain();
- boom.type='sine';
- boom.frequency.setValueAtTime(135,t);
- boom.frequency.exponentialRampToValueAtTime(55,t+.17);
- boomGain.gain.setValueAtTime(.0001,t);
- boomGain.gain.exponentialRampToValueAtTime(.46*level,t+.014);
- boomGain.gain.exponentialRampToValueAtTime(.0001,t+.35);
- boom.connect(boomGain);boomGain.connect(score.bus);
- boom.start(t);boom.stop(t+.36);
- if(score.noise){
-  // Short midrange crack makes every beat distinguishable on phone speakers.
-  const crack=ac.createBufferSource(),crackFilter=ac.createBiquadFilter(),crackGain=ac.createGain();
-  crack.buffer=score.noise;crackFilter.type='bandpass';crackFilter.frequency.value=950;
-  crackFilter.Q.value=.7;
-  crackGain.gain.setValueAtTime(.0001,t);
-  crackGain.gain.exponentialRampToValueAtTime(.19*level,t+.004);
-  crackGain.gain.exponentialRampToValueAtTime(.0001,t+.07);
-  crack.connect(crackFilter);crackFilter.connect(crackGain);crackGain.connect(score.bus);
-  crack.start(t);crack.stop(t+.08);
-  // A low, brief dust-cloud tail supplies weight like a huge creature landing.
-  const dust=ac.createBufferSource(),dustFilter=ac.createBiquadFilter(),dustGain=ac.createGain();
-  dust.buffer=score.noise;dustFilter.type='lowpass';dustFilter.frequency.value=380;
-  dustGain.gain.setValueAtTime(.0001,t);
-  dustGain.gain.exponentialRampToValueAtTime(.11*level,t+.014);
-  dustGain.gain.exponentialRampToValueAtTime(.0001,t+.24);
-  dust.connect(dustFilter);dustFilter.connect(dustGain);dustGain.connect(score.bus);
-  dust.start(t);dust.stop(t+.25);
- }
-}
-const NOTES=[73.42,82.41,87.31,98,110,116.54,130.81,146.83,164.81,174.61,196,220,233.08,261.63,293.66,329.63,349.23,392,440,466.16,523.25,587.33];
-function playBgmArrangement(n,t){
- if(!devMusicAudition&&!['combat','phase'].includes(game?.mode))return;
- const ix=n%8;
- // Adopted mock 4: offbeat hats and sustained D/A harmony, from the first bar.
- if(ix%2===1)scoreNoise(t,.035,.045,5200);
- if(ix===0){scoreTone(293.66,score.beat*1.8,.032,t,'sine');scoreTone(440,score.beat*1.8,.024,t,'sine');}
-}
-function playMusicStep(n,t){
+function playMusicStep(step,at){
  if(!audioEnabled)return;
- if(FINAL_MUSIC?.get(score.music)){
-  // Keep count-in beats silent, but allow lookahead to reserve the first music
-  // downbeat AFTER them. Its score starts at zero without moving combat's clock.
-  if(n<score.musicStartStep)return;
-  for(const event of FINAL_MUSIC.step(score.music,n-score.musicStartStep,score.beat,game.enemy?.phase||1))
-   FINAL_MUSIC.play(audioContext,event,t+event.offset,score.bus,score.noise);
-  playBgmArrangement(n-score.musicStartStep,t);
-  return;
- }
- // Preserve the existing count-in suppression for the eight adopted themes.
- if(game.mode==='phase'&&game.phaseStage==='countin')return;
- if(STAGE_MUSIC&&score.music!=='crypt'){
-  for(const event of STAGE_MUSIC.step(score.music,n,score.beat,score.boss)){
-   const at=t+event.offset;
-   if(event.kind==='noise')scoreNoise(at,event.duration,event.volume,event.cutoff);
-   else if(event.kind==='bell')for(const [ratio,level,decay]of [[1,1,1],[2.76,.20,.55],[5.4,.065,.25]])
-    scoreTone(event.frequency*ratio,event.duration*decay,event.volume*level,at,'sine');
-   else scoreTone(event.frequency,event.duration,event.volume,at,event.type,event.bend);
-  }
-  playBgmArrangement(n,t);
-  return;
- }
- const ix=n%8,bar=Math.floor(n/8),root=score.boss?[0,3,2,5][Math.floor(bar/2)%4]:[0,5,3,2][Math.floor(bar/2)%4];const low=NOTES[root];
- // quarter-note drums, eighth-note hats, and offbeat melodic answers
- if(ix%2===0){const b=(n/2)%4;scoreTone(b===0?140:110,.19,b===0?.26:.13,t,'sine',-90);if(b===1||b===3){scoreNoise(t,.12,score.boss?.26:.17,600);scoreTone(155,.075,.06,t,'triangle',-30)}}
- scoreNoise(t,ix%2?.045:.055,ix%2?.062:.085,3500);
- if(ix===0||ix===4)scoreTone(low,score.beat*(score.boss?.86:1.45),score.boss?.23:.16,t,'sawtooth',-4);
- if((ix===2||ix===6)&&score.boss)scoreTone(low*2,.15,.085,t,'square',-12);
- if(ix===3||ix===7){const melody=score.boss?[1,5,7,4][bar%4]:[3,7,5,9][bar%4];scoreTone(NOTES[Math.min(NOTES.length-1,root+melody)],score.beat*.43,score.boss?.12:.09,t,'triangle',8)}
- if(ix===0&&bar%2===0){scoreTone(low*4,score.beat*3.5,.042,t,'sine');scoreTone(low*6,score.beat*3.5,.025,t,'sine')}
- if(score.boss&&(ix===1||ix===5))scoreTone(low*2,.12,.04,t,'sawtooth',-45);
- playBgmArrangement(n,t);
+ MUSIC?.playStep(audioContext,{
+  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,
+  movement:game.enemy?.phase||1,startStep:score.musicStartStep,countIn:game.mode==='phase'&&game.phaseStage==='countin',
+  arrangement:devMusicAudition||['combat','phase'].includes(game?.mode)
+ });
 }
 function stopScore(){stopFutureContacts();score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
  const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
 }}
 function encounterBpm(enemy){
  const base=enemy.boss?136:enemy.kind==='rogue'?124:112;
- if(devMusicAudition)return FINAL_MUSIC?.get(devMusicTheme)?.bpm??base;
+ if(devMusicAudition)return MUSIC?.get(devMusicTheme)?.bpm??base;
  // Freeze once per enemy, including checkpoints written before the rework.
  game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
-function startScore(enemy){attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:FINAL_MUSIC?.forEncounter(enemy)?.id||STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function startScore(enemy){
+ attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);
+ if(!ensureAudio()){score.active=false;return}
+ audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;
+ const selected=DEV_MODE&&devMusicTheme!=='auto'?MUSIC?.get(devMusicTheme):MUSIC?.forEncounter(game.floor||1,enemy);
+ score.music=selected?.id||'crypt';
+ score.musicStartStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
+ score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;
+ score.bus.gain.cancelScheduledValues(ac.currentTime);
+ score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);
+ $('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';
+ scheduleScore();
+}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
@@ -356,22 +284,24 @@ function musicParry(kind){
  }
  if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
  if(!score.bus||!score.noise)return;
+ const tone=(...args)=>MUSIC?.playTone(audioContext,score.bus,...args);
+ const noise=(...args)=>MUSIC?.playNoise(audioContext,score.bus,score.noise,...args);
  const t=audioContext.currentTime+.003;
  // Musical response to a successful parry. All notes use the BGM's AudioContext clock.
  if(kind==='just'){
-  scoreNoise(t,.085,.12,2900);
-  scoreTone(784,.16,.11,t,'triangle',125);
-  scoreTone(1175,.20,.085,t+.045,'sine',95);
-  scoreTone(1568,.22,.055,t+.092,'sine',-125);
+  noise(t,.085,.12,2900);
+  tone(784,.16,.11,t,'triangle',125);
+  tone(1175,.20,.085,t+.045,'sine',95);
+  tone(1568,.22,.055,t+.092,'sine',-125);
  }else if(kind==='parry'){
-  scoreNoise(t,.058,.085,2400);
-  scoreTone(659,.13,.082,t,'triangle',120);
-  scoreTone(988,.13,.038,t+.034,'sine',-45);
+  noise(t,.058,.085,2400);
+  tone(659,.13,.082,t,'triangle',120);
+  tone(988,.13,.038,t+.034,'sine',-45);
  }else if(kind==='guard'){
-  scoreTone(245,.11,.060,t,'triangle',-60);
+  tone(245,.11,.060,t,'triangle',-60);
  }else{
-  scoreNoise(t,.13,.065,650);
-  scoreTone(128,.16,.065,t,'sawtooth',-65);
+  noise(t,.13,.065,650);
+  tone(128,.16,.065,t,'sawtooth',-65);
  }
 }
 
@@ -834,7 +764,7 @@ function tutorialResult(kind){
 function title(){attackPresentation.contact=null;runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
- if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';}
+ if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
  const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const lifeBonus=PR.baseValue(meta,'life'),baseHp=65+lifeBonus,rawMaxHp=baseHp+PR.lifeVesselBonus(baseHp,initial.heal||0),startingHp=Math.ceil(rawMaxHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardCapacity','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=lifeBonus;game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
@@ -1313,7 +1243,7 @@ function beginFinalCountIn(){
   // Four low drum strokes on the same AudioContext clock; only the first is accented.
   for(let i=0;i<FINAL_PHASE_COUNT_BEATS;i++){
    const t=score.origin+i*score.beat;
-   scoreFinalKick(t,i===0);
+   if(audioEnabled)MUSIC?.playCountIn(audioContext,score.bus,score.noise,t,i===0);
   }
  }
  $('trackLabel').textContent='SECOND MOVEMENT · '+score.bpm+' BPM';
@@ -2691,24 +2621,25 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
     lastInput:devTimingTrace.input?{...devTimingTrace.input}:null,firstContactFrameMs:devTimingTrace.frame?.delay??null};
   },
   reset(){title()},
-  musicList(){return STAGE_MUSIC?.themes||[]},
-  musicReviews(){return FINAL_MUSIC?.pieces||[]},
+  musicList(){return MUSIC?.list().filter(piece=>piece.floor==null)||[]},
+  musicReviews(){return MUSIC?.list().filter(piece=>piece.floor!=null)||[]},
   previewMusic(id,variant='normal'){
-   if(!audioEnabled||!musicDefinition(id)||!['normal','boss'].includes(variant))return false;
-   const review=FINAL_MUSIC?.get(id);
-   title();devMusicTheme=id;devMusicAudition=true;startScore({kind:'knight',boss:!!review||variant==='boss'});
+   const piece=MUSIC?.get(id);
+   if(!audioEnabled||!piece||!['normal','boss'].includes(variant))return false;
+   title();devMusicTheme=id;devMusicAudition=true;startScore({kind:'knight',boss:piece.floor!=null||variant==='boss'});
    if(!score.active)devMusicAudition=false;return score.active;
   },
   stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;return true},
   practiceMusic(id,variant='normal'){
-   const theme=musicDefinition(id);if(!theme||!['normal','boss'].includes(variant))return false;
-   const review=FINAL_MUSIC?.get(id),zone=P.zoneForFloor(theme.from),floor=review?review.floor:theme.from+(variant==='boss'?4:0),enemy=review||variant==='boss'?zone.boss:zone.fixed[1];
-   const key=enemy+(review?.floor===80?':elite':':normal');
+   const theme=MUSIC?.get(id);if(!theme||!['normal','boss'].includes(variant))return false;
+   const zone=P.zoneForFloor(theme.from),floor=theme.floor??theme.from+(variant==='boss'?4:0);
+   const enemy=theme.floor!=null||variant==='boss'?zone.boss:zone.fixed[1];
+   const key=enemy+(theme.floor===80?':elite':':normal');
    title();start(true,key,{floor,allowUnseenPractice:true,musicId:id});return true;
   },
   musicState(){
    const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
-   const bars=musicDefinition(score.music)?.bars||8;
+   const bars=MUSIC?.get(score.music)?.bars||8;
    return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
   getSfxVolume(){return Math.round(devSfxVolume*100)},
