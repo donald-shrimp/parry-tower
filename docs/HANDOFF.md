@@ -28,6 +28,8 @@
 
 ## 検証済み
 
+- 4B-2：全Node520件（39.2秒）成功。基準ff170ecと864条件を2回ずつ描画し、全表示/状態/保存位置が一致。Chrome320/390/1280pxで13種の分岐・部屋・イベント画面、購入・強化/限界突破/研磨の選択→戻る→確定、休息後の進行を比較。文字/寸法/HTML一致、エラー/ページ横はみ出しなし。寸法比較はhoverの1px移動とCSSアニメーションを両版で無効化。390pxの強化/祭器を目視確認。構文/Pages/diff check成功。scratchのverify-room-view.cjs、verify-room-browser.cjs、room-view-node.logが証跡。
+
 - 4B-1：全Node519件（40.2秒）成功。基準61ae6efと200条件で全表示値/全状態/保存呼出位置が一致。Chromeの320/390/1280pxで報酬/遺物/イベントスキルの文字と座標/寸法が一致。引き直し1回、4択、取得、所持満杯の遺物選択→戻る→交換、イベントスキル取得後9Fへ進行、ページ横はみ出し/ブラウザーエラーなしを確認。390pxの3画面を目視確認。構文/Pages/diff check成功。scratchのverify-rewards-view.cjs、verify-rewards-browser.cjs、rewards-view-node.logが証跡。
 
 - 3C：全Node518件（40.2秒）成功。基準661a1f9と通常/稽古/ふんどし/80F、JUST/PARRY/GUARD/MISS、スキル・遺物あり/なし、敵HP6水準の192条件を実ゲームハーネスで比較。7,826 callback前後の全状態、乱数消費数、最終パーティクル/文字が一致。耐久36比較とfixturesも一致。Chromeで通常PARRYの6コンボ追撃と奥義チャージ消費、その次のガード被弾を確認。構文/diff check成功。scratchのverify-strike-order.cjs、strike-order-parity.log、strike-order-node.log、strike-order-survival.json、verify-strike-browser.cjsが証跡。恒久テストの追加なし。
@@ -53,7 +55,7 @@
 
 ## 残る範囲と次の一手
 
-4B-1の報酬/遺物/イベントスキル/所持遺物の表示分離まで完了。次は4B-2部屋/イベント、4B-3設定。HTML生成と保存/抽選/課金/回復を分ける。render中のcheckpoint呼出タイミングを記録し、変更前後の呼出順を比較する。以後5A〜C描画/Dev/配信境界へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+4B-1の報酬/遺物/イベントスキル/所持遺物と4B-2部屋/イベントの表示分離まで完了。次は4B-3設定。小さい画面なのでファイルを増やさず、設定を開く処理と表示/保存状態の表示を名前付き関数に分ける。中断データを読む時点と条件を維持する。以後5A〜C描画/Dev/配信境界へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 

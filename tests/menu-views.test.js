@@ -6,6 +6,7 @@ const codex=require('../assets/codex-view.js');
 const progression=require('../assets/progression.js');
 const encounters=require('../assets/encounters.js');
 const rewards=require('../assets/rewards-view.js');
+const rooms=require('../assets/room-view.js');
 
 function freeze(value){
  for(const child of Object.values(value))if(child&&typeof child==='object')freeze(child);
@@ -58,4 +59,17 @@ test('reward presentation uses frozen choices and current skill values without c
  assert.deepEqual(rewards.skills(input),view);
  assert.match(rewards.eventSkills({...input,title:'選択中'}).cardsHtml,/data-route-skill="heal"/);
  assert.equal(input.choices.length,1);
+});
+
+test('room presentation consumes frozen eligibility and preserves target data across repeat renders',()=>{
+ const EV=require('../assets/events.js'),RT=require('../assets/routes.js');
+ const input=freeze({room:RT.ROOMS.merchant,status:{coins:80,hp:50.5,maxHp:65,shield:2.5},
+  items:[{item:EV.ITEMS_BY_ID.training,already:false,available:false,affordable:true}]});
+ const before=rooms.render(input);
+ assert.match(before.actionsHtml,/対象なし/);
+ assert.match(before.actionsHtml,/disabled/);
+ assert.equal(before.note,'🪙 塔貨 80　♡ 51 / 65　🛡 3');
+ before.actionsHtml='changed';
+ assert.doesNotMatch(rooms.render(input).actionsHtml,/changed/);
+ assert.equal(input.items[0].already,false);
 });

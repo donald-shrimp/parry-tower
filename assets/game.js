@@ -686,8 +686,7 @@ function showRoutes(){
  game.enemy=null;game.routeTrial=false;game.currentRoom=null;
  game.routeKind=RT.branchKind(game.floor);
  setMode('route');
- $('routeCards').innerHTML=options.map(room=>`<button type="button" class="route-card" data-route="${room.id}">
- <span class="route-symbol">${room.icon}</span><span class="route-card-body"><b>${room.name}</b><small>${room.tag} · ${room.desc}</small><span class="route-warning">${room.risk}</span></span><span aria-hidden="true">›</span></button>`).join('');
+ $('routeCards').innerHTML=window.ParryRoomView.routes(options);
  syncHUD();
 }
 function resetNoncombatCombo(){
@@ -706,9 +705,46 @@ function selectRoute(id){
  if(ev)game.lastEventId=ev.id;
  setMode('room');renderRoom();syncHUD();
 }
-function roomActionButton(id,label,detail='',disabled=false){
- return `<button type="button" class="room-choice" data-room-action="${id}" ${disabled?'disabled':''}>
-  <span><b>${label}</b>${detail?`<small>${detail}</small>`:''}</span><span aria-hidden="true">›</span></button>`;
+function roomTargetViews(itemId){
+ return merchantTargets(itemId).map(id=>{
+  if(itemId==='polish'){
+   const relic=RR.BY_ID[id];
+   return {id,kind:'relic',icon:relic.icon,name:relic.name,
+    description:relic.desc+relicScaledSuffix(id,false),nextDescription:relic.polishedDesc+relicScaledSuffix(id,true)};
+  }
+  const skill=SK[id],level=lvl(id);
+  return {id,kind:'skill',icon:skill.icon,name:skill.name,level,cap:skillCap(id),breaks:game.skillBreaks[id]||0,
+   description:describeSkill(id,level),nextDescription:describeSkill(id,level+1)};
+ });
+}
+function roomEventOptions(event){
+ return event.actions.map(item=>{
+  const option={id:item.id,available:true};
+  if(event.id==='altar'&&item.id==='sacrifice'){
+   option.value=EV.altarCost(game.maxHp);
+   option.available=EV.canSacrifice(game.hp,game.maxHp)&&availableSkills().length>0;
+  }
+  if(event.id==='mirror'&&item.id==='swap'){
+   option.available=!!game.relics.length&&RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
+  }
+  if(event.id==='chest'&&item.id==='open'){
+   option.hasRelics=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
+   if(!option.hasRelics)option.value=towerCoinReward(25);
+  }
+  if(event.id==='sanctuary'&&item.id==='resonate')option.available=availableSkills().length>0;
+  if(event.id==='sanctuary'&&item.id==='train')option.available=merchantTargets('training').length>0;
+  if(event.id==='forge'&&item.id==='polish')option.available=merchantTargets('polish').length>0;
+  if(event.id==='forge'&&item.id==='temper')option.available=game.towerCoins>=15;
+  if(event.id==='forge'&&item.id==='scrap')option.value=towerCoinReward(14);
+  if(event.id==='scales'&&item.id==='toSouls'){
+   option.available=game.towerCoins>=16;option.value=soulReward(20);
+  }
+  if(event.id==='scales'&&item.id==='toCoins'){
+   option.available=game.hp>1;option.value=towerCoinReward(24);
+  }
+  option.label=item.label.replace(/塔貨\+(\d+)/g,(_,raw)=>'塔貨+'+towerCoinReward(Number(raw)));
+  return option;
+ });
 }
 function renderRoom(){
  if(game.mode!=='room')return;
@@ -716,117 +752,27 @@ function renderRoom(){
  const modal=$('roomActions').parentElement;if(modal)modal.scrollTop=0;
  const id=game.currentRoom,room=RT.ROOMS[id],event=id==='event'?EV.BY_ID[game.eventId]:null;
  if(!room||id==='trial'||(id==='event'&&!event))return;
- $('roomKicker').textContent=id==='event'?'MYSTERIOUS ENCOUNTER':id==='merchant'?'TRAVELLING MERCHANT':'A MOMENT OF RESPITE';
- $('roomIcon').textContent=event?.icon||room.icon;
- $('roomTitle').textContent=event?.name||room.name;
- $('roomDescription').hidden=false;
- $('roomDescription').textContent=event?.description||room.desc;
- $('roomNote').textContent='🪙 塔貨 '+game.towerCoins+'　♡ '+Math.ceil(game.hp)+' / '+game.maxHp+'　🛡 '+Math.ceil(game.shield);
- if(game.roomStage==='result'){
-  $('roomDescription').textContent=game.roomResult;
-  if(id==='merchant'&&!game.roomLocked){
+ const input={room,event,stage:game.roomStage,result:game.roomResult,locked:game.roomLocked,
+  status:{coins:game.towerCoins,hp:game.hp,maxHp:game.maxHp,shield:game.shield}};
+ if(id==='merchant'){
+  if(game.roomStage!=='result'&&game.roomStage?.startsWith('target:')){
+   const itemId=game.roomStage.slice(7);
+   input.targetItem=EV.ITEMS_BY_ID[itemId];input.targets=roomTargetViews(itemId);
+  }else if(game.roomStage!=='result'||!game.roomLocked){
    const bought=game.merchantBought||[];
-   $('roomActions').innerHTML=roomActionButton('continue','次の階へ進む')+EV.ITEMS.map(item=>{
-    const already=bought.includes(item.id),exhausted=!merchantAvailable(item.id);
-    return roomActionButton('buy:'+item.id,item.icon+' '+item.name+' · '+item.cost+' 🪙',item.desc+(already?' · 購入済':exhausted?' · 対象なし':''),already||game.towerCoins<item.cost||exhausted);
-   }).join('');
-   return;
+   input.items=EV.ITEMS.map(item=>({item,already:bought.includes(item.id),
+    available:merchantAvailable(item.id),affordable:game.towerCoins>=item.cost}));
   }
-  $('roomActions').innerHTML=roomActionButton('continue','次の階へ進む');
-  return;
+ }else if(id==='event'&&game.roomStage!=='result'){
+  if(game.roomStage==='target:sanctuary_train')input.targets=roomTargetViews('training');
+  else if(game.roomStage==='target:forge_polish')input.targets=roomTargetViews('polish');
+  else if(game.roomStage==='mirror')input.held=game.relics.map(ownedRelic);
+  else input.options=roomEventOptions(event);
  }
- if(id==='merchant'&&game.roomStage?.startsWith('target:')){
-  const itemId=game.roomStage.slice(7),item=EV.ITEMS_BY_ID[itemId];
-  $('roomTitle').textContent=item.name;
-  $('roomDescription').textContent=item.cost+' 🪙';
-  $('roomActions').innerHTML=merchantTargets(itemId).map(target=>{
-   if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)),game.towerCoins<item.cost)}
-   const skill=SK[target],cap=skillCap(target),next=cap+(itemId==='breakthrough'?1:0);
-   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),
-    describeSkill(skill.id,lvl(target))+' → '+describeSkill(skill.id,lvl(target)+1)+' / 上限 '+cap+' → '+next+
-    (itemId==='breakthrough'?'（限界突破 '+((game.skillBreaks[target]||0)+1)+'/2）':''),game.towerCoins<item.cost);
-  }).join('')+roomActionButton('back','← 商品一覧に戻る');
-  return;
- }
- if(id==='event'&&game.roomStage==='target:sanctuary_train'){
-  $('roomTitle').textContent='共鳴の聖堂 — スキル強化';
-  $('roomDescription').hidden=true;
-  $('roomActions').innerHTML=merchantTargets('training').map(target=>{
-   const skill=SK[target];
-   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),describeSkill(skill.id,lvl(target))+' → '+describeSkill(skill.id,lvl(target)+1));
-  }).join('')+roomActionButton('back','← 聖堂の選択に戻る');
-  return;
- }
- if(id==='event'&&game.roomStage==='target:forge_polish'){
-  $('roomTitle').textContent='古の金床 — 遺物研磨';
-  $('roomDescription').hidden=true;
-  $('roomActions').innerHTML=merchantTargets('polish').map(target=>{
-   const r=RR.BY_ID[target];
-   return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)));
-  }).join('')+roomActionButton('back','← 金床の選択に戻る');
-  return;
- }
- if(id==='rest'){
-  $('roomActions').innerHTML=[
-   roomActionButton('rest:heal','🔥 休息','最大HPの35%を回復'),
-   roomActionButton('rest:meditate','🛡 瞑想','障壁+20、スキル報酬の引き直し+1')
-  ].join('');
- }else if(id==='merchant'){
-  const bought=game.merchantBought||[];
-  $('roomActions').innerHTML=EV.ITEMS.map(item=>{
-   const already=bought.includes(item.id),exhausted=!merchantAvailable(item.id);
-   return roomActionButton('buy:'+item.id,item.icon+' '+item.name+' · '+item.cost+' 🪙',item.desc+(already?' · 購入済':exhausted?' · 対象なし':''),already||game.towerCoins<item.cost||exhausted);
-  }).join('')+roomActionButton('leave','購入せず先へ進む');
- }else if(id==='event'&&game.roomStage==='mirror'){
-  $('roomDescription').textContent='交換が確定するまで、元の遺物は失われません。';
-  $('roomActions').innerHTML=game.relics.map(id=>{
-   const relic=ownedRelic(id);return roomActionButton('mirror:'+id,relic.icon+' '+relic.name,relic.desc);
-  }).join('')+roomActionButton('back','鏡の前に戻る');
- }else if(id==='event'){
-  const options=event.actions.map(item=>{
-   let disabled=false,description='';
-   if(event.id==='altar'&&item.id==='sacrifice'){
-    const cost=EV.altarCost(game.maxHp);
-    disabled=!EV.canSacrifice(game.hp,game.maxHp)||availableSkills().length===0;
-    description='HP-'+cost+'。イベントの支払いは被弾扱いになりません。';
-   }
-   if(event.id==='mirror'&&item.id==='swap'){
-    disabled=!game.relics.length||!RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
-    description='所持遺物1つを選び、風化・秘宝から3択。';
-   }
-   if(event.id==='chest'&&item.id==='open')description=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+towerCoinReward(25)+'・引き直し+1）。失敗してもHP1で生存。';
-   if(event.id==='sanctuary'&&item.id==='resonate'){
-    disabled=availableSkills().length===0;
-    description='共鳴相方のスキルを引き当てて1つ習得。';
-   }
-   if(event.id==='sanctuary'&&item.id==='train'){
-    disabled=merchantTargets('training').length===0;
-    description='習得済みスキル1つをLv.+1。';
-   }
-   if(event.id==='sanctuary'&&item.id==='pray')description='最大HPの25%を回復。';
-   if(event.id==='forge'&&item.id==='polish'){
-    disabled=merchantTargets('polish').length===0;
-    description='未研磨の所持遺物1つを研磨（✦）。';
-   }
-   if(event.id==='forge'&&item.id==='temper'){
-    disabled=game.towerCoins<15;
-    description='塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。';
-   }
-   if(event.id==='forge'&&item.id==='scrap')description='塔貨+'+towerCoinReward(14)+'。';
-   if(event.id==='scales'&&item.id==='toSouls'){
-    disabled=game.towerCoins<16;
-    description='塔貨16枚を消費し、魂の欠片+'+soulReward(20)+' ✧を得る。';
-   }
-   if(event.id==='scales'&&item.id==='toCoins'){
-    disabled=game.hp<=1;
-    description='現在HPの20%（死亡しない）を払い、塔貨+'+towerCoinReward(24)+'・引き直し+1。';
-   }
-   if(event.id==='scales'&&item.id==='leave')description='障壁+10を得て先へ進む。';
-   const label=item.label.replace(/塔貨\+(\d+)/g,(_,raw)=>'塔貨+'+towerCoinReward(Number(raw)));
-   return roomActionButton('event:'+item.id,label,description,disabled);
-  });
-  $('roomActions').innerHTML=options.join('');
- }
+ const view=window.ParryRoomView.render(input);
+ $('roomKicker').textContent=view.kicker;$('roomIcon').textContent=view.icon;$('roomTitle').textContent=view.title;
+ $('roomDescription').hidden=view.descriptionHidden;$('roomDescription').textContent=view.description;
+ $('roomNote').textContent=view.note;$('roomActions').innerHTML=view.actionsHtml;
 }
 function showRoomResult(text,keepMerchantOpen=false){
  game.roomLocked=!keepMerchantOpen;game.roomStage='result';game.roomResult=text;renderRoom();syncHUD();
