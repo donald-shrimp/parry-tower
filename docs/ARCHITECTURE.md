@@ -12,6 +12,8 @@ Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localSto
 | --- | --- |
 | `assets/game.js` | ラン状態、進行、戦闘の効果適用、画面・描画・入力、音声への要求。ここは今後も段階的な抽出対象 |
 | `assets/encounters.js` / `enemy-motions.js` | 敵・階層・譜面・モーション定義 |
+| `assets/combat-math.js` | 攻撃倍率・回復量・障壁容量・テンポ/氷結などの純粋計算。効果適用やゲーム状態を所有しない |
+| `assets/skills.js` | 25スキルと相乗効果、明示的な数値コンテキストからの説明文。全画面で共用 |
 | `assets/progression.js` / `relics.js` | 恒久育成・スキンと遺物の定義・計算 |
 | `assets/routes.js` / `events.js` | 経路・イベントの定義と選択 |
 | `assets/run-state.js` | 新規ラン生成、検証済み保存の復元準備、スキン/遺物による最大HP計算、ラン内のパリィ入力値解除。稽古の許可・Dev特例・復帰先の画面操作は呼び出し側 |

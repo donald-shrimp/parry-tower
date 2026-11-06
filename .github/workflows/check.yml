@@ -52,7 +52,7 @@ jobs:
           build = 'v0.9.9'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'run-state.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'final-boss-music.js', 'music.js', 'audio-clock.js', 'audio-session.js', 'player-settings.js', 'run-checkpoint.js', 'save-store.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
+              'progression.js', 'run-state.js', 'combat-math.js', 'skills.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'final-boss-music.js', 'music.js', 'audio-clock.js', 'audio-session.js', 'player-settings.js', 'run-checkpoint.js', 'save-store.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')
@@ -67,6 +67,7 @@ jobs:
               assert text.index('assets/final-boss-music.js') < music
               assert text.index('assets/save-store.js') < text.index('assets/game.js')
               assert text.index('assets/audio-session.js') < text.index('assets/game.js')
+              assert text.index('assets/progression.js') < text.index('assets/combat-math.js') < text.index('assets/skills.js') < text.index('assets/game.js')
               assert text.index('assets/progression.js') < text.index('assets/run-state.js') < text.index('assets/game.js')
           assert 'dev.html' not in html
           dev = Path('dev.html').read_text(encoding='utf-8')

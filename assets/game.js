@@ -62,45 +62,16 @@ const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;saves.writeJson(K
 const savePermanent=()=>{saves.writeJson(PERMANENT_KEY,permanent);};
 let book=P.emptyBook();try{book=P.normalizeBook(saves.readJson(BOOK_KEY,{}).value)}catch(e){}
 const saveBook=()=>{saves.writeJson(BOOK_KEY,book);};
-const PULSE_COMBO_STEP=6;
-const KING_COMBO_STEP=8;
-const ULTIMATE_BASE_MULTIPLIER=1.8;
-const heartbeatDamagePercent=level=>120+60*level;
-const SKILLS=[
-{id:'blade',icon:'🗡️',name:'剛剣',rarity:'common',max:20,desc:l=>`基礎反撃・攻撃スキルダメージ +${25*l}%`,hint:'基礎攻撃'},
-{id:'thunder',icon:'⚡',name:'落雷',rarity:'common',max:12,desc:l=>`パリィで雷撃 ${scaleSkillDmg(10+12*l)} ダメージ`,hint:'連鎖の起点'},
-{id:'echo',icon:'🌀',name:'残響',rarity:'rare',max:6,desc:l=>`パリィ後、追撃 ${Math.round(25+l*13)}%`,hint:'雷撃と共鳴'},
-{id:'blood',icon:'🩸',name:'吸血',rarity:'common',max:8,desc:l=>`パリィ与ダメの ${6+l*2}% 回復（最低2・上限HP25%）`,hint:'与ダメージ吸収'},
-{id:'fury',icon:'🔥',name:'狂戦士',rarity:'rare',max:6,desc:l=>`コンボごとの攻撃補正 +${l*2}%`,hint:'吸血と共鳴'},
-{id:'aegis',icon:'🛡️',name:'魔法障壁',rarity:'common',max:10,desc:l=>`ジャストで障壁を ${3+3*l} 獲得`,hint:'反射と共鳴'},
-{id:'wardcraft',icon:'🔰',name:'結界増幅',rarity:'rare',max:3,startCost:90,desc:l=>`戦闘中の障壁獲得量と補充上限 +${wardcraftBonus(l)}%（余剰回復の変換量は除く）`,hint:'障壁ビルド'},
-{id:'thorns',icon:'🪞',name:'反射',rarity:'rare',max:6,desc:l=>`ガード時に攻撃力の ${30+l*18}% を反射`,hint:'障壁と共鳴'},
-{id:'precision',icon:'🎯',name:'一点集中',rarity:'common',max:10,desc:l=>`ジャスト反撃倍率 +${l*35}%`,hint:'奥義と共鳴'},
-{id:'focus',icon:'👁️',name:'心眼',rarity:'common',max:6,desc:l=>`ジャスト判定を ±${11+l*2}ms に拡張`,hint:'操作補助'},
-{id:'stability',icon:'🍀',name:'静かな呼吸',rarity:'common',max:6,desc:l=>`通常パリィを ±${31+l*3}ms に拡張`,hint:'操作補助'},
-{id:'ember',icon:'☄️',name:'灼熱',rarity:'common',max:10,desc:l=>`パリィで炎の継続ダメージ +${scaleSkillDmg(l*7)}`,hint:'処刑と共鳴'},
-{id:'execute',icon:'💀',name:'処刑人',rarity:'rare',max:6,desc:l=>`残HP35%以下の敵への攻撃 +${l*23}%`,hint:'炎と共鳴'},
-{id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`BGMと敵のBPM −${tempoReduction(l)}`,hint:'テンポ操作'},
-{id:'pulse',icon:'🌟',name:'共鳴波',rarity:'rare',max:6,desc:l=>`${PULSE_COMBO_STEP}コンボごとに衝撃波 +${scaleSkillDmg(l*42)} ダメージ`,hint:'コンボ特化'},
-{id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${Math.round(l*45*baseAttackScale())}`,hint:'集中と共鳴'},
-{id:'gamble',icon:'🥀',name:'背水',rarity:'rare',max:6,desc:l=>`自分のHPが半分未満なら攻撃 +${l*30}%`,hint:'危険な火力'},
-{id:'heal',icon:'💗',name:'生命の器',rarity:'common',max:10,desc:l=>`最大HP +${PR.lifeVesselBonus(runBaseHp(),l)}、取得時にも回復`,hint:'持久戦'},
-{id:'double',icon:'🎲',name:'双撃',rarity:'epic',max:5,desc:l=>`${14+l*9}% の確率で反撃が2倍`,hint:'一撃の爆発力'},
- {id:'fortitude',icon:'🛡️',name:'不屈',rarity:'common',max:4,startCost:20,desc:l=>`HP被弾後、次の反撃 +${15+10*l}%`,hint:'被弾からの反撃'},
- {id:'heartbeat',icon:'🎵',name:'拍動',rarity:'common',max:4,startCost:25,desc:l=>`3連続ジャストで奥義+1・基礎攻撃の ${heartbeatDamagePercent(l)}% 追撃`,hint:'連続ジャスト'},
- {id:'overcharge',icon:'⚡',name:'過充電',rarity:'rare',max:5,startCost:95,desc:l=>`成功パリィ3回ごとに基礎攻撃 ${(0.7+0.4*l).toFixed(1)}倍 の雷撃`,hint:'雷撃ビルド'},
- {id:'bloodlust',icon:'🦇',name:'血の渇望',rarity:'rare',max:4,startCost:110,desc:l=>`パリィ時HP+${2+l}、実回復×${(1+0.5*l).toFixed(1)}を次の反撃に蓄積`,hint:'回復から火力'},
- {id:'frost',icon:'❄️',name:'氷結',rarity:'rare',max:6,startCost:90,desc:l=>`4パリィで氷の加護。次の被攻撃 -${frostReduction(l)}%`,hint:'被ダメージ軽減'},
- {id:'king',icon:'👑',name:'王の一撃',rarity:'epic',max:4,startCost:300,desc:l=>`${KING_COMBO_STEP}コンボごとに基礎攻撃 ${2+l}倍 の追撃`,hint:'コンボ特化'}
-];
-function baseAttackScale(){return (game?.baseAtk||25)/25}
-function skillAtkScale(){return baseAttackScale()*(1+lvl('blade')*.25)}
-function scaleSkillDmg(raw){return Math.max(1,Math.round(raw*skillAtkScale()))}
-function runBaseHp(){return 65+(game.lifeBonus??PR.baseValue(meta,'life'))}
-function hpSkillScale(){const baseHp=runBaseHp();return 1+(baseHp-65+PR.lifeVesselBonus(baseHp,lvl('heal')))/100}
-function tempoReduction(level){return Math.min(6,Math.max(0,Math.floor(Number(level)||0)))*2}
-function frostReduction(level){return Math.min(85,15+10*Math.min(6,level)+5*Math.max(0,level-6))}
-function wardcraftBonus(level){return [0,20,35,50,60,70][Math.min(5,Math.max(0,Math.floor(level)))]}
+const CombatMath=window.ParryCombatMath,SkillCatalog=window.ParrySkills;
+const {SKILLS,SYNERGIES,PULSE_COMBO_STEP,KING_COMBO_STEP}=SkillCatalog;
+const {ULTIMATE_BASE_MULTIPLIER,heartbeatDamagePercent,tempoReduction,frostReduction,wardcraftBonus,bloodHealAmount}=CombatMath;
+function baseAttackScale(){return CombatMath.baseAttackScale(game?.baseAtk);}
+function skillAtkScale(){return CombatMath.skillAtkScale(game?.baseAtk,lvl('blade'));}
+function runBaseHp(){return CombatMath.runBaseHp(game.lifeBonus??PR.baseValue(meta,'life'));}
+function hpSkillScale(){return CombatMath.hpSkillScale(runBaseHp(),lvl('heal'));}
+function describeSkill(id,level){
+ return SkillCatalog.describe(id,level,{baseAtk:game?.baseAtk,bladeLevel:lvl('blade'),baseHp:runBaseHp()});
+}
 let codexTab='monsters';
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
@@ -116,19 +87,7 @@ function syncArtMode(){
  if(useIllustratedArt())KNIGHT_PUPPET?.preloadSources?.();
 }
 let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items';
-const SYNERGIES=[
- {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
- {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
- {a:'aegis',b:'thorns',name:'🪞 鏡壁の反撃',desc:'ジャスト時に障壁の一部を攻撃に転換'},
- {a:'ember',b:'execute',name:'☄️ 紅蓮処刑',desc:'瀕死の敵に炎の蓄積を一気に放出'},
- {a:'rune',b:'precision',name:'🔮 時空切断',desc:'奥義の発動時に追加の斬撃'},
-  {a:'fortitude',b:'aegis',name:'🛡️ 不滅の盾',desc:'障壁破壊でも不屈が発動・反撃後に障壁+5'},
-  {a:'heartbeat',b:'focus',name:'🎵 共鳴心眼',desc:'拍動が2連続ジャストで発動'},
-  {a:'overcharge',b:'thunder',name:'⚡ 雷霆循環',desc:'過充電時に落雷の基礎ダメージ50%を追加'},
-  {a:'bloodlust',b:'blood',name:'🦇 鮮血連鎖',desc:'回復からの蓄積ダメージ×1.5（上限は維持）'},
-  {a:'frost',b:'thorns',name:'❄️ 氷鏡',desc:'氷結で軽減したダメージの50%を反射'},
-  {a:'king',b:'pulse',name:'👑 王の共鳴',desc:`王の一撃が${PULSE_COMBO_STEP}コンボごとに発動`}
-];
+
 const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
 let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,choiceSet=[],cuePlayed=false;
@@ -368,7 +327,7 @@ function renderCombatBuffs(){
  const el=$('combatBuffs');el.hidden=!parts.length;el.textContent=parts.join('　·　');
 }
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
-function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)} / ${skillCap(s.id)}${game.skillBreaks?.[s.id]?`<br>✦ ${game.skillBreaks[s.id]}/2`:""}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');renderRelicInventory();}
+function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${describeSkill(s.id,lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)} / ${skillCap(s.id)}${game.skillBreaks?.[s.id]?`<br>✦ ${game.skillBreaks[s.id]}/2`:""}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');renderRelicInventory();}
 
 // Caps and refinements belong to this challenge, never to permanent progression.
 function skillCap(id){return Object.hasOwn(SK,id)?SK[id].max+(game.skillBreaks?.[id]||0):0}
@@ -413,7 +372,7 @@ function relicBump(id,threshold){
  game.relicCounters[id]=next>=threshold?0:next;
  return next>=threshold;
 }
-function shieldCap(){return Math.ceil((100+runBonus('wardCapacity')+20*lvl('aegis'))*(100+wardcraftBonus(lvl('wardcraft')))/100)}
+function shieldCap(){return CombatMath.shieldCap(runBonus('wardCapacity'),lvl('aegis'),lvl('wardcraft'));}
 function addShield(amount,combat=false,cap=shieldCap()){
  const gain=combat?Math.ceil(amount*(100+wardcraftBonus(lvl('wardcraft')))/100):amount;
  const added=Math.max(0,Math.min(gain,cap-game.shield));
@@ -506,7 +465,7 @@ function renderUpgradeScreen(){
     const eq=permanent.equipped[i]===skill.id;
     return `<button type="button" class="quick-equip-btn ${eq?'equipped':''}" data-action="quick-equip" data-key="${i}:${skill.id}">${eq?`✓ スロット${i+1}装備中`:`スロット${i+1}に装備`}</button>`;
    }).join('')}</div>`:'';
-   return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
+   return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${describeSkill(skill.id,1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
   }).join('');
   $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
  }else if(upgradeTab==='bonus'&&bonusView==='skins'){
@@ -525,7 +484,7 @@ function renderUpgradeScreen(){
    const sealed=seals.includes(skill.id),equipped=permanent.equipped.includes(skill.id);
    const blocked=!sealed&&(equipped||seals.length>=limit);
    const label=sealed?'封印を解く':equipped?'装備中':limit===0?'枠未解放':seals.length>=limit?'枠が満杯':'封印する';
-   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中':skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
+   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中':describeSkill(skill.id,1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
   }).join('');
   $('upgradeList').innerHTML=upgrade+rows;
  }else{
@@ -864,7 +823,7 @@ function renderRoom(){
    if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)),game.towerCoins<item.cost)}
    const skill=SK[target],cap=skillCap(target),next=cap+(itemId==='breakthrough'?1:0);
    return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),
-    skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1)+' / 上限 '+cap+' → '+next+
+    describeSkill(skill.id,lvl(target))+' → '+describeSkill(skill.id,lvl(target)+1)+' / 上限 '+cap+' → '+next+
     (itemId==='breakthrough'?'（限界突破 '+((game.skillBreaks[target]||0)+1)+'/2）':''),game.towerCoins<item.cost);
   }).join('')+roomActionButton('back','← 商品一覧に戻る');
   return;
@@ -874,7 +833,7 @@ function renderRoom(){
   $('roomDescription').hidden=true;
   $('roomActions').innerHTML=merchantTargets('training').map(target=>{
    const skill=SK[target];
-   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1));
+   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),describeSkill(skill.id,lvl(target))+' → '+describeSkill(skill.id,lvl(target)+1));
   }).join('')+roomActionButton('back','← 聖堂の選択に戻る');
   return;
  }
@@ -983,7 +942,7 @@ function eventSkillOffer(title,customPool=null){
 }
 function skillCardMeta(s){
  const cur=lvl(s.id),next=cur+1;
- const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${s.desc(cur)}）</span>`:'';
+ const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${describeSkill(s.id,cur)}）</span>`:'';
  const readySynergies=cur===0?SYNERGIES.filter(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)):[];
  const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴解放可能！</span>':'';
  return {diffHtml,synHtml};
@@ -994,7 +953,7 @@ function renderEventSkillOffer(){
  $('routeSkillCards').innerHTML=pool.map(skill=>{const meta=skillCardMeta(skill);return `<button class="reward-card ${skill.rarity}" type="button" data-route-skill="${skill.id}">
  <span class="rarity">${skill.rarity.toUpperCase()} · ${lvl(skill.id)?'LEVEL UP':'NEW SKILL'}</span>
  <span class="emoji">${skill.icon}</span><span class="rname">${skill.name} <small>Lv.${lvl(skill.id)+1}</small></span>
- <span class="rdesc">${skill.desc(lvl(skill.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');
+ <span class="rdesc">${describeSkill(skill.id,lvl(skill.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');
  return true;
 }
 function takeEventSkill(id){
@@ -1299,16 +1258,6 @@ function updateFinalPhase(now){
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
 function feedback(label,color){game.feedback=label;game.feedbackAt=performance.now();showText(label,w*.5,h*.27,color,27)}
-// Each successful parry heals once from damage actually inflicted (overkill excluded).
-// Blood Rhythm adds 1 percentage point to both lifesteal rate and max-HP recovery cap per combo.
-// The combo contribution deliberately has no upper limit.
-function bloodHealAmount(dealt,level,combo,synergy,maxHp){
- if(level<=0||dealt<=0||maxHp<=0)return 0;
- const bonus=synergy?Math.max(0,Math.floor(combo)):0;
- const rate=(6+level*2+bonus)/100;
- const cap=Math.ceil(maxHp*(25+bonus)/100);
- return Math.min(Math.max(2,Math.round(dealt*rate)),cap);
-}
 function finishParryBlood(recovery=null){
  if(!game.parryDamageActive)return 0;
  const dealt=game.parryDamage;
@@ -1363,7 +1312,12 @@ function heal(n,recovery=null){
  }
  return restored;
 }
-function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
+function getAttackMultiplier(){
+ return CombatMath.attackMultiplier({
+  bladeLevel:lvl('blade'),furyLevel:lvl('fury'),gambleLevel:lvl('gamble'),executeLevel:lvl('execute'),
+  combo:game.combo,hp:game.hp,maxHp:game.maxHp,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp
+ });
+}
 function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
   game.relicJustStreak=0;game.justStreak=0;
   if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
@@ -1649,7 +1603,7 @@ function showRewards(){
  }
  game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');
 }
-function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=game.finalClear&&game.floor===80?'80F制覇 — 終刻の王を討伐':`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>{const meta=skillCardMeta(s);return `<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.finalClear&&game.floor===80?'👑 塔の頂を制覇！ 81Fから無限踏破が始まる':null,game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length;checkpoint()}
+function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=game.finalClear&&game.floor===80?'80F制覇 — 終刻の王を討伐':`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>{const meta=skillCardMeta(s);return `<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${describeSkill(s.id,lvl(s.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.finalClear&&game.floor===80?'👑 塔の頂を制覇！ 81Fから無限踏破が始まる':null,game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length;checkpoint()}
 function gainSkillLevel(id){
  if(!Object.hasOwn(SK,id)||lvl(id)>=skillCap(id)||game.sealedSkillIds?.includes(id))return false;
  const prevMax=game.maxHp;
@@ -1716,7 +1670,7 @@ function renderSkillCodex(){
    const partner=SK[syn.a===s.id?syn.b:syn.a];
    return `<div class="codex-synergy-hint"><b>${syn.name}</b>（+${partner.icon}${partner.name}）：${syn.desc}</div>`;
   }).join('');
-  return `<div class="codex-card upgrade-row ${s.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${s.icon}</span><div><div class="upgrade-name">${s.name}</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</div><div class="upgrade-effect">${s.desc(1)}</div>${syns}</div></div></div>`;
+  return `<div class="codex-card upgrade-row ${s.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${s.icon}</span><div><div class="upgrade-name">${s.name}</div><div class="upgrade-effect">${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</div><div class="upgrade-effect">${describeSkill(s.id,1)}</div>${syns}</div></div></div>`;
  }).join('');
 }
 function renderCodex(){

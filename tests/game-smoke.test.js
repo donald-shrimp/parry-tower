@@ -928,9 +928,10 @@ test('blood lifesteal is disabled in immortal practice mode',()=>{
 
 
 test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in both entrypoints',()=>{
- const script=fs.readFileSync('assets/game.js','utf8');
+ const catalog=require('../assets/skills.js');
+ const names=[...catalog.SKILLS,...catalog.SYNERGIES].map(item=>item.name);
  for(const name of ['不屈','拍動','過充電','血の渇望','氷結','王の一撃',
-  '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
+  '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
   assert.match(html,/v0\.9\.9/);

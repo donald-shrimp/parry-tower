@@ -49,7 +49,7 @@ function diagnosticPage(page='index.html',options={}){
   console:logger,addEventListener(k,cb){listeners[k]=cb}
  };
  const modules={
-  ParryAudioClock:{},ParryAudioSession:{},ParryRunState:{},ParrySaveStore:{},
+  ParryAudioClock:{},ParryAudioSession:{},ParryRunState:{},ParryCombatMath:{},ParrySkills:{},ParrySaveStore:{},
   ParryEncounters:{},ParryEnemyMotions:{},ParryProgression:{},ParryRelics:{},
   ParryRoutes:{branchKind(floor){return floor%10===4?'first':floor%10===8?'second':null}},
   ParryEvents:{},ParryStageMusic:{},ParryFinalBossMusic:{},ParryMusic:{},ParryPlayerSettings:{},ParryRunCheckpoint:{}
@@ -81,7 +81,7 @@ function diagnosticPage(page='index.html',options={}){
  };
 }
 test('HTML, game marker and asset query versions are identical in both entrypoints',()=>{
- const required=['style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js','run-state.js','save-store.js',
+ const required=['style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js','run-state.js','combat-math.js','skills.js','save-store.js',
   'relics.js','routes.js','events.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','audio-session.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
@@ -158,13 +158,13 @@ test('missing module, stale URL and script load failure each trigger a warning',
  const missing=diagnosticPage('index.html',{missingModule:'ParryRoutes'});
  assert.equal(missing.api.status().status,'mismatch');
  assert.ok(missing.api.status().issues.some(x=>x.includes('必要なゲームモジュール')));
- for(const name of ['ParryStageMusic','ParryFinalBossMusic','ParryMusic','ParryAudioSession','ParryRunState','ParryPlayerSettings','ParryRunCheckpoint','ParrySaveStore']){
+ for(const name of ['ParryStageMusic','ParryFinalBossMusic','ParryMusic','ParryAudioSession','ParryRunState','ParryPlayerSettings','ParryRunCheckpoint','ParrySaveStore','ParryCombatMath','ParrySkills']){
   const page=diagnosticPage('index.html',{missingModule:name});
   assert.equal(page.api.status().status,'mismatch',name);
  }
  const stale=diagnosticPage('index.html',{assetEntries:[]});
  const staleAssets=stale.api.status().staleAssets;
- assert.equal(staleAssets.length,19);
+ assert.equal(staleAssets.length,21);
  assert.ok(staleAssets.includes('music.js'));
  assert.equal(stale.api.status().status,'mismatch');
  const failed=diagnosticPage('index.html',{failedAsset:'./assets/game.js?v='+BUILD});

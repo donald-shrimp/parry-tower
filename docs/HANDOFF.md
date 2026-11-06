@@ -4,7 +4,9 @@
 
 [段階的リファクタリング](./REFACTOR_PLAN.md)をローカルで継続中、未公開。以後はユーザーの最新指定により主担当が計画・実装・検証・差分確認を一貫して行う。サブエージェントの起動は不要。
 
-音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
+音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）、3A（戦闘数式/スキル定義）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
+
+`combat-math.js` は必要な値を受け取る純粋な計算。`skills.js` が25スキル・11相乗効果と説明を所有し、describe(id,level,{baseAtk,bladeLevel,baseHp})で現在の表示値を受ける。全表示呼出を移行し、旧descのゲーム状態クロージャーを除去した。戦闘効果の適用・撃破・乱数消費の順序は変更していない。
 
 - ブランチ：`refactor/run-state`（音声基盤と計画を含む）
 - 作業ツリー：`E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display`
@@ -19,6 +21,8 @@
 - 重要な既存テストの対応表を REFACTOR_PLAN に追加。
 
 ## 検証済み
+
+- 3A：全Node513件（39.0秒）成功。基準da243b8と全スキル説明15,872件、計算60,000件が完全一致。ショップ/図鑑/ビルド/相乗効果/報酬の22 DOM比較、耐久36比較とfixturesも一致。Chromeで育成済みタイトルのショップ/図鑑HP表示とラン内剛剣補正後の落雷表示、診断正常を確認。構文/Pages参照/diff check、balance-simulation成功。旧スキル文字列をgame.jsから探すテスト1件をカタログ検査へ移行。scratchのverify-combat-math.cjs、verify-skill-ui.cjs、verify-skill-browser.cjs、combat-math-node.logが証跡。
 
 - 2C：全Node509件（39.4秒）、復元336条件の状態/外部呼出順比較、耐久36比較とfixturesが成功。Chromeで中断→reload→再開のHP/障壁/敵HPと初撃4拍、Devヒヨコ稽古で保存無変更、ブラウザー/アセットエラーなしを確認。保存失敗・storage取得拒否・JSON不正・削除失敗をstore単体で検証。構文/Pages参照/diff check成功。証跡はscratchのsave-store-node.log、save-store-survival.json、verify-save-browser.cjs。
 
@@ -35,7 +39,7 @@
 
 ## 残る範囲と次の一手
 
-次は3A。純粋な戦闘数式とスキル/相乗効果定義を抽出し、説明へ必要な数値を明示的に渡す。戦闘の適用順・丸め・乱数消費順と全説明値を維持し、基準との差分比較と全Node検証後にコミットする。その後は4Aのショップ/図鑑。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+次は4A。ショップを先に、図鑑を後に表示モデル/HTML生成へ分離。課金/装備/封印/稽古開始はgameの操作側で再検証する。既存の中央タブ/カード/ゲージ幅、選択タブ/スクロール、死亡直後の入力禁止を維持。320/390/PC幅のChromeと全Nodeで確認してから次の3B（回復/障壁/被ダメージ）へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 
