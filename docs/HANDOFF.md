@@ -2,11 +2,9 @@
 
 ## 現在の目的と範囲
 
-[段階的リファクタリング](./REFACTOR_PLAN.md)の最初の3PR相当をローカルで実装・レビュー済み。ユーザー指定で GPT-6.1 Sol / high が実装、親エージェントが設計・レビュー・独立比較を担当。今回のリファクタリングは未公開。
+[段階的リファクタリング](./REFACTOR_PLAN.md)をローカルで継続中、未公開。以後はユーザーの最新指定により主担当が計画・実装・検証・差分確認を一貫して行う。サブエージェントの起動は不要。
 
-ゴーサインを受け、[実行計画](./REFACTOR_EXECUTION.md) と [Sol開始指示](./SOL_REFACTOR_BRIEF.md) に沿って2Aを完了。標準ランの初期化は `ParryRunState.create(options,now)`、稽古の許可・Dev特例・敵生成・演出は引き続きゲーム側が担当する。
-
-続く2Aの親レビューは重大指摘なし。2Bの復元準備も実装・検証済み。Solが実装後に利用上限となり、親が差分レビュー・独立比較・最終検証を引き継いだ。`RunState.prepareRestore(run,now)` はCP.validateが複製した状態をその場で準備し、旧生命の器補正と入力/描画の一時値解除を担当する。HP再計算と入力解除を既存の取得/遭遇/再開経路でも共有する。
+音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
 
 - ブランチ：`refactor/run-state`（音声基盤と計画を含む）
 - 作業ツリー：`E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display`
@@ -22,6 +20,8 @@
 
 ## 検証済み
 
+- 2C：全Node509件（39.4秒）、復元336条件の状態/外部呼出順比較、耐久36比較とfixturesが成功。Chromeで中断→reload→再開のHP/障壁/敵HPと初撃4拍、Devヒヨコ稽古で保存無変更、ブラウザー/アセットエラーなしを確認。保存失敗・storage取得拒否・JSON不正・削除失敗をstore単体で検証。構文/Pages参照/diff check成功。証跡はscratchのsave-store-node.log、save-store-survival.json、verify-save-browser.cjs。
+
 - 2B：全Node505件（38.4秒）成功。基準f21b9bfに対し、全7保存モード・4スキン・効果ON/OFF・死神契約有無・旧/現行/独自HP値の336条件で全復元状態とUI/時計呼出順が一致。耐久36比較とfixtures、JS構文、Pages参照、diff check成功。Chromeで中断→reload→再開時のHP/障壁/敵HPと初撃4拍を確認。証跡はscratchのverify-restore-parity.cjs、restore-node.log、restore-survival.json。
 
 - 2A：敵生成前の全103項目を11条件で `3a16cc5` と照合し一致。耐久36比較とfixturesも一致。全Node503件（39.8秒）、バランス試算、CI相当のPages静的検査、変更JS構文とdiff check成功。Chromeで本編の開始とDevのヒヨコ稽古を確認。比較用ログは物理repoの `.local-only/scratch/`。
@@ -35,7 +35,7 @@
 
 ## 残る範囲と次の一手
 
-次は2Cの保存IO。まず中断保存のread/write/removeと失敗時処理を抽出し、警告UIと画面進行は呼び出し側に置く。状態の寿命と2Bの分担は実行計画に記録。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+次は3A。純粋な戦闘数式とスキル/相乗効果定義を抽出し、説明へ必要な数値を明示的に渡す。戦闘の適用順・丸め・乱数消費順と全説明値を維持し、基準との差分比較と全Node検証後にコミットする。その後は4Aのショップ/図鑑。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 

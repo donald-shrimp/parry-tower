@@ -42,25 +42,26 @@ const RR=window.ParryRelics;if(!RR)throw Error('Missing assets/relics.js');
 const RT=window.ParryRoutes;if(!RT)throw Error('Missing assets/routes.js');
 const EV=window.ParryEvents;if(!EV)throw Error('Missing assets/events.js');
 const PREF=window.ParryPlayerSettings,CP=window.ParryRunCheckpoint;
+const saves=window.ParrySaveStore.create({storage:()=>localStorage,writable:!DEV_MODE});
 const audioClock=window.ParryAudioClock.create();
 let clockPausedPhase=false;
-let preferences=PREF.normalize();try{preferences=PREF.normalize(JSON.parse(localStorage.getItem(PREF.KEY)||'{}'))}catch(e){}
+let preferences=PREF.normalize();try{preferences=PREF.normalize(saves.readJson(PREF.KEY,{}).value)}catch(e){}
 let pendingCheckpoint=null,saveFailed=false,settingsReturn='title',calibration=null,calibrationNodes=[],pendingNewTutorial=false;
 const CALIBRATION_COUNT_IN=4,CALIBRATION_SAMPLES=16;
 const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerInputOffset_v1';const LEGACY_OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0,rescueClaimMask:0};
 let meta={...baseMeta};try{
- const s=JSON.parse(localStorage.getItem(KEY)||'{}');
+ const s=saves.readJson(KEY,{}).value;
  for(const k of Object.keys(baseMeta)){
   if(PR.BASE_UPGRADES.some(def=>def.id===k)){meta[k]=PR.baseLevel(s,k);}
   else if(k==='rescueClaimMask')meta[k]=PR.rescueMask(s[k]);
   else if(typeof s[k]==='number'&&Number.isFinite(s[k]))meta[k]=Math.max(0,Math.floor(s[k]));
  }
 }catch(e){}
-const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;if(DEV_MODE)return;try{localStorage.setItem(KEY,JSON.stringify(meta))}catch(e){}};
-const savePermanent=()=>{if(DEV_MODE)return;try{localStorage.setItem(PERMANENT_KEY,JSON.stringify(permanent))}catch(e){}};
-let book=P.emptyBook();try{book=P.normalizeBook(JSON.parse(localStorage.getItem(BOOK_KEY)||'{}'))}catch(e){}
-const saveBook=()=>{if(DEV_MODE)return;try{localStorage.setItem(BOOK_KEY,JSON.stringify(book))}catch(e){}};
+const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;saves.writeJson(KEY,meta);};
+const savePermanent=()=>{saves.writeJson(PERMANENT_KEY,permanent);};
+let book=P.emptyBook();try{book=P.normalizeBook(saves.readJson(BOOK_KEY,{}).value)}catch(e){}
+const saveBook=()=>{saves.writeJson(BOOK_KEY,book);};
 const PULSE_COMBO_STEP=6;
 const KING_COMBO_STEP=8;
 const ULTIMATE_BASE_MULTIPLIER=1.8;
@@ -103,7 +104,7 @@ function wardcraftBonus(level){return [0,20,35,50,60,70][Math.min(5,Math.max(0,M
 let codexTab='monsters';
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
-let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.getItem(PERMANENT_KEY)||'{}'),SKILLS)}catch(e){}
+let permanent=PR.defaults();try{permanent=PR.normalize(saves.readJson(PERMANENT_KEY,{}).value,SKILLS)}catch(e){}
 if(!permanent.skinRecords.normal)permanent.skinRecords.normal={bestFloor:meta.bestFloor,bestCombo:meta.bestCombo,runs:meta.runs};
 function visualSkin(){return game?.skin||(DEV_MODE?devPreviewSkin:permanent.equippedSkin)||'normal'}
 function runSkinRules(){return PR.skinRules(game?.skinEffects?game.skin:'normal')}
@@ -216,13 +217,17 @@ const audio=window.ParryAudioSession.create({
 const {score,stopScore,scheduleScore,effectDestination,steelDestination}=audio;
 applyAudioPreferences();
 let latencyOffset=0;try{
- const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
+ const currentResult=saves.readText(OFFSET_KEY);
+ if(!currentResult.ok)throw currentResult.error;
+ const legacyResult=saves.readText(LEGACY_OFFSET_KEY);
+ if(!legacyResult.ok)throw legacyResult.error;
+ const current=currentResult.value,legacy=legacyResult.value;
  if(current!==null&&Number.isFinite(Number(current)))latencyOffset=clamp(Number(current),-180,180);
  else if(legacy!==null&&Number.isFinite(Number(legacy)))latencyOffset=clamp(Number(legacy)-PARRY_STARTUP,-180,180);
  // Preserve saved input centers: presentation changes do not require another offset conversion.
 }catch(e){}
 $('latencySlider').value=latencyOffset;$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
-$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
+$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';saves.writeText(OFFSET_KEY,latencyOffset); });
 function playMusicStep(ac,step,at){
  if(!audioEnabled)return;
  MUSIC?.playStep(ac,{
@@ -602,14 +607,16 @@ function buyUpgrade(action,key){
  meta.coins-=cost;apply();save();savePermanent();renderUpgradeScreen();sound(740,.19,'triangle',.06,190);
 }
 function checkpointContext(){return {skills:SKILLS,relics:RR.RELICS,encounters:P.findByKey,skins:PR.SKINS.map(s=>s.id)}}
-function readCheckpoint(){try{return CP.validate(JSON.parse(localStorage.getItem(CP.KEY)||'null'),checkpointContext())}catch(e){return null}}
+function readCheckpoint(){try{return CP.validate(saves.readJson(CP.KEY).value,checkpointContext())}catch(e){return null}}
 function checkpoint(){
  if(DEV_MODE||game.practice)return;
  const data=CP.capture(game,choiceSet);if(!data)return;
- try{localStorage.setItem(CP.KEY,JSON.stringify(data));pendingCheckpoint=data;saveFailed=false;$('saveWarning').hidden=true;}
- catch(e){saveFailed=true;$('saveWarning').hidden=false;try{localStorage.removeItem(CP.KEY)}catch(e){}pendingCheckpoint=null;}
+ const result=saves.writeCheckpoint(CP.KEY,data,{discardOnFailure:true});
+ saveFailed=!result.ok;
+ $('saveWarning').hidden=result.ok;
+ pendingCheckpoint=result.ok?data:null;
 }
-function removeCheckpoint(){if(DEV_MODE)return;pendingCheckpoint=null;try{localStorage.removeItem(CP.KEY)}catch(e){saveFailed=true}}
+function removeCheckpoint(){if(DEV_MODE)return;pendingCheckpoint=null;if(!saves.remove(CP.KEY).ok)saveFailed=true;}
 function syncContinue(){
  pendingCheckpoint=DEV_MODE?null:readCheckpoint();
  $('continueBtn').hidden=!pendingCheckpoint;
@@ -654,7 +661,7 @@ function restoreCheckpoint(){
  renderBuild();syncHUD();syncTutorial();return true;
 }
 function persistPreferences(){
- if(!DEV_MODE)try{localStorage.setItem(PREF.KEY,JSON.stringify(preferences))}catch(e){saveFailed=true}
+ if(!saves.writeJson(PREF.KEY,preferences).ok)saveFailed=true;
  applyAudioPreferences();
 }
 function applyAudioPreferences(){
@@ -2552,12 +2559,12 @@ $('calibrationTap').addEventListener('pointerdown',e=>{if(e.button!==undefined&&
 $('calibrationTap').addEventListener('click',e=>{if(!e?.detail)calibrationTap()});
 $('calibrationCancel').addEventListener('click',()=>{cancelCalibration();$('calibrationStatus').textContent='元の補正を保っています。';});
 $('calibrationTry').addEventListener('click',tryCalibration);
-$('calibrationApply').addEventListener('click',()=>{if(!calibration?.result)return;latencyOffset=calibration.result.candidate;$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){}cancelCalibration();$('calibrationStatus').textContent='補正を保存しました。';});
+$('calibrationApply').addEventListener('click',()=>{if(!calibration?.result)return;latencyOffset=calibration.result.candidate;$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';saves.writeText(OFFSET_KEY,latencyOffset);cancelCalibration();$('calibrationStatus').textContent='補正を保存しました。';});
 $('tutorialBtn').addEventListener('click',()=>requestStart(true));
 $('continueBtn').addEventListener('click',restoreCheckpoint);
 $('newRunConfirm').addEventListener('click',startTutorialOrRun);
 $('newRunCancel').addEventListener('click',title);
-$('suspendBtn').addEventListener('click',()=>{if(game.mode!=='pause')return;if(!DEV_MODE&&!game.practice){const snapshot=CP.capture({...game,mode:'combat'},choiceSet);try{localStorage.setItem(CP.KEY,JSON.stringify(snapshot))}catch(e){saveFailed=true;return}}title();});
+$('suspendBtn').addEventListener('click',()=>{if(game.mode!=='pause')return;if(!DEV_MODE&&!game.practice){const snapshot=CP.capture({...game,mode:'combat'},choiceSet);if(!saves.writeCheckpoint(CP.KEY,snapshot).ok){saveFailed=true;return}}title();});
 $('tutorialNext').addEventListener('click',()=>{if(game.tutorial){game.tutorialFinishing=true;syncTutorial();checkpoint()}});
 $('tutorialSkip').addEventListener('click',()=>{game.tutorial=false;syncTutorial();checkpoint()});
 

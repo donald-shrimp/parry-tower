@@ -3213,6 +3213,11 @@ test('route, mirror exchange and polished relic checkpoints keep their exact sel
 
 test('storage failure keeps combat playable, surfaces the failed save and removes any stale checkpoint',()=>{
  const g=makeHarness({},false,'','',null,true);g.press('startBtn');assert.equal(g.state().mode,'combat');assert.equal(g.el.get('saveWarning').hidden,false);assert.equal(g.storage.has(RUN_KEY),false);
+ g.press('pauseBtn');
+ g.storage.set(RUN_KEY,'previous checkpoint');
+ g.press('suspendBtn');
+ assert.equal(g.state().mode,'pause','manual save failure must keep the current run paused');
+ assert.equal(g.storage.get(RUN_KEY),'previous checkpoint','manual failure preserves the previous save');
 });
 test('resuming an illustrated challenge retains its chosen art after legacy visual is selected in the shop',()=>{
  const g=makeHarness();g.press('startBtn');const saved=Object.fromEntries(g.storage);
