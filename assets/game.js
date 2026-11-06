@@ -62,9 +62,9 @@ const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;saves.writeJson(K
 const savePermanent=()=>{saves.writeJson(PERMANENT_KEY,permanent);};
 let book=P.emptyBook();try{book=P.normalizeBook(saves.readJson(BOOK_KEY,{}).value)}catch(e){}
 const saveBook=()=>{saves.writeJson(BOOK_KEY,book);};
-const CombatMath=window.ParryCombatMath,SkillCatalog=window.ParrySkills;
+const CombatMath=window.ParryCombatMath,CombatHealth=window.ParryCombatHealth,SkillCatalog=window.ParrySkills;
 const {SKILLS,SYNERGIES,PULSE_COMBO_STEP,KING_COMBO_STEP}=SkillCatalog;
-const {ULTIMATE_BASE_MULTIPLIER,heartbeatDamagePercent,tempoReduction,frostReduction,wardcraftBonus,bloodHealAmount}=CombatMath;
+const {ULTIMATE_BASE_MULTIPLIER,heartbeatDamagePercent,tempoReduction}=CombatMath;
 function baseAttackScale(){return CombatMath.baseAttackScale(game?.baseAtk);}
 function skillAtkScale(){return CombatMath.skillAtkScale(game?.baseAtk,lvl('blade'));}
 function runBaseHp(){return CombatMath.runBaseHp(game.lifeBonus??PR.baseValue(meta,'life'));}
@@ -373,9 +373,7 @@ function relicBump(id,threshold){
 }
 function shieldCap(){return CombatMath.shieldCap(runBonus('wardCapacity'),lvl('aegis'),lvl('wardcraft'));}
 function addShield(amount,combat=false,cap=shieldCap()){
- const gain=combat?Math.ceil(amount*(100+wardcraftBonus(lvl('wardcraft')))/100):amount;
- const added=Math.max(0,Math.min(gain,cap-game.shield));
- game.shield+=added;return added;
+ return CombatHealth.addShield(game,amount,{combat,cap,wardcraftLevel:lvl('wardcraft')});
 }
 function relicShield(amount){return addShield(amount,game.mode==='combat')}
 function adjustRelicMaxHp(){RunState.adjustRelicMaxHp(game)}
@@ -1181,30 +1179,15 @@ function updateFinalPhase(now){
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
 function feedback(label,color){game.feedback=label;game.feedbackAt=performance.now();showText(label,w*.5,h*.27,color,27)}
-function finishParryBlood(recovery=null){
- if(!game.parryDamageActive)return 0;
- const dealt=game.parryDamage;
- game.parryDamage=0;game.parryDamageActive=false;
- const amount=bloodHealAmount(dealt,lvl('blood'),game.combo,has('blood','fury'),game.maxHp);
- return amount?heal(amount,recovery):0;
-}
-// Resolve successful-parry healing once, also when the killing blow immediately ends the floor.
-// Overheal and between-floor regeneration never become stored attack damage.
+// Settle once, including the killing blow, before floor progression changes state.
 function finishParryRecovery(){
  if(!game.parryRecoveryActive)return;
- game.parryRecoveryActive=false;
- const recovery={converted:0};
- const blood=finishParryBlood(recovery);
- const lust=lvl('bloodlust')&&!game.practice?heal(2+lvl('bloodlust'),recovery):0;
- const bell=hasRelic('pilgrim_bell')&&game.relicBellDue?heal(Math.round(relicPower('pilgrim_bell')*hpSkillScale()),recovery):0;
- game.relicBellDue=false;
- const pact=hasRelic('blood_pact_chalice')&&game.relicPactReady?heal(Math.round(relicPower('blood_pact_chalice')*hpSkillScale()),recovery):0;
- game.relicPactReady=false;
- if(lvl('bloodlust')&&!game.practice){
-  const multiple=(1+lvl('bloodlust')*.5)*(has('bloodlust','blood')?1.5:1);
-  const cap=game.baseAtk*(2.5+lvl('bloodlust')*.5);
-  game.bloodlustPending=Math.min(cap,Math.round((blood+lust+bell+pact)*multiple));
- }
+ CombatHealth.finishParryRecovery(game,{
+  bloodLevel:lvl('blood'),bloodSynergy:has('blood','fury'),
+  bloodlustLevel:lvl('bloodlust'),bloodlustSynergy:has('bloodlust','blood'),
+  bellOwned:hasRelic('pilgrim_bell'),bellAmount:Math.round(relicPower('pilgrim_bell')*hpSkillScale()),
+  pactOwned:hasRelic('blood_pact_chalice'),pactAmount:Math.round(relicPower('blood_pact_chalice')*hpSkillScale())
+ },heal);
 }
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
@@ -1223,17 +1206,14 @@ function damageEnemy(n,color='#fff',label){
  }
 }
 function heal(n,recovery=null){
- const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);
- const restored=Math.max(0,game.hp-a);
- if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);
- if(recovery&&hasRelic('overflow_chalice')){
-  const perParry=Math.ceil(game.maxHp*Math.round(relicPower('overflow_chalice',true)*100)/100);
-  const ceiling=Math.min(shieldCap(),Math.ceil(game.maxHp*(relicPolished('overflow_chalice')?40:30)/100));
-  const amount=Math.min(Math.floor(Math.max(0,n-restored)*Math.round(relicPower('overflow_chalice')*100)/100),Math.max(0,perParry-recovery.converted));
-  const added=addShield(amount,false,ceiling);recovery.converted+=added;
-  if(added)showText('障壁 +'+added,w*.27,h*.40,'#c4b4ff',15);
- }
- return restored;
+ const overflow=recovery&&hasRelic('overflow_chalice')?{
+  ratio:relicPower('overflow_chalice'),budgetRatio:relicPower('overflow_chalice',true),
+  polished:relicPolished('overflow_chalice')
+ }:null;
+ return CombatHealth.heal(game,n,{cap:shieldCap(),overflow},recovery,{
+  hp:restored=>showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18),
+  shield:added=>showText('障壁 +'+added,w*.27,h*.40,'#c4b4ff',15)
+ });
 }
 function getAttackMultiplier(){
  return CombatMath.attackMultiplier({
@@ -1366,50 +1346,30 @@ function clearFloor(){
  sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();checkpoint();
 }
 function applyDamage(n,tag){
- let damage=game.practice||game.tutorial?0:Math.max(1,Math.ceil(n));
- const previousShield=game.shield,previousHp=game.hp;
- let prevented=0;
- // Consume the ice ward before regular shield absorption.
- if(damage>0&&lvl('frost')&&game.frostWard&&!game.practice){
-  prevented=Math.floor(damage*frostReduction(lvl('frost'))/100);
-  damage=Math.max(0,damage-prevented);game.frostWard=false;
-  showText('氷結 -'+prevented,w*.31,h*.36,'#baeaff',17);
- }
- const used=Math.min(game.shield,damage);
- game.shield=Math.max(0,game.shield-used);damage-=used;
- if(previousShield>0&&damage>0&&hasRelic('unbroken_sigil')&&!game.relicBulwarkUsed){
-  game.relicBulwarkUsed=true;
-  const blocked=Math.floor(damage*Math.round(relicPower('unbroken_sigil')*100)/100);damage-=blocked;
-  showText('紋章 -'+blocked,w*.31,h*.39,'#c4b4ff',16);
- }
- if(tag==='GUARD'&&hasRelic('silver_mirror')&&damage>0)damage-=Math.min(Math.round(relicPower('silver_mirror',true)*hpSkillScale()),Math.floor(damage*relicPower('silver_mirror')));
- if(damage>0&&hasRelic('rusty_crest')&&!game.relicRustyUsed){
-  game.relicRustyUsed=true;damage=Math.max(0,damage-Math.round(relicPower('rusty_crest')*hpSkillScale()));
- }
- if(damage>0)game.hp=Math.max(0,game.hp-damage);
- if(game.hp<previousHp&&hasRelic('blood_pact_chalice')&&!game.relicPactConsumed){
-  game.relicPactConsumed=true;game.relicPactReady=true;
- }
- // Normal Fortitude responds to lost HP; Immortal Shield additionally triggers on barrier break.
- if(lvl('fortitude')&&!game.practice){
-  if(game.hp<previousHp||(has('fortitude','aegis')&&previousShield>0&&game.shield===0))
-   game.fortitudeReady=true;
- }
- showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);
- puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);
- shake=Math.max(shake,damage?11:4);
- if(game.hp<=0){
-  const revive=runBonus('revive');
-  if(!game.practice&&!game.reviveUsed&&revive){
-   game.reviveUsed=true;game.hp=Math.max(1,Math.ceil(game.maxHp*revive/100));
+ const rules={
+  frostLevel:lvl('frost'),frostMirror:has('frost','thorns'),
+  sigilRatio:hasRelic('unbroken_sigil')?relicPower('unbroken_sigil'):null,
+  silver:hasRelic('silver_mirror')?{
+   cap:Math.round(relicPower('silver_mirror',true)*hpSkillScale()),ratio:relicPower('silver_mirror')
+  }:null,
+  rustyReduction:hasRelic('rusty_crest')?Math.round(relicPower('rusty_crest')*hpSkillScale()):null,
+  pactOwned:hasRelic('blood_pact_chalice'),fortitudeLevel:lvl('fortitude'),
+  fortitudeSynergy:has('fortitude','aegis'),revivePercent:runBonus('revive')
+ };
+ CombatHealth.applyDamage(game,n,tag,rules,{
+  frost:prevented=>showText('氷結 -'+prevented,w*.31,h*.36,'#baeaff',17),
+  sigil:blocked=>showText('紋章 -'+blocked,w*.31,h*.39,'#c4b4ff',16),
+  hit:damage=>{
+   showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);
+   puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);
+   shake=Math.max(shake,damage?11:4);
+  },
+  revive:()=>{
    showText('復活!',w*.28,h*.34,'#ffdc97',26);flash=.65;flashColor='#ffc878';
    sound(660,.30,'triangle',.07,120);
-  }else die();
- }
- // Frost Mirror works for guards and misses; never counts as parry lifesteal damage.
- if(prevented>0&&has('frost','thorns')&&game.mode==='combat')
-  damageEnemy(prevented*.5,'#bbebff','氷鏡');
- syncHUD();
+  },
+  die,reflect:amount=>damageEnemy(amount,'#bbebff','氷鏡'),sync:syncHUD
+ });
 }
 function die(){
  if(game.mode==='gameover')return;

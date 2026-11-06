@@ -1,6 +1,6 @@
 # 構成と保守上の注意
 
-2026-11-06、`refactor/run-state` の構成。公開版との差と検証結果は [HANDOFF](./HANDOFF.md)、今後の工程は [REFACTOR_PLAN](./REFACTOR_PLAN.md) を参照。
+2026-11-07、`refactor/run-state` の構成。公開版との差と検証結果は [HANDOFF](./HANDOFF.md)、今後の工程は [REFACTOR_PLAN](./REFACTOR_PLAN.md) を参照。
 
 ## 技術構成
 
@@ -13,6 +13,7 @@ Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localSto
 | `assets/game.js` | ラン状態、進行、戦闘の効果適用、画面・描画・入力、音声への要求。ここは今後も段階的な抽出対象 |
 | `assets/encounters.js` / `enemy-motions.js` | 敵・階層・譜面・モーション定義 |
 | `assets/shop-view.js` / `codex-view.js` | 読取専用の表示入力からHTMLと表示値を生成。DOM反映/スキン先読み/操作リスナー/購入と稽古資格の再検証はgame側 |
+| `assets/combat-health.js` | HP/障壁/回復準備フラグの同期更新。解決済ルール値と即時callbackを受け取り、演出/死亡/氷鏡/HUDを元の順序で呼ぶ |
 | `assets/combat-math.js` | 攻撃倍率・回復量・障壁容量・テンポ/氷結などの純粋計算。効果適用やゲーム状態を所有しない |
 | `assets/skills.js` | 25スキルと相乗効果、明示的な数値コンテキストからの説明文。全画面で共用 |
 | `assets/progression.js` / `relics.js` | 恒久育成・スキンと遺物の定義・計算 |

@@ -90,6 +90,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  };
  vm.runInNewContext(readProjectFile('assets/save-store.js'),context,{filename:'save-store.js'});
  vm.runInNewContext(readProjectFile('assets/combat-math.js'),context,{filename:'combat-math.js'});
+ vm.runInNewContext(readProjectFile('assets/combat-health.js'),context,{filename:'combat-health.js'});
  vm.runInNewContext(readProjectFile('assets/skills.js'),context,{filename:'skills.js'});
  vm.runInNewContext(readProjectFile('assets/shop-view.js'),context,{filename:'shop-view.js'});
  vm.runInNewContext(readProjectFile('assets/codex-view.js'),context,{filename:'codex-view.js'});
@@ -229,7 +230,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:level=>describeSkill(s.id,level)})),
   skillCap,merchantTargets,
   setBreaks:(id,n)=>{game.skillBreaks[id]=n},
-  bloodHealAmount,
+  bloodHealAmount:CombatMath.bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
   gainSkill:id=>gainSkillLevel(id),
   setHp:hp=>{game.hp=hp},
