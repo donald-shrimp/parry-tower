@@ -549,9 +549,22 @@ function applyAudioPreferences(){
 function openSettings(){
  if(['loading','phase','settings','confirm'].includes(game.mode)||deathInputBlocked())return;
  if(game.mode==='combat')togglePause();
- settingsReturn=game.mode;if(settingsReturn!=='pause')pauseAt=performance.now();setMode('settings');
- for(const kind of ['bgm','sfx']){$(kind+'Volume').value=String(preferences[kind]);$(kind+'VolumeValue').textContent=preferences[kind]+'%';}
- $('screenShake').checked=preferences.shake;$('screenFlash').checked=preferences.flash;
+ settingsReturn=game.mode;
+ if(settingsReturn!=='pause')pauseAt=performance.now();
+ setMode('settings');
+ renderSettingsPreferences(preferences);
+ syncSettingsSaveStatus();
+}
+function renderSettingsPreferences(values){
+ for(const kind of ['bgm','sfx']){
+  $(kind+'Volume').value=String(values[kind]);
+  $(kind+'VolumeValue').textContent=values[kind]+'%';
+ }
+ $('screenShake').checked=values.shake;
+ $('screenFlash').checked=values.flash;
+}
+function syncSettingsSaveStatus(){
+ // Keep this read after the controls render; Dev and save failure skip it entirely.
  $('saveStatus').textContent=DEV_MODE?'Devの変更は保存しません。':saveFailed?'このブラウザに保存できません。':readCheckpoint()?'中断データをこのブラウザに保存しています。':'進行はこのブラウザに自動保存します。';
 }
 function closeSettings(){cancelCalibration();setMode(settingsReturn);if(settingsReturn==='title')syncContinue();}

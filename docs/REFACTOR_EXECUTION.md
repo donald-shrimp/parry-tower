@@ -193,6 +193,8 @@
 
 4B-2のroom-viewは経路カードと部屋の表示を生成する。game側が既存のmerchantAvailable/merchantTargets等で資格を解決し、商品ごとの購入済/資格/所持金、現在と次の説明値を渡す。イベントは実在する選択肢ごとの資格と補正済み報酬値だけを渡す。表示モジュールにゲーム状態やgetterを渡さず、支払・抽選・回復を呼ばせない。rest/merchant/全7イベント、result/target/mirror、無効な部屋の保存位置も比較対象。
 
+4B-3は新モジュールを作らず、openSettings（資格/停止/遷移）→renderSettingsPreferences（値表示）→syncSettingsSaveStatus（必要時だけ中断読取と状況表示）へ整理。3行の表示のためにscript依存を増やす利点がなく、残る較正は時計/音声/入力のcontrollerだから同時に移さない。表示後のstorage読取とDev/失敗時のshort-circuitを維持する。
+
 4Bはreward/relic、room/event、settingsを別変更にする。現在 `renderRoom` / `renderRewards` などは保存も呼ぶため、HTML生成だけを移し、保存タイミングは先に呼出順を記録してから操作側へ戻す。画面の再描画だけで抽選・課金・回復が再発動しないことを確認する。
 
 320px/390px/PC幅で長文・MAX・購入前後・一覧切替を確認。今回採用済みの中央タブ・モンスターカード・ゲージ幅を維持する。デザイン再提案やCSS全面改編は別変更。

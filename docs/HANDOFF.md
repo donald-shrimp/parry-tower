@@ -28,6 +28,8 @@
 
 ## 検証済み
 
+- 4B-3：全Node520件（40.3秒）成功。基準5bfb729と15mode×Dev/保存失敗/死亡入力禁止/中断有無の240条件で表示・戻り先・pause・中断読取位置と条件が一致。Chrome320/390/1280pxの本編/Devで文字/寸法、音量更新、Dev無保存、戦闘から設定→一時停止→再開、較正開始→取消を確認。構文/Pages/diff check成功。scratchのverify-settings-view.cjs、verify-settings-browser.cjs、settings-view-node.logが証跡。恒久テスト追加なし。
+
 - 4B-2：全Node520件（39.2秒）成功。基準ff170ecと864条件を2回ずつ描画し、全表示/状態/保存位置が一致。Chrome320/390/1280pxで13種の分岐・部屋・イベント画面、購入・強化/限界突破/研磨の選択→戻る→確定、休息後の進行を比較。文字/寸法/HTML一致、エラー/ページ横はみ出しなし。寸法比較はhoverの1px移動とCSSアニメーションを両版で無効化。390pxの強化/祭器を目視確認。構文/Pages/diff check成功。scratchのverify-room-view.cjs、verify-room-browser.cjs、room-view-node.logが証跡。
 
 - 4B-1：全Node519件（40.2秒）成功。基準61ae6efと200条件で全表示値/全状態/保存呼出位置が一致。Chromeの320/390/1280pxで報酬/遺物/イベントスキルの文字と座標/寸法が一致。引き直し1回、4択、取得、所持満杯の遺物選択→戻る→交換、イベントスキル取得後9Fへ進行、ページ横はみ出し/ブラウザーエラーなしを確認。390pxの3画面を目視確認。構文/Pages/diff check成功。scratchのverify-rewards-view.cjs、verify-rewards-browser.cjs、rewards-view-node.logが証跡。
@@ -55,7 +57,7 @@
 
 ## 残る範囲と次の一手
 
-4B-1の報酬/遺物/イベントスキル/所持遺物と4B-2部屋/イベントの表示分離まで完了。次は4B-3設定。小さい画面なのでファイルを増やさず、設定を開く処理と表示/保存状態の表示を名前付き関数に分ける。中断データを読む時点と条件を維持する。以後5A〜C描画/Dev/配信境界へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+4B（報酬/遺物/部屋/イベント/設定）まで完了。設定は小さい画面なのでファイルを増やさず、openSettings→renderSettingsPreferences→syncSettingsSaveStatusの名前付き段階に分けた。中断データを読む時点と条件を維持。次は5A描画/アートの参照表と入口境界、その後5B Dev/controller、5C配信manifest。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 
