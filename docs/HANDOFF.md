@@ -2,7 +2,7 @@
 
 ## 能力強化のゲージ幅を統一
 
-ゲージを含む列が説明文の長さで伸縮していたため、カード内の余白を使うように修正。Chromeの320px・390px・1280px幅で9項目のゲージがそれぞれ160px・230px・260pxに揃い、購入でゲージ幅が変わらないことを確認。[ローカル本編](http://127.0.0.1:8015/)で試せる。候補は `fix/shop-gauge-width`。
+ゲージを含む列が説明文の長さで伸縮していたため、カード内の余白を使うように修正。Chromeの320px・390px・1280px幅で9項目のゲージがそれぞれ160px・230px・260pxに揃い、購入でゲージ幅が変わらないことを確認。[PR #40](https://github.com/donald-shrimp/parry-tower/pull/40)で公開済み（`db87a1c`）。[PR CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42154516866)、[main CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42154701093)、[Pages](https://github.com/donald-shrimp/parry-tower/actions/runs/42154700651)が成功。本編とDevの配信6 URLを公開コミットと照合し、本番でも同じ3画面幅でゲージ幅と購入後の表示を確認した。
 
 ## 能力強化の表示を統一
 
