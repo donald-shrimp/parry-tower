@@ -3360,6 +3360,39 @@ test('local checkpoint restores combat on a fresh clock without new encounter ro
  assert.equal(re.state().attackBeat,4);assert.ok(re.state().attackAt>re.now);assert.equal(re.state().scoreActive,true);
 });
 
+test('life vessel starts with the larger HP bonus and rounds the total before skin and relic multipliers',()=>{
+ const g=makeHarness({
+  parryTowerPrototype_v1:JSON.stringify({life:14}),
+  parryTowerPermanent_v1:JSON.stringify({slots:1,unlockedSkills:['heal'],equipped:['heal'],unlockedSkins:['chick'],equippedSkin:'chick'})
+ });
+ const d=g.bloodTest(),skill=d.skillCatalog().find(s=>s.id==='heal');
+ assert.match(skill.desc(3),/最大HP \+50/);
+ g.press('startBtn');assert.equal(g.state().runSkills.heal,1);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[333,333]);
+ d.setHp(100);assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[357,136]);
+ assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[383,174]);
+ assert.equal(d.grantRelic('reaper_pact'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[306,174]);
+});
+
+test('life vessel updates an old checkpoint maximum with its frozen blessing and preserves current HP',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({life:13})});
+ g.press('startBtn');const d=g.bloodTest();
+ for(let i=0;i<3;i++)assert.equal(d.gainSkill('heal'),true);
+ d.setHp(100);const old=d.checkpoint();
+ Object.assign(old.game,{rawMaxHp:240,maxHp:240});
+ const re=makeHarness({[RUN_KEY]:JSON.stringify(old),parryTowerPrototype_v1:JSON.stringify({life:14})});
+ re.press('continueBtn');
+ assert.equal(re.state().mode,'combat');
+ assert.deepEqual([re.state().maxHp,re.state().hp],[242,100]);
+ const migrated=re.bloodTest().checkpoint();
+ assert.deepEqual([migrated.game.rawMaxHp,migrated.game.lifeBonus],[242,130]);
+ const again=reloadHarness(re);again.press('continueBtn');
+ assert.deepEqual([again.state().maxHp,again.state().hp],[242,100]);
+});
+
 test('saved rewards, paid merchant selections and refinement resume without rerolls, refunds or another payment',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(14);d.setTowerCoins(150);d.setSkill('blade',20);g.routeSelect('merchant');
  buyTarget(g,'breakthrough','blade');const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().roomStage,'result');assert.equal(re.state().towerCoins,90);assert.equal(re.state().runSkills.blade,21);

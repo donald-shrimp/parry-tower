@@ -33,7 +33,8 @@ function foeAt(floor){
 function gear(p,floor,mode='bossOnly',includeSkills=true){
  const s=includeSkills?SKILLS[floor]:{};
  if(!s)throw Error('No skill path');
- const hp=65+PR.baseValue(p.stats,'life')+15*(s.heal||0);
+ const baseHp=65+PR.baseValue(p.stats,'life');
+ const hp=baseHp+PR.lifeVesselBonus(baseHp,s.heal||0);
  const shieldCap=100+PR.value(p.perm,'wardCapacity')+20*(s.aegis||0);
  const bossShield=(mode==='full'?PR.baseValue(p.stats,'ward'):0)+PR.value(p.perm,'bossWard');
  const inheritedShield=Math.min(shieldCap,ceil(hp*PR.value(p.perm,'wardInheritance')/100));

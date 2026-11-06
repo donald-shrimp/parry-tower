@@ -32,6 +32,9 @@
   const level=baseLevel(progress,id);
   return def&&level?def.bonuses[level-1]:0;
  }
+ function lifeVesselBonus(baseHp,level){
+  return Math.max(15*level,Math.ceil(baseHp*8*level/100));
+ }
  function baseCostNext(progress,id){
   const def=KNOWN_BASE_UPGRADES[id];
   if(!def)return Infinity;
@@ -215,7 +218,7 @@
   const level=safeLevel(progress?.[id],def.costs.length);
   return level===def.costs.length?Infinity:def.costs[level];
  }
- const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
+ const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,lifeVesselBonus,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
   SKINS,skinRules,ownsSkin,equipSkin,EXTRAS,extraEnabled,extraOption,setExtraOption,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;

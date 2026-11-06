@@ -88,7 +88,7 @@ const SKILLS=[
 {id:'pulse',icon:'🌟',name:'共鳴波',rarity:'rare',max:6,desc:l=>`${PULSE_COMBO_STEP}コンボごとに衝撃波 +${scaleSkillDmg(l*42)} ダメージ`,hint:'コンボ特化'},
 {id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${Math.round(l*45*baseAttackScale())}`,hint:'集中と共鳴'},
 {id:'gamble',icon:'🥀',name:'背水',rarity:'rare',max:6,desc:l=>`自分のHPが半分未満なら攻撃 +${l*30}%`,hint:'危険な火力'},
-{id:'heal',icon:'💗',name:'生命の器',rarity:'common',max:10,desc:l=>`最大HP +${l*15}、取得時にも回復`,hint:'持久戦'},
+{id:'heal',icon:'💗',name:'生命の器',rarity:'common',max:10,desc:l=>`最大HP +${PR.lifeVesselBonus(runBaseHp(),l)}、取得時にも回復`,hint:'持久戦'},
 {id:'double',icon:'🎲',name:'双撃',rarity:'epic',max:5,desc:l=>`${14+l*9}% の確率で反撃が2倍`,hint:'一撃の爆発力'},
  {id:'fortitude',icon:'🛡️',name:'不屈',rarity:'common',max:4,startCost:20,desc:l=>`HP被弾後、次の反撃 +${15+10*l}%`,hint:'被弾からの反撃'},
  {id:'heartbeat',icon:'🎵',name:'拍動',rarity:'common',max:4,startCost:25,desc:l=>`3連続ジャストで奥義+1・基礎攻撃の ${heartbeatDamagePercent(l)}% 追撃`,hint:'連続ジャスト'},
@@ -100,7 +100,8 @@ const SKILLS=[
 function baseAttackScale(){return (game?.baseAtk||25)/25}
 function skillAtkScale(){return baseAttackScale()*(1+lvl('blade')*.25)}
 function scaleSkillDmg(raw){return Math.max(1,Math.round(raw*skillAtkScale()))}
-function hpSkillScale(){return 1+((game?.lifeBonus||0)+lvl('heal')*15)/100}
+function runBaseHp(){return 65+(game.lifeBonus??PR.baseValue(meta,'life'))}
+function hpSkillScale(){const baseHp=runBaseHp();return 1+(baseHp-65+PR.lifeVesselBonus(baseHp,lvl('heal')))/100}
 function tempoReduction(level){return Math.min(6,Math.max(0,Math.floor(Number(level)||0)))*2}
 function frostReduction(level){return Math.min(85,15+10*Math.min(6,level)+5*Math.max(0,level-6))}
 function wardcraftBonus(level){return [0,20,35,50,60,70][Math.min(5,Math.max(0,Math.floor(level)))]}
@@ -703,7 +704,7 @@ function startTutorialOrRun(){
 }
 function configureSurvivalTrial(profile,polished){
  game.lv={blade:8,heal:6,blood:4,aegis:4,fury:3,thunder:4,echo:3,bloodlust:2};
- game.lifeBonus=120;game.rawMaxHp=275;game.baseAtk=46;game.shield=0;
+ game.lifeBonus=120;game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));game.baseAtk=46;game.shield=0;
  game.bonuses={regen:0,revive:0,bossWard:0,soulGain:0,choice4:0,wardCapacity:0,wardInheritance:0,coinGain:0};
  game.relics=[];game.devSurvival=profile;
  if(['overflow','all'].includes(profile))game.relics.push('overflow_chalice');
@@ -718,6 +719,11 @@ function restoreCheckpoint(){
  const saved=readCheckpoint();if(!saved){syncContinue();return false}
  cancelCalibration();stopScore();clearGuardInput();particles=[];texts=[];clashFX=null;
  game=saved.game;runLegacyVisual=game.legacyVisual;syncArtMode();choiceSet=saved.choices.map(id=>SK[id]);
+ const baseHp=runBaseHp(),healLevel=lvl('heal'),newRawMaxHp=baseHp+PR.lifeVesselBonus(baseHp,healLevel);
+ // Apply the new maximum to old saves without refilling current HP.
+ if(game.rawMaxHp===baseHp+15*healLevel&&newRawMaxHp>game.rawMaxHp){
+  game.rawMaxHp=newRawMaxHp;adjustRelicMaxHp();
+ }
  Object.assign(game,{artLoading:false,artFallback:false,playStartedAt:performance.now(),parryAnimAt:-99999,lastDeflectAt:-99999,lastDamageAt:-99999,lastImpactAt:-99999,whiffUntil:0,guardHeld:false,pendingKind:null,inputLocked:false});
  resetParryInput();const mode=game.mode;
  if(mode==='combat')prepareEncounterArt(performance.now());
@@ -830,10 +836,10 @@ function start(practice=false,practiceKey=null,devOptions=null){
  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardCapacity','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
+ const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const lifeBonus=PR.baseValue(meta,'life'),baseHp=65+lifeBonus,rawMaxHp=baseHp+PR.lifeVesselBonus(baseHp,initial.heal||0),startingHp=Math.ceil(rawMaxHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardCapacity','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=lifeBonus;game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
  stopScore();game.sealedSkillIds=[];
  const levels=devOptions.merchant==='capped'?{blade:20,focus:6,stability:6,frost:6,double:5}:{blade:3,focus:2,heal:3,thunder:2};
- game.lv={...levels};game.rawMaxHp=65+PR.baseValue(meta,'life')+15*lvl('heal');adjustRelicMaxHp();game.hp=game.maxHp;
+ game.lv={...levels};game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));adjustRelicMaxHp();game.hp=game.maxHp;
  game.relics=['rusty_crest','emperor_conduit','duet_mask'];game.towerCoins=150;game.floor=14;showRoutes();selectRoute('merchant');
  }else enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 // The 4F/8F rooms replace ordinary combat on each ten-floor route cycle.
@@ -1698,7 +1704,7 @@ function gainSkillLevel(id){
  game.lv[id]=(game.lv[id]||0)+1;
  if(id==='thunder'||id==='overcharge')game.relicEmperorDue=false;
  if(id==='heal'){
-  game.rawMaxHp=65+(game.lifeBonus??PR.baseValue(meta,'life'))+lvl('heal')*15;adjustRelicMaxHp();
+  game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));adjustRelicMaxHp();
   game.hp=Math.min(game.maxHp,game.hp+game.maxHp-prevMax+12);
  }
  return true;

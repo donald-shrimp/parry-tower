@@ -15,9 +15,9 @@ test('profiles preserve actual permanent stats and initial ward assumptions',()=
  assert.equal(S.gear(p,80,'bossOnly',false).shield,75);
  assert.equal(S.gear(p,80,'full',false).shield,187);
  assert.equal(S.gear(p,80,'bossOnly',false).shieldCap,160);
- assert.equal(S.gear(p,80,'bossOnly').hp,295);
+ assert.equal(S.gear(p,80,'bossOnly').hp,304);
  assert.equal(S.gear(p,80).attack,46);
- assert.equal(S.gear(p,80).regen,77);
+ assert.equal(S.gear(p,80).regen,80);
  assert.equal(S.gear(p,80).soulMultiplier,1.25);
 });
 test('guard is capped at 40 percent of max HP, and death on zero is not counted as survived',()=>{
