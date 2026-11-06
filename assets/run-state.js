@@ -1,4 +1,4 @@
-/* Build the initial state from values already resolved by the game. */
+/* Prepare new runs and validated checkpoints for gameplay. */
 (function(root,factory){
  if(typeof module==='object'&&module.exports)module.exports=factory(require('./progression.js'));
  else root.ParryRunState=factory(root.ParryProgression);
@@ -118,5 +118,36 @@
   };
  }
 
- return Object.freeze({create});
+ function adjustRelicMaxHp(run){
+  const base=Math.ceil((run.rawMaxHp||run.maxHp)*progression.skinRules(run.skinEffects?run.skin:'normal').hp);
+  const reaperPact=!run.practice&&run.relics?.includes('reaper_pact');
+  run.maxHp=reaperPact?Math.max(1,Math.floor(base*.8)):base;
+  run.hp=Math.min(run.maxHp,run.hp);
+ }
+
+ function resetParryInput(run){
+  run.guardAtImpact=null;
+  run.parryReadyAt=0;
+  run.guardReleasedAt=-99999;
+  run.parryBlockedAt=-99999;
+ }
+
+ // Checkpoint validation already owns a deep copy. Prepare that same run in place.
+ function prepareRestore(run,now){
+  const baseHp=65+run.lifeBonus,healLevel=run.lv.heal||0;
+  const newRawMaxHp=baseHp+progression.lifeVesselBonus(baseHp,healLevel);
+  // Raise only the old Life Vessel maximum. Saved HP can only stay or be clamped.
+  if(run.rawMaxHp===baseHp+15*healLevel&&newRawMaxHp>run.rawMaxHp){
+   run.rawMaxHp=newRawMaxHp;
+   adjustRelicMaxHp(run);
+  }
+  Object.assign(run,{
+   artLoading:false,artFallback:false,playStartedAt:now,
+   parryAnimAt:-99999,lastDeflectAt:-99999,lastDamageAt:-99999,lastImpactAt:-99999,
+   whiffUntil:0,guardHeld:false,pendingKind:null,inputLocked:false
+  });
+  resetParryInput(run);
+ }
+
+ return Object.freeze({create,prepareRestore,adjustRelicMaxHp,resetParryInput});
 });

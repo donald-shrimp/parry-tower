@@ -153,7 +153,6 @@ function clearGuardInput(){
  heldGuardInputs.clear();
  if(game){game.guardHeld=false;game.guardStartedAt=0;if(wasHeld)game.guardReleasedAt=performance.now();}
 }
-function resetParryInput(){game.guardAtImpact=null;game.parryReadyAt=0;game.guardReleasedAt=-99999;game.parryBlockedAt=-99999;}
 function beginGuardInput(source){
  if(game.mode!=='combat'||heldGuardInputs.has(source))return;
  const wasHeld=heldGuardInputs.size>0;
@@ -416,11 +415,7 @@ function addShield(amount,combat=false,cap=shieldCap()){
  game.shield+=added;return added;
 }
 function relicShield(amount){return addShield(amount,game.mode==='combat')}
-function adjustRelicMaxHp(){
- const base=Math.ceil((game.rawMaxHp||game.maxHp)*runSkinRules().hp);
- game.maxHp=hasRelic('reaper_pact')?Math.max(1,Math.floor(base*.8)):base;
- game.hp=Math.min(game.maxHp,game.hp);
-}
+function adjustRelicMaxHp(){RunState.adjustRelicMaxHp(game)}
 function renderRelicInventory(){
  const items=RR.validIds(game.relics||[]).map(ownedRelic);
  $('relicCount').textContent=items.length+' / '+RR.MAX_HELD;
@@ -646,13 +641,8 @@ function restoreCheckpoint(){
  const saved=readCheckpoint();if(!saved){syncContinue();return false}
  cancelCalibration();stopScore();clearGuardInput();particles=[];texts=[];clashFX=null;
  game=saved.game;runLegacyVisual=game.legacyVisual;syncArtMode();choiceSet=saved.choices.map(id=>SK[id]);
- const baseHp=runBaseHp(),healLevel=lvl('heal'),newRawMaxHp=baseHp+PR.lifeVesselBonus(baseHp,healLevel);
- // Apply the new maximum to old saves without refilling current HP.
- if(game.rawMaxHp===baseHp+15*healLevel&&newRawMaxHp>game.rawMaxHp){
-  game.rawMaxHp=newRawMaxHp;adjustRelicMaxHp();
- }
- Object.assign(game,{artLoading:false,artFallback:false,playStartedAt:performance.now(),parryAnimAt:-99999,lastDeflectAt:-99999,lastDamageAt:-99999,lastImpactAt:-99999,whiffUntil:0,guardHeld:false,pendingKind:null,inputLocked:false});
- resetParryInput();const mode=game.mode;
+ RunState.prepareRestore(game,performance.now());
+ const mode=game.mode;
  if(mode==='combat')prepareEncounterArt(performance.now());
  setMode(mode);
  if(mode==='victory'){game.clearAt=performance.now();showRewards()}
@@ -1189,7 +1179,7 @@ function spawnEnemy(t){
  if(!archetype){title();return}
  // Encounter, not kill, unlocks the existing invulnerable practice mode.
  game.lastDiscovered=false;
- clearGuardInput();resetParryInput();
+ clearGuardInput();RunState.resetParryInput(game);
  if(!game.practice&&!archetype.preview){
   game.lastDiscovered=P.recordEncounter(book,archetype,floor);
   saveBook();
@@ -1780,7 +1770,7 @@ function pauseForClock(){
 function togglePause(){
  if(game.mode==='combat'){clockPausedPhase=false;$('pauseStatus').hidden=true;clearGuardInput();pauseAt=performance.now();stopScore();setMode('pause');}
  else if(game.mode==='pause'){
-  const now=performance.now();resetParryInput();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
+  const now=performance.now();RunState.resetParryInput(game);game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
   $('pauseStatus').hidden=true;
   if(clockPausedPhase){clockPausedPhase=false;game.phaseStage='rumble';setMode('phase');beginFinalCountIn();}
   else{startScore(game.enemy);attackPresentation.opening=true;game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat');}

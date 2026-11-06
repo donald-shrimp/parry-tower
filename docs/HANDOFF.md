@@ -6,6 +6,8 @@
 
 ゴーサインを受け、[実行計画](./REFACTOR_EXECUTION.md) と [Sol開始指示](./SOL_REFACTOR_BRIEF.md) に沿って2Aを完了。標準ランの初期化は `ParryRunState.create(options,now)`、稽古の許可・Dev特例・敵生成・演出は引き続きゲーム側が担当する。
 
+続く2Aの親レビューは重大指摘なし。2Bの復元準備も実装・検証済み。Solが実装後に利用上限となり、親が差分レビュー・独立比較・最終検証を引き継いだ。`RunState.prepareRestore(run,now)` はCP.validateが複製した状態をその場で準備し、旧生命の器補正と入力/描画の一時値解除を担当する。HP再計算と入力解除を既存の取得/遭遇/再開経路でも共有する。
+
 - ブランチ：`refactor/run-state`（音声基盤と計画を含む）
 - 作業ツリー：`E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display`
 - プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html)
@@ -20,6 +22,8 @@
 
 ## 検証済み
 
+- 2B：全Node505件（38.4秒）成功。基準f21b9bfに対し、全7保存モード・4スキン・効果ON/OFF・死神契約有無・旧/現行/独自HP値の336条件で全復元状態とUI/時計呼出順が一致。耐久36比較とfixtures、JS構文、Pages参照、diff check成功。Chromeで中断→reload→再開時のHP/障壁/敵HPと初撃4拍を確認。証跡はscratchのverify-restore-parity.cjs、restore-node.log、restore-survival.json。
+
 - 2A：敵生成前の全103項目を11条件で `3a16cc5` と照合し一致。耐久36比較とfixturesも一致。全Node503件（39.8秒）、バランス試算、CI相当のPages静的検査、変更JS構文とdiff check成功。Chromeで本編の開始とDevのヒヨコ稽古を確認。比較用ログは物理repoの `.local-only/scratch/`。
 
 - ハーネス抽出後：全Node496件成功、テスト登録と本体を保持。耐久試算36比較とfixtureを含むJSONが基準と完全一致。
@@ -31,7 +35,7 @@
 
 ## 残る範囲と次の一手
 
-次は2Bの復元準備。2Aの合格コミットを基準に、旧データ補正と一時値リセットの移動先、保存可能モードごとの状態の寿命を整理してから実装する。2C以降は実行計画を参照。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+次は2Cの保存IO。まず中断保存のread/write/removeと失敗時処理を抽出し、警告UIと画面進行は呼び出し側に置く。状態の寿命と2Bの分担は実行計画に記録。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 
