@@ -534,10 +534,13 @@ function grantRescueRewards(){
 const LEGACY_OFFERS=PR.BASE_UPGRADES;
 function upgradeRow(o){
  const full=o.level>=o.max,price=full?Infinity:o.cost;
- const progress=o.action==='legacy'
+ const effect=o.effect?`${o.effect} `:'';
+ const next=full?'':` → Lv.${o.level+1}：${o.next}`;
+ const desc=`現在：${effect}${o.current}${next}${o.note||''}`;
+ const progress=o.max>1
   ?`<div class="upgrade-progress" role="progressbar" aria-label="${o.name} 強化進捗" aria-valuemin="0" aria-valuemax="${o.max}" aria-valuenow="${o.level}">${Array.from({length:o.max},(_,i)=>`<span class="${i<o.level?'filled':''}"></span>`).join('')}</div>`
   :'';
- return `<div class="upgrade-row ${o.rarity||''}"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${o.desc}</div>${progress}</div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
+ return `<div class="upgrade-row upgrade-tier"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${desc}</div>${progress}</div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
 }
 function bonusNavigation(){
  return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
@@ -603,15 +606,13 @@ function renderUpgradeScreen(){
   const legacy=LEGACY_OFFERS.map(o=>{
    const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
    const next=PR.baseValue({...meta,[o.id]:level+1},o.id);
-   return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),
-    desc:`現在：${o.effect} +${now}${level===o.max?'':` → Lv.${level+1}：+${next}`}`});
+   return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),current:`+${now}`,next:`+${next}`});
   });
   const extra=PR.UPGRADES.filter(o=>(o.group==='base'||o.group==='special')&&o.id!=='sealSlots').map(o=>{
-   const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
-   const desc=o.id==='wardInheritance'
-    ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:''}（通常上限内）`
-    :o.description(nextValue);
-   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
+   const level=permanent[o.id],max=o.costs.length;
+   const current=level===0&&max===1?'未取得':o.formatValue(PR.value(permanent,o.id));
+   const next=level<max?o.formatValue(o.values[level]):'';
+   return upgradeRow({...o,level,max,cost:PR.costNext(permanent,o.id),action:'extra',current,next});
   });
   $('upgradeList').innerHTML=legacy.concat(extra).join('');
  }

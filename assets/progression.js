@@ -48,16 +48,16 @@
  });
  // Each definition controls its own prices, effects and visibility in the shop.
  const UPGRADES=Object.freeze([
-  {id:'regen',group:'base',icon:'💗',name:'再生力',costs:[12,24,45,80,140,180,260],values:[5,10,15,18,20,23,26],description:v=>`階層クリア時 HP ${v}%回復`},
-  {id:'bossWard',group:'base',icon:'🛡️',name:'守護の備え',costs:[15,30,55,90,155,235,260],values:[5,10,15,25,40,55,75],description:v=>`ボス戦開始時 障壁 +${v}`},
-  {id:'wardCapacity',group:'base',icon:'🛡️',name:'障壁の器',costs:[60,110,180],values:[20,40,60],description:v=>`障壁の補充上限 +${v}（スキル補正前）`},
-  {id:'wardInheritance',group:'base',icon:'🔰',name:'守護の継承',costs:[60,120,220,240,320],values:[5,8,10,15,20],description:v=>`新しい戦闘階で障壁を最大HP${v}%まで補修（通常上限内）`},
-  {id:'soulGain',group:'base',icon:'✧',name:'魂の共鳴',costs:[30,60,100,150,225],values:[5,10,15,20,25],description:v=>`獲得する魂の欠片 +${v}%`},
-  {id:'extraReroll',group:'special',icon:'↻',name:'出撃準備',costs:[25],values:[1],description:v=>`初期引き直し +${v}回`},
-  {id:'choice4',group:'special',icon:'🎴',name:'選択眼',costs:[80],values:[4],description:v=>`戦利品が${v}択になる`},
-  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],description:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`},
+  {id:'regen',group:'base',icon:'💗',name:'再生力',costs:[12,24,45,80,140,180,260],values:[5,10,15,18,20,23,26],effect:'階層クリア時 HP',formatValue:v=>`${v}%回復`},
+  {id:'bossWard',group:'base',icon:'🛡️',name:'守護の備え',costs:[15,30,55,90,155,235,260],values:[5,10,15,25,40,55,75],effect:'ボス戦開始時 障壁',formatValue:v=>`+${v}`},
+  {id:'wardCapacity',group:'base',icon:'🛡️',name:'障壁の器',costs:[60,110,180],values:[20,40,60],effect:'障壁の補充上限',formatValue:v=>`+${v}`,note:'（スキル補正前）'},
+  {id:'wardInheritance',group:'base',icon:'🔰',name:'守護の継承',costs:[60,120,220,240,320],values:[5,8,10,15,20],effect:'新しい戦闘階の障壁補修',formatValue:v=>`最大HP${v}%まで`,note:'（通常上限内）'},
+  {id:'soulGain',group:'base',icon:'✧',name:'魂の共鳴',costs:[30,60,100,150,225],values:[5,10,15,20,25],effect:'獲得する魂の欠片',formatValue:v=>`+${v}%`},
+  {id:'extraReroll',group:'special',icon:'↻',name:'出撃準備',costs:[25],values:[1],formatValue:v=>`初期引き直し +${v}回`},
+  {id:'choice4',group:'special',icon:'🎴',name:'選択眼',costs:[80],values:[4],formatValue:v=>`戦利品が${v}択になる`},
+  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],formatValue:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`},
   {id:'sealSlots',group:'special',icon:'🔮',name:'運命の封印',costs:[25,60,120,220],values:[1,2,3,4],description:v=>`戦利品から除外できるスキル ${v}種`},
-  {id:'coinGain',group:'special',icon:'🪙',name:'黄金の直感',costs:[25,55,100,160],values:[10,20,30,45],description:v=>`獲得する塔貨 +${v}%`}
+  {id:'coinGain',group:'special',icon:'🪙',name:'黄金の直感',costs:[25,55,100,160],values:[10,20,30,45],effect:'獲得する塔貨',formatValue:v=>`+${v}%`}
  ]);
  // One-time consolation rewards for repeated completed attempts. A bitmask is
  // stored alongside the existing run count so old saves can claim past milestones

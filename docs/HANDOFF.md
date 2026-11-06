@@ -1,10 +1,16 @@
 # 継続状態（2026-11-06）
 
+## 能力強化の表示を統一
+
+ショップの能力強化を「現在の効果 → 次のレベルの効果」に統一。上限到達時は現在の効果、単発強化の購入前は未取得と次の効果を表示する。複数段階の9項目は同じ進捗ゲージを使う。
+
+全Node 496件・画像8件・フォント2件が成功。Chromeの320pxと390px幅で12項目の収まり、再生力の購入時に説明とゲージが更新されること、上限で購入が止まることを確認。[ローカル本編](http://127.0.0.1:8015/)で試せる。候補は `feat/shop-upgrade-display`。
+
 ## 生命の祝福をLv.17まで拡張
 
 Lv.15／16／17で最大HPが+150／+160／+170、価格は380／420／460欠片。装備補正前の基準HPは上限で235。購入内容は新規ランから反映し、中断ランは開始時の生命の祝福を使う。既存のショップ・保存処理を使用する。
 
-旧セーブからの購入・再読込、購入上限の表示、生命の器の加算、中断ランの継続、ボス試算を検証した。公開候補は `feat/life-blessing-17`。
+旧セーブからの購入・再読込、購入上限の表示、生命の器の加算、中断ランの継続、ボス試算を検証した。[PR #38](https://github.com/donald-shrimp/parry-tower/pull/38)で公開済み（`4b5a77b`）。[PR CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42151214309)、[main CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42151389525)、[Pages](https://github.com/donald-shrimp/parry-tower/actions/runs/42151388364)が成功。本編・DevのHTMLとJSの計7 URLを公開コミットと照合した。
 
 ## コンボ・耐久調整を公開
 
