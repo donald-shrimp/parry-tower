@@ -7,11 +7,11 @@
  const BUILD='v0.9.9';
  const REQUIRED_ASSETS=[
   'style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js',
-  'relics.js','routes.js','events.js','audio-clock.js','player-settings.js','run-checkpoint.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','game.js'
+  'relics.js','routes.js','events.js','audio-clock.js','audio-session.js','player-settings.js','run-checkpoint.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','game.js'
  ];
  const MODULES={
   encounters:'ParryEncounters',motions:'ParryEnemyMotions',progression:'ParryProgression',
-  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents',stageMusic:'ParryStageMusic',finalBossMusic:'ParryFinalBossMusic',music:'ParryMusic',settings:'ParryPlayerSettings',checkpoint:'ParryRunCheckpoint',clock:'ParryAudioClock'
+  relics:'ParryRelics',routes:'ParryRoutes',events:'ParryEvents',stageMusic:'ParryStageMusic',finalBossMusic:'ParryFinalBossMusic',music:'ParryMusic',settings:'ParryPlayerSettings',checkpoint:'ParryRunCheckpoint',clock:'ParryAudioClock',audioSession:'ParryAudioSession'
  };
  let registeredBuild=null,stateGetter=null,assetFailures=[];
  let hasLoaded=false;

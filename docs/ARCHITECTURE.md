@@ -1,29 +1,49 @@
-# v0.5 の設計と保守上の注意
+# 構成と保守上の注意
+
+2026-11-06、`refactor/audio-foundation` の構成。公開版との差と検証結果は [HANDOFF](./HANDOFF.md)、今後の工程は [REFACTOR_PLAN](./REFACTOR_PLAN.md) を参照。
 
 ## 技術構成
 
-- ゲーム: Canvas 2D＋素のJavaScript
-- UI: HTML/CSS、レスポンシブ
-- BGM・効果音: Web Audio API（合成音、音源ファイル不要）
-- ストレージ: `localStorage`（恒久育成とタイミングオフセット）
-- ホスティング: GitHub Pages、外部依存なし
+Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localStorageを使用する。GitHub Pagesで静的配信し、ビルド用のバンドラーは使っていない。本編は `index.html`、開発用の試遊・試聴は `dev.html`、原画・ポーズ編集は `art-studio.html`。
 
-## 最重要: 音楽と命中判定を共通の時計で管理する
+## 現在の境界
 
-`assets/game.js` の `startScore`、`scheduleScore`、`scoreToPerf`、`syncAttackClock` を起点に理解してください。BGMの基準は `AudioContext.currentTime`、拍を刻む周期は `score.beat` です。着弾を楽曲の拍/裏拍に揃え、描画はその予定時刻への残り時間から求めます。
+| 所有者 | 責務 |
+| --- | --- |
+| `assets/game.js` | ラン状態、進行、戦闘の効果適用、画面・描画・入力、音声への要求。ここは今後も段階的な抽出対象 |
+| `assets/encounters.js` / `enemy-motions.js` | 敵・階層・譜面・モーション定義 |
+| `assets/progression.js` / `relics.js` | 恒久育成・スキンと遺物の定義・計算 |
+| `assets/routes.js` / `events.js` | 経路・イベントの定義と選択 |
+| `assets/run-checkpoint.js` / `player-settings.js` | 中断保存の正規化・検証、設定と補正値 |
+| `assets/music.js` | 本編とDev共通の曲カタログ・選曲・音色再生。最初の階層の旧曲、共通アレンジ、開始太鼓も含む |
+| `assets/stage-music.js` / `final-boss-music.js` | 通常曲の譜面、終王の譜面と既存楽器レンダラー。共通窓口から利用 |
+| `assets/audio-session.js` | AudioContext、BGM/SE/Devバス、音量、譜面時計と先読み、停止と未来の接触音の予約取消 |
+| `assets/combat-sfx.js` | Context別に用意した金属音の接触・結果余韻の再生とキャンセル可能なハンドル |
+| `assets/audio-clock.js` | 音声時計とperformance時刻の対応を検証。Contextの生成・ゲーム進行は所有しない |
+| `tests/helpers/game-harness.js` | ゲームの共通テスト環境。耐久試算もここから読み込む |
 
-**やってはいけない変更:** `setInterval` やフレームごとの `dt` 累積だけで攻撃の着弾時刻を決めること。描画が落ちた際にBGMと判定が乖離します。
+状態・戦闘・画面・描画はまだ `game.js` に多く残る。ファイル数を減らすことではなく、変更する責務を限定することを整備の目標にする。
 
-ユーザー操作→AudioContextの有効化にはブラウザ固有の制限があります。スマホ/Bluetooth機器の遅延はタイミング補正で救済しますが、見た目と音のどちらを優先したかが分かるように今後整理が必要です。
+## 音楽と命中判定は同じ時計を使う
 
-## 変更管理のルール
+基準は `AudioContext.currentTime`、拍の長さは `score.beat`。音声セッションの `startScore` が準備完了後に原点を置き、`scheduleScore` が0.17秒先まで8分音符のステップを予約する。1回の予約は最大24ステップ、25msより古い音は飛ばし、ごく短い遅れは現在時刻+2msへ補正する。
 
-1. デフォルトブランチ `main` は常時プレイ可能に保つ。
-2. 変更は機能別ブランチで作り、PRにスクリーンショットとテスト結果を書く。
-3. 敵を増やす場合、稽古場での攻撃モーション・接触タイミング・BGM拍の一致を確認する。
-4. スキル追加では連鎖の無限再帰/フレーム落ち/過剰な爆音を確認する。
-5. パリィ判定変更時にはモバイルの入力遅延を考慮し、ジャスト/通常/被弾の境界を検証する。
+ゲーム側の `startScore` は曲・BPM・第二楽章開始位置を決定し、`scoreToPerf` と `syncAttackClock` が同じ譜面の拍を入力/描画時刻へ対応付ける。`setInterval` や描画フレームのdt累積を攻撃の基準時計にしない。
 
-## 次のリファクタリング候補
+接触音は拍上へ先行予約する。JUST/PARRY/GUARD/被弾の確定と結果の余韻は判定窓に従い、広い判定窓でも次の拍を後ろへずらさない。振りかぶりは1.5拍前、1.5拍以内の追撃には追加の振りかぶりを付けない。
 
-機能ごとのテストが増えてから `game.js` を段階的に分離する。`audio/clock.js`、`combat/parry.js`、`combat/enemy.js`、`render/arena.js`、`systems/upgrades.js` など。現時点ではv0.5の挙動維持を最優先して、一括での大規模な書換えは避ける。
+停止は未来の接触音を取り消し、BGMバスをフェードして遅延解放する。開始済みの撃破フィードバックは保持する。新バスを旧バスの解放タイマーで切断しない。閉じたContextの復旧ではBGM/SE/Devの接続をすべて作り直す。SEだけの要求で戦闘中の時計を差し替えず、既存の安全停止と再開へ渡す。
+
+## 曲や音声経路を変更するとき
+
+曲の定義は既存の曲モジュールに追加し、共通カタログ/再生窓口を通して本編とDevから使う。新しい曲形式が必要な場合は `music.js` でアダプターを登録する。曲モジュールが独自のAudioContextやゲーム時計を作る構成は避ける。
+
+SEの波形準備は譜面の原点を決める前に行う。乱数消費はゲームの抽選にも影響するため、音源抽出でバッファ生成回数や生成順を不用意に変えない。音声管理の抽出と音色の変更は別の変更として比較する。
+
+## 入口と検証
+
+スクリプト順序は両HTMLとCIの静的検査に明記されている。曲定義を `music.js` より前、`music.js` と `audio-session.js` を `game.js` より前に読む。診断の必須アセットも同期する。入口一覧の自動生成は後続工程。
+
+基本検証は `node --test tests/*.test.js`。画像・フォントはAGENTSとCIに従う。タイミング・保存・戦闘順序の代表テストは [工程書の対応表](./REFACTOR_PLAN.md#維持する既存検証の対応表) に記載。音色は譜面ハッシュとノード予約値、操作は実ブラウザーも使って確認する。ヘッドレス実行は実機スピーカー/Bluetoothの聴感と遅延の代わりにはならない。
+
+原画・工房の保存ポーズ・生成アートの扱いは [LOCAL_FILES](./LOCAL_FILES.md) と既存生成スクリプトに従う。

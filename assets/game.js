@@ -3,12 +3,8 @@ const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getCon
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 let devPreviewSkin='normal';
 let beatContact=true,cueBeats=1.5,devTimingTrace={};
-const attackPresentation={opening:true,cues:new Map(),contact:null,sounds:[]};
+const attackPresentation={opening:true,cues:new Map(),contact:null};
 const splitContact=()=>cueBeats>0&&typeof window.ParryCombatSfx?.playContact==='function'&&typeof window.ParryCombatSfx?.playTail==='function';
-function stopFutureContacts(){
- for(const sound of attackPresentation.sounds)if(!sound.ended&&sound.when>(audioContext?.currentTime??0))sound.cancel();
- attackPresentation.sounds=[];
-}
 function presentContact(){
  if(!splitContact())return;
  const key=score.theme+':'+game.attackBeat;
@@ -133,18 +129,9 @@ const SYNERGIES=[
 ];
 const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
-let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,audioContext=null,choiceSet=[],cuePlayed=false;
-let devSfxVolume=1,devSfxBus=null,playerSfxBus=null;
+let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,choiceSet=[],cuePlayed=false;
 let devMusicTheme='auto',devMusicAudition=false;
-function effectDestination(){
- if(!playerSfxBus){playerSfxBus=audioContext.createGain();playerSfxBus.gain.value=audioEnabled?preferences.sfx/100:0;playerSfxBus.connect(audioContext.destination);}
- return playerSfxBus;
-}
-function steelDestination(){
- if(!DEV_MODE)return effectDestination();
- if(!devSfxBus){devSfxBus=audioContext.createGain();devSfxBus.gain.value=devSfxVolume;devSfxBus.connect(effectDestination());}
- return devSfxBus;
-}
+
 let pausedFrom='combat',pauseAt=0,screenOffset=0;
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
@@ -220,8 +207,14 @@ const motionFor=(e,opening=attackPresentation.opening)=>{
  return {...m,prepare,swing,recovery,cuePrepare:prepare,noWindup};
 };
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
-const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
- get bpm(){return Math.round(60/this.beat)}};
+const audio=window.ParryAudioSession.create({
+ createContext:()=>new (window.AudioContext||window.webkitAudioContext)(),
+ now:()=>performance.now(),defer:(callback,delay)=>setTimeout(callback,delay),
+ // Warm steel tails before the session establishes its beat origin.
+ prepare:ac=>window.ParryCombatSfx?.prepare?.(ac),playStep:playMusicStep,devMode:DEV_MODE
+});
+const {score,stopScore,scheduleScore,effectDestination,steelDestination}=audio;
+applyAudioPreferences();
 let latencyOffset=0;try{
  const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
  if(current!==null&&Number.isFinite(Number(current)))latencyOffset=clamp(Number(current),-180,180);
@@ -230,21 +223,14 @@ let latencyOffset=0;try{
 }catch(e){}
 $('latencySlider').value=latencyOffset;$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
 $('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
-function ensureAudio(){try{if(audioContext?.state==='closed'){audioContext=null;score.bus=null;playerSfxBus=null;}audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state!=='running')audioContext.resume().catch(()=>{});
- // Warm the longer steel tails before startScore establishes its beat origin.
- window.ParryCombatSfx?.prepare?.(audioContext);
- if(!score.bus){score.bus=audioContext.createGain();score.bus.gain.value=.35*preferences.bgm/100;score.bus.connect(audioContext.destination)}if(!score.noise){const ac=audioContext,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;score.noise=b;}return true}catch(e){return false}}
-function playMusicStep(step,at){
+function playMusicStep(ac,step,at){
  if(!audioEnabled)return;
- MUSIC?.playStep(audioContext,{
+ MUSIC?.playStep(ac,{
   destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,
   movement:game.enemy?.phase||1,startStep:score.musicStartStep,countIn:game.mode==='phase'&&game.phaseStage==='countin',
   arrangement:devMusicAudition||['combat','phase'].includes(game?.mode)
  });
 }
-function stopScore(){stopFutureContacts();score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
- const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
-}}
 function encounterBpm(enemy){
  const base=enemy.boss?136:enemy.kind==='rogue'?124:112;
  if(devMusicAudition)return MUSIC?.get(devMusicTheme)?.bpm??base;
@@ -253,40 +239,38 @@ function encounterBpm(enemy){
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
 function startScore(enemy){
- attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);
- if(!ensureAudio()){score.active=false;return}
- audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;
+ attackPresentation.cues.clear();attackPresentation.contact=null;
+ const beat=60/encounterBpm(enemy),boss=!!enemy.boss;
  const selected=DEV_MODE&&devMusicTheme!=='auto'?MUSIC?.get(devMusicTheme):MUSIC?.forEncounter(game.floor||1,enemy);
- score.music=selected?.id||'crypt';
- score.musicStartStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
- score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;
- score.bus.gain.cancelScheduledValues(ac.currentTime);
- score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);
- $('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';
+ const startStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
+ if(!audio.startScore({beat,id:selected?.id||'crypt',boss,startStep}))return;
+ audioClock.reset();
+ $('trackLabel').textContent=(selected&&!selected.original?selected.name:boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';
  scheduleScore();
 }
-function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
- let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
- return audioClock.sample({audio:audioContext.currentTime,perf:performance.now(),state:audioContext.state,stamp,stampError,latencyHint:((audioContext.outputLatency||0)+(audioContext.baseLatency||0))*1000});
+ const ac=audio.context;
+ let stamp=null,stampError=false;try{stamp=ac.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
+ return audioClock.sample({audio:ac.currentTime,perf:performance.now(),state:ac.state,stamp,stampError,latencyHint:((ac.outputLatency||0)+(ac.baseLatency||0))*1000});
 }
 function scoreToPerf(t,offset=0){
- if(audioContext){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
+ if(audio.context){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
  return score.visualOriginPerf+(t-score.origin)*1000+offset;
 }
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat)+contactDelay();game.telegraphStart=game.attackAt-game.attackSpan}
 function inputTargetAt(){return game.attackAt-contactDelay()+latencyOffset}
 function musicParry(kind){
- if(!audioEnabled||!audioContext)return;
+ const ac=audio.context;
+ if(!audioEnabled||!ac)return;
  if(splitContact()&&attackPresentation.contact){
-  if(window.ParryCombatSfx?.PROFILES[kind])window.ParryCombatSfx.playTail(audioContext,kind,attackPresentation.contact.audioAt,steelDestination());
+  if(window.ParryCombatSfx?.PROFILES[kind])window.ParryCombatSfx.playTail(ac,kind,attackPresentation.contact.audioAt,steelDestination());
   return;
  }
- if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
+ if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(ac,kind,ac.currentTime+.003,steelDestination());return;}
  if(!score.bus||!score.noise)return;
- const tone=(...args)=>MUSIC?.playTone(audioContext,score.bus,...args);
- const noise=(...args)=>MUSIC?.playNoise(audioContext,score.bus,score.noise,...args);
- const t=audioContext.currentTime+.003;
+ const tone=(...args)=>MUSIC?.playTone(ac,score.bus,...args);
+ const noise=(...args)=>MUSIC?.playNoise(ac,score.bus,score.noise,...args);
+ const t=ac.currentTime+.003;
  // Musical response to a successful parry. All notes use the BGM's AudioContext clock.
  if(kind==='just'){
   noise(t,.085,.12,2900);
@@ -305,13 +289,24 @@ function musicParry(kind){
  }
 }
 
-function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){if(!audioEnabled)return;try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(effectDestination());o.start(t);o.stop(t+dur+.02)}catch(e){}}
+function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){
+ if(!audioEnabled)return;
+ try{
+  const ac=audio.ensureContext();
+  if(!ac)return;
+  const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(effectDestination());o.start(t);o.stop(t+dur+.02);
+ }catch(e){}
+}
 function chord(){/* The bright chord is scheduled by musicParry on the BGM clock. */}
 // 剣が動き始める音。250ms前の電子音ではなく斬撃に追従する風切り音。
 function sfxSwing(){if(!audioEnabled)return;try{
- audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
- if(audioContext.state==='suspended')audioContext.resume();
- const ac=audioContext,t=ac.currentTime,dur=.17;
+ const ac=audio.ensureContext();
+ if(!ac)return;
+ const t=ac.currentTime,dur=.17;
  const buffer=ac.createBuffer(1,Math.ceil(dur*ac.sampleRate),ac.sampleRate);
  const ch=buffer.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;
  const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=buffer;filter.type='bandpass';filter.Q.value=.7;
@@ -672,8 +667,7 @@ function persistPreferences(){
  applyAudioPreferences();
 }
 function applyAudioPreferences(){
- if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,audioContext.currentTime,.025);
- if(playerSfxBus&&audioContext)playerSfxBus.gain.setTargetAtTime(audioEnabled?preferences.sfx/100:0,audioContext.currentTime,.025);
+ audio.setMix({enabled:audioEnabled,bgm:preferences.bgm,sfx:preferences.sfx});
 }
 function openSettings(){
  if(['loading','phase','settings','confirm'].includes(game.mode)||deathInputBlocked())return;
@@ -691,7 +685,7 @@ function cancelCalibration(){
  $('calibrationPulse').style.transform='scale(1)';$('calibrationPulse').textContent='♫';
 }
 function calibrationTone(at,frequency=880){
- const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.value=frequency;
+ const ac=audio.context,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=frequency;
  g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.12,at+.004);g.gain.exponentialRampToValueAtTime(.0001,at+.07);
  o.connect(g);g.connect(effectDestination());o.start(at);o.stop(at+.08);calibrationNodes.push(o);
  o.onended=()=>{o.disconnect?.();g.disconnect?.();};
@@ -699,8 +693,8 @@ function calibrationTone(at,frequency=880){
 function startCalibration(){
  cancelCalibration();
  if(!audioEnabled||preferences.sfx===0){$('calibrationStatus').textContent='効果音の音量を上げて、SOUND ONで測ってください。';return}
- if(!ensureAudio()){$('calibrationStatus').textContent='音を再生できません。もう一度お試しください。';return}
- audioClock.reset();const start=audioContext.currentTime+1;
+ if(!audio.prepareScore()){$('calibrationStatus').textContent='音を再生できません。もう一度お試しください。';return}
+ audioClock.reset();const start=audio.context.currentTime+1;
  calibration={kind:'measure',start,targets:Array.from({length:CALIBRATION_COUNT_IN+CALIBRATION_SAMPLES},(_,i)=>start+i*.5),used:new Set(),errors:[],result:null};
  for(const [i,t]of calibration.targets.entries())calibrationTone(t,i%4===0?1046:784);
  $('calibrationTap').disabled=true;$('calibrationStart').disabled=true;$('calibrationCancel').hidden=false;
@@ -717,11 +711,11 @@ function calibrationTap(){
  if(c.kind==='try'){
   const delta=error-c.result.candidate,kind=Math.abs(delta)<=getPerfectWindow()?'just':Math.abs(delta)<=getParryWindow()?'parry':'guard';
   $('calibrationStatus').textContent=(kind==='just'?'JUST!':kind==='parry'?'PARRY!':delta<0?'早め':'遅め')+' · '+Math.abs(Math.round(delta))+'ms（候補での試し打ち）';
-  if(kind!=='guard')window.ParryCombatSfx?.play(audioContext,kind,audioContext.currentTime,steelDestination());
+  if(kind!=='guard')window.ParryCombatSfx?.play(audio.context,kind,audio.context.currentTime,steelDestination());
  }else{c.errors.push(error);$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';}
 }
 function updateCalibration(){
- if(!calibration||game.mode!=='settings'||!audioContext)return;
+ if(!calibration||game.mode!=='settings'||!audio.context)return;
  if(!readAudioClock().healthy){cancelCalibration();$('calibrationStatus').textContent='音声が止まったため測定を中断しました。もう一度測ってください。';return;}
  const c=calibration;if(c.kind==='result'){$('calibrationPulse').style.transform='scale(1)';return}const seconds=(performance.now()-scoreToPerf(c.start,0))/1000,beat=Math.floor(seconds/.5);
  $('calibrationPulse').style.transform='scale('+(seconds>=0?1+.18*Math.max(0,1-(seconds/.5-beat)*4):1)+')';
@@ -735,12 +729,12 @@ function updateCalibration(){
   c.kind='result';c.result=PREF.recommend(c.errors);$('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
   $('calibrationStatus').textContent=c.result?'おすすめ '+(c.result.candidate>=0?'+':'')+c.result.candidate+'ms · '+c.result.count+'回の入力から測定'+(c.result.clamped?'（調整範囲の上限・下限に合わせています）':''):'入力が少ないか、ばらつきが大きいため測れませんでした。もう一度試してください。';
   $('calibrationTry').hidden=!c.result;$('calibrationApply').hidden=!c.result;
- }else if(c.kind==='try'&&audioContext.currentTime>c.start+3.6){c.kind='result';$('calibrationStart').disabled=false;$('calibrationTap').disabled=true;}
+ }else if(c.kind==='try'&&audio.context.currentTime>c.start+3.6){c.kind='result';$('calibrationStart').disabled=false;$('calibrationTap').disabled=true;}
 }
 function tryCalibration(){
- if(!calibration?.result||!ensureAudio())return;
+ if(!calibration?.result||!audio.prepareScore())return;
  const result=calibration.result;cancelCalibration();
- audioClock.reset();const start=audioContext.currentTime+.5;
+ audioClock.reset();const start=audio.context.currentTime+.5;
  calibration={kind:'try',start,result,targets:Array.from({length:6},(_,i)=>start+i*.5),used:new Set()};
  for(const at of calibration.targets)calibrationTone(at,784);
  $('calibrationTap').disabled=false;
@@ -1237,13 +1231,13 @@ function beginFinalCountIn(){
  const e=game.enemy;
  startScore(e);
  // If the browser cannot initialize audio, the visual count-in still finishes safely.
- if(!score.active)score.beat=60/encounterBpm(e);
  game.phaseCountStartAt=score.active?scoreToPerf(score.origin):performance.now()+170;
  if(score.active){
   // Four low drum strokes on the same AudioContext clock; only the first is accented.
+  const ac=audio.context;
   for(let i=0;i<FINAL_PHASE_COUNT_BEATS;i++){
    const t=score.origin+i*score.beat;
-   if(audioEnabled)MUSIC?.playCountIn(audioContext,score.bus,score.noise,t,i===0);
+   if(audioEnabled)MUSIC?.playCountIn(ac,score.bus,score.noise,t,i===0);
   }
  }
  $('trackLabel').textContent='SECOND MOVEMENT · '+score.bpm+' BPM';
@@ -2428,14 +2422,9 @@ function attackCues(now,beat,at,motion){
  const played=cues.get(key);
  if(!motion.noWindup&&!played.windup&&now>=at-motion.cuePrepare){played.windup=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);}
  if(!played.swing&&now>=at-motion.swing){played.swing=true;sfxSwing();}
- const contactAt=score.origin+beat*score.beat;
- if(splitContact()&&!played.contact&&score.active&&audioContext?.state==='running'&&contactAt<=audioContext.currentTime+.17){
-  played.contact=true;
-  // Muting consumes the event too. Never replay an old impact on unmute.
-  if(audioEnabled&&contactAt>=audioContext.currentTime-.025){
-   attackPresentation.sounds=attackPresentation.sounds.filter(s=>!s.ended);
-   attackPresentation.sounds.push(window.ParryCombatSfx.playContact(audioContext,contactAt,steelDestination()));
-  }
+ if(splitContact()&&!played.contact){
+  const contactAt=score.origin+beat*score.beat;
+  played.contact=audio.reserveContact(contactAt,(ac,at,destination)=>window.ParryCombatSfx.playContact(ac,at,destination));
  }
 }
 function update(now,dt){const m=game.mode;
@@ -2532,7 +2521,7 @@ $('roomActions').addEventListener('click',e=>{
 $('routeSkillCards').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-route-skill]');if(btn)takeEventSkill(btn.dataset.routeSkill);
 });
-$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,audioContext.currentTime,.025);applyAudioPreferences();if(audioEnabled)sound(600,.10,'sine',.04,160)});
+$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';applyAudioPreferences();if(audioEnabled)sound(600,.10,'sine',.04,160)});
 
 $('settingsBtn').addEventListener('click',openSettings);
 $('settingsCloseBtn').addEventListener('click',closeSettings);
@@ -2638,22 +2627,16 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
    title();start(true,key,{floor,allowUnseenPractice:true,musicId:id});return true;
   },
   musicState(){
-   const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
+   const beats=score.active&&audio.context?Math.max(0,(audio.context.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
    const bars=MUSIC?.get(score.music)?.bars||8;
    return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
-  getSfxVolume(){return Math.round(devSfxVolume*100)},
-  setSfxVolume(percent){
-   const value=Number(percent);if(!Number.isFinite(value))return Math.round(devSfxVolume*100);
-   devSfxVolume=Math.max(0,Math.min(100,Math.round(value)))/100;
-   if(devSfxBus)devSfxBus.gain.setTargetAtTime(devSfxVolume,audioContext.currentTime,.015);
-   return Math.round(devSfxVolume*100);
-  },
+  getSfxVolume:audio.getDevSfxVolume,
+  setSfxVolume:audio.setDevSfxVolume,
   previewSound(kind){
    if(!audioEnabled||!window.ParryCombatSfx?.PROFILES[kind])return false;
-   audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
-   if(audioContext.state==='suspended')audioContext.resume();
-   return window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime,steelDestination());
+   const ac=audio.ensureContext();
+   return !!ac&&window.ParryCombatSfx.play(ac,kind,ac.currentTime,steelDestination());
   },
   list(){return P.codexEntries().map(e=>({key:e.bookKey,name:e.displayName,rare:e.rare,boss:e.boss,elite:e.elite}))},
   preview(floor=1,enemyKey=''){
@@ -2667,5 +2650,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
  });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,clock:audioClock.snapshot(),rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},skillBreaks:{...(game.skillBreaks||{})},polishedRelics:[...(game.polishedRelics||[])],charge:game.charge||0,towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.9',window.__parryV05);requestAnimationFrame(frame);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audio.context?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,clock:audioClock.snapshot(),rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},skillBreaks:{...(game.skillBreaks||{})},polishedRelics:[...(game.polishedRelics||[])],charge:game.charge||0,towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.9',window.__parryV05);requestAnimationFrame(frame);
 })();

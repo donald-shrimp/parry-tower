@@ -1,6 +1,6 @@
 # パリィの塔の段階的リファクタリング案
 
-2026-11-06。計画段階。調査基準は公開コミット `db87a1c` と同じ実装ツリー。今回の作業はソースと既存検証の調査、計画書の作成。以下の構成・順序は実装時に段階ごとに評価する。
+2026-11-06。調査基準は公開コミット `db87a1c` と同じ実装ツリー。ユーザー指定の GPT-6.1 Sol / high が実装し、親エージェントが設計・差分・独立比較をレビューする。最初の3PR相当はローカルの `refactor/audio-foundation` で実装・検証済み、未公開。実機の聴感確認と段階2以降はこれから。以下の構成・順序は実装時に段階ごとに評価する。
 
 ## 目的と完了の考え方
 
@@ -80,7 +80,7 @@
 
 ## 各段階の確認
 
-既存の全Node 496件・画像8件・フォント2件の直近成功記録を起点とする。今回の計画作成では再実行していない。追加テストは、移す境界で既存テストが捉えられない挙動に絞る。
+既存の全Node496件を起点とし、段階0〜1の最終候補は501件・画像8件・フォント2件が成功。追加は曲カタログ1件と音声寿命の境界4件。移す境界で既存テストが捉えられない挙動に絞る。音源の83条件・413,868操作、先読み予約の640条件が基準実装と一致し、耐久試算36比較とfixtureを含むJSONも一致。Chromeで本編/Devの開始・試聴・練習・一時停止/再開・Context再作成を確認した。
 
 - **タイミング**。1.5拍前の予告、1.5拍以内の追撃、拍上の接触、入力補正、ヒヨコの判定幅、通常/精鋭テンポ、時計停止、再開、80F第二楽章。音声予約と判定結果を別々に照合する。
 - **音色**。譜面イベントとノードの予約値を比較し、必要箇所を固定条件で書き出して試聴する。ブラウザー間では出力バイトの完全一致を条件にせず、アタック・音量・音色とタイミングを確認する。端末での聴こえ方と操作感はユーザーの試遊で確認する。
@@ -92,6 +92,23 @@
 各PRで必要な既存テストと変更箇所の確認を行い、公開候補はリポジトリ規約の全チェックを通す。速度は同じ条件の直近計測と比べ、大幅に悪化した場合は原因を確認する。バランス試算は仮定を置いたモデルであり、実戦の結果確認には実際の戦闘コードのハーネスも使う。
 
 ## 文書と進行管理
+
+### 維持する既存検証の対応表
+
+以下は `tests/game-smoke.test.js` のテスト名。行番号が変わっても検索できるように名前を基準にする。共通環境は `tests/helpers/game-harness.js`、試算は `scripts/survival-analysis.js` から直接利用する。検証コードの本体末尾への差し込みはハーネスに隔離した段階で、完全解消は後続の公開API抽出と合わせて行う。
+
+| 守る仕様 | 代表的なテスト名 |
+| --- | --- |
+| 出力時計だけの停止でも拍が進む | `clock recovery keeps music and attacks advancing when only the output context timestamp freezes` |
+| 音声時計停止時の安全な一時停止・4拍再開 | `clock recovery pauses a stalled audio clock before damage and resumes the same encounter with four beats` |
+| 閉じたContextの再作成 | `clock recovery safely pauses interrupted or closed contexts and recreates a closed context on resume` |
+| ヒヨコの広い判定幅と拍上の接触 | `production contact remains on the beat with wide chick windows, corrected late inputs and neutral recoil` |
+| 未来の接触だけ停止、現在の撃破音は維持 | `production cancels future contacts, consumes muted hits and retains current victory feedback` |
+| 第二楽章とスキンによる時刻の不変性 | `production final movement and all equipped skins retain beat contact and a fresh 1.5 beat opening` |
+| 再開時の再抽選・障壁二重付与を防ぐ | `local checkpoint restores combat on a fresh clock without new encounter rolls or duplicate boss shields` |
+| ショップ購入後も中断ランの補正を維持 | `checkpoint keeps challenge modifiers fixed after shop changes and settings do not erase a suspended run` |
+| 多段追撃の回復集計と撃破順序 | `blood heals once from the sum of actual parry direct hits, including thunder` / `a fatal parry heals only from enemy remaining HP, before switching to victory` |
+| 同一反撃内の終王フェーズ境界 | `review fixes: phase 1 protects the boundary against every hit in one counter, then phase 2 can be defeated` |
 
 現行構成は `ARCHITECTURE.md`、今回の工程は本書、実装して確定した判断は `DECISIONS.md` に記録する。`HANDOFF.md` には現在の段階、完了条件、検証結果、次の一手を残す。過去のリリース記録は参照できる場所へ整理し、古い案と現行仕様を区別する。
 

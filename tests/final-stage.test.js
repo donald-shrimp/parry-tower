@@ -85,7 +85,7 @@ test('new backgrounds are cosmetic, and the finale count-in restarts its shared 
  assert.match(js,/game\.attackBeat\+=beats;game\.attackSpan=beats\*score\.beat\*1000;syncAttackClock\(\)/);
  assert.match(js,/game\.mode==='phase'/);
  assert.match(js,/for\(let i=0;i<FINAL_PHASE_COUNT_BEATS;i\+\+\)/);
- assert.match(js,/MUSIC\?\.playCountIn\(audioContext,score\.bus,score\.noise,t,i===0\)/);
+ assert.match(js,/MUSIC\?\.playCountIn\(ac,score\.bus,score\.noise,t,i===0\)/);
  const music=fs.readFileSync('assets/music.js','utf8');
  assert.match(music,/punch\.frequency\.setValueAtTime\(220,t\)/);
  assert.match(music,/punch\.frequency\.exponentialRampToValueAtTime\(92,t\+\.11\)/);

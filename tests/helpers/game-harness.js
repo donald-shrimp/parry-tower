@@ -89,6 +89,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   ResizeObserver:undefined,console,Math:math
  };
  vm.runInNewContext(readProjectFile('assets/music.js'),context,{filename:'music.js'});
+ vm.runInNewContext(readProjectFile('assets/audio-session.js'),context,{filename:'audio-session.js'});
  vm.runInNewContext(readProjectFile('assets/combat-sfx.js'),context);
  const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when,destination){metalEvents.push({kind,when:when??ac.currentTime,destination});return metal.play(ac,kind,when,destination);}};
  window.ParryCombatSfx.playContact=(ac,when,destination)=>{const e={when,destination,cancelled:false};contactEvents.push(e);const h=metal.playContact(ac,when,destination),cancel=h.cancel;h.cancel=()=>{e.cancelled=true;cancel();};return h;};
@@ -169,8 +170,8 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    presentation:()=>({contact:attackPresentation.contact?{...attackPresentation.contact}:null,clash:clashFX?{...clashFX}:null}),
    fallbackSfx:legacy=>{if(legacy){delete window.ParryCombatSfx.playContact;delete window.ParryCombatSfx.playTail;}else window.ParryCombatSfx=null;},
    musicTheme:()=>score.music,
-   musicBus:()=>score.bus,audioContext:()=>audioContext,
-   mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
+   musicBus:()=>score.bus,audioContext:()=>audio.context,
+   mixGains:()=>({bgm:score.bus?.gain.value,steel:audio.devBus?.gain.value}),
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
    clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
    hudDrawLabels:()=>hudDrawLabels.map(x=>({...x})),
@@ -214,7 +215,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
     gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
     counters:{...game.relicCounters},boltDue:game.relicBoltDue,emperorDue:game.relicEmperorDue}),
 
-  preferences:()=>({...preferences,sfxGain:playerSfxBus?.gain.value}),
+  preferences:()=>({...preferences,sfxGain:audio.playerBus?.gain.value}),
   checkpoint:()=>{checkpoint();return readCheckpoint()},
   tutorialInfo:()=>({active:game.tutorial,step:game.tutorialStep,finishing:game.tutorialFinishing}),
   calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
