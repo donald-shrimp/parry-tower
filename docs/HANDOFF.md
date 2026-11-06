@@ -1,5 +1,17 @@
 # 継続状態（2026-11-06）
 
+## 生命の祝福をLv.17まで拡張
+
+Lv.15／16／17で最大HPが+150／+160／+170、価格は380／420／460欠片。装備補正前の基準HPは上限で235。購入内容は新規ランから反映し、中断ランは開始時の生命の祝福を使う。既存のショップ・保存処理を使用する。
+
+旧セーブからの購入・再読込、購入上限の表示、生命の器の加算、中断ランの継続、ボス試算を検証した。公開候補は `feat/life-blessing-17`。
+
+## コンボ・耐久調整を公開
+
+[PR #37](https://github.com/donald-shrimp/parry-tower/pull/37)をmainへ統合し、公開コミット `b05a34996228111ca406213936af6d2af9b1dd58` を配信。生命の器、障壁の器と恒久耐久強化、コンボ追撃・連続JUST・奥義の調整を含む。
+
+[PR CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42149315991)、[main CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42149535536)、[Pages](https://github.com/donald-shrimp/parry-tower/actions/runs/42149534363)は成功。本編とDevのHTML、変更したJSの計7 URLを公開コミットの内容と照合した。次は公開後のプレイ感を確認する。
+
 ## 生命の器の強化
 
 ラン内スキル「生命の器」は最大HPに `max(15 × Lv, ceil(基準HP × 8% × Lv))` を加える。基準HPはラン開始時の65＋生命の祝福で、スキン・遺物補正の前に計算。取得時の回復は最大HPの増加分＋12を維持。中断ランの再開時は新しい最大HPだけを反映し、残りHPを維持する。
