@@ -378,9 +378,8 @@ function addShield(amount,combat=false,cap=shieldCap()){
 function relicShield(amount){return addShield(amount,game.mode==='combat')}
 function adjustRelicMaxHp(){RunState.adjustRelicMaxHp(game)}
 function renderRelicInventory(){
- const items=RR.validIds(game.relics||[]).map(ownedRelic);
- $('relicCount').textContent=items.length+' / '+RR.MAX_HELD;
- $('relicList').innerHTML=items.length?items.map(r=>`<div class="relic-owned ${r.rarity}"><span class="relic-owned-icon">${r.icon}</span><div><div class="relic-owned-title">${r.name}</div><div class="relic-owned-desc">${r.desc}</div></div></div>`).join(''):'<div class="empty">遺物なし</div>';
+ const view=window.ParryRewardsView.inventory(RR.validIds(game.relics||[]).map(ownedRelic));
+ $('relicCount').textContent=view.count;$('relicList').innerHTML=view.listHtml;
 }
 function records(){
  const id=game?.skin||permanent.equippedSkin,skin=PR.SKINS.find(s=>s.id===id)||PR.SKINS[0];
@@ -861,20 +860,12 @@ function eventSkillOffer(title,customPool=null){
  setMode('routeSkill');
  renderEventSkillOffer();return true;
 }
-function skillCardMeta(s){
- const cur=lvl(s.id),next=cur+1;
- const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${describeSkill(s.id,cur)}）</span>`:'';
- const readySynergies=cur===0?SYNERGIES.filter(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)):[];
- const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴解放可能！</span>':'';
- return {diffHtml,synHtml};
-}
 function renderEventSkillOffer(){
- const pool=game.routeSkillSet.map(id=>SK[id]);
- $('routeSkillTitle').textContent=game.routeSkillTitle||'スキルをひとつ選べ';
- $('routeSkillCards').innerHTML=pool.map(skill=>{const meta=skillCardMeta(skill);return `<button class="reward-card ${skill.rarity}" type="button" data-route-skill="${skill.id}">
- <span class="rarity">${skill.rarity.toUpperCase()} · ${lvl(skill.id)?'LEVEL UP':'NEW SKILL'}</span>
- <span class="emoji">${skill.icon}</span><span class="rname">${skill.name} <small>Lv.${lvl(skill.id)+1}</small></span>
- <span class="rdesc">${describeSkill(skill.id,lvl(skill.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');
+ const view=window.ParryRewardsView.eventSkills({
+  choices:game.routeSkillSet.map(id=>SK[id]),title:game.routeSkillTitle,
+  levels:game.lv,skillContext:skillDescriptionContext()
+ });
+ $('routeSkillTitle').textContent=view.title;$('routeSkillCards').innerHTML=view.cardsHtml;
  return true;
 }
 function takeEventSkill(id){
@@ -1588,18 +1579,16 @@ function showRelicRewards(kind){
 function renderRelicReward(){
  if(game.mode!=='relic')return;
  checkpoint();
- const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
  const selected=game.relicSwapTarget&&RR.BY_ID[game.relicSwapTarget];
- $('relicOfferTitle').textContent=selected?'交換する遺物を選べ':'遺物をひとつ選べ';
- $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD;
- $('relicOfferCards').innerHTML=selected?'':
-  offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc+relicScaledSuffix(r.id,false)}</span><small>相性：${r.affinity}</small></button>`).join('');
- $('relicReplaceList').hidden=!selected;
- $('relicReplaceList').innerHTML=selected?
-  `<p class="relic-replace-note">${selected.icon} ${selected.name} と交換する遺物</p>`+
-  game.relics.map(id=>{const r=ownedRelic(id);return `<button type="button" class="relic-replace-card" data-replace="${id}"><span>${r.icon}</span><span><b>${r.name}</b><small>${r.desc}</small></span></button>`}).join(''):'';
- $('relicBackBtn').hidden=!selected;
- $('relicSkipBtn').textContent='今回は見送る →';
+ const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
+ const view=window.ParryRewardsView.relics({
+  selected,heldCount:game.relics.length,held:selected?game.relics.map(ownedRelic):[],
+  offered:selected?[]:offered.map(r=>({...r,desc:r.desc+relicScaledSuffix(r.id,false)}))
+ });
+ $('relicOfferTitle').textContent=view.title;$('relicOfferHint').textContent=view.hint;
+ $('relicOfferCards').innerHTML=view.cardsHtml;
+ $('relicReplaceList').hidden=view.replaceHidden;$('relicReplaceList').innerHTML=view.replaceHtml;
+ $('relicBackBtn').hidden=view.backHidden;$('relicSkipBtn').textContent=view.skipLabel;
 }
 function grantRelic(id,replaceId=null){
  if(!RR.BY_ID[id]||!game.relicOffer.includes(id)||game.mode!=='relic')return false;
@@ -1660,7 +1649,20 @@ function showRewards(){
  }
  game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');
 }
-function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=game.finalClear&&game.floor===80?'80F制覇 — 終刻の王を討伐':`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>{const meta=skillCardMeta(s);return `<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${describeSkill(s.id,lvl(s.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.finalClear&&game.floor===80?'👑 塔の頂を制覇！ 81Fから無限踏破が始まる':null,game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length;checkpoint()}
+function renderRewards(){
+ const view=window.ParryRewardsView.skills({
+  choices:choiceSet,levels:game.lv,skillContext:skillDescriptionContext(),floor:game.floor,
+  finalClear:game.finalClear,rerolls:game.rerolls,maxHp:game.maxHp,lastDiscovered:game.lastDiscovered,rare:game.enemy?.rare
+ });
+ $('rewardCards').className=view.cardsClass;
+ $('rewardTitle').textContent=view.title;
+ $('rewardCards').innerHTML=view.cardsHtml;
+ for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));
+ $('rerollBtn').textContent=view.rerollLabel;$('rerollBtn').disabled=view.rerollDisabled;
+ $('healBtn').textContent=view.healLabel;
+ $('rewardNote').textContent=view.note;$('rewardNote').hidden=view.noteHidden;
+ checkpoint();
+}
 function gainSkillLevel(id){
  if(!Object.hasOwn(SK,id)||lvl(id)>=skillCap(id)||game.sealedSkillIds?.includes(id))return false;
  const prevMax=game.maxHp;

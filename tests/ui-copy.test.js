@@ -12,7 +12,10 @@ test('run choices show the consequences of spending, replacing or discarding ite
   bonusView:'items',skillContext:{baseAtk:25,bladeLevel:0,baseHp:65}};
  assert.match(game,/room\.risk/);
  assert.match(game,/交換が確定するまで、元の遺物は失われません。/);
- assert.match(game,/取り外した遺物は、このランでは再取得できません。/);
+ const relicView=require('../assets/rewards-view.js').relics({
+  offered:[],selected:require('../assets/relics.js').RELICS[0],held:[],heldCount:3
+ });
+ assert.match(relicView.hint,/取り外した遺物は、このランでは再取得できません。/);
  assert.match(game,/イベントの支払いは被弾扱いになりません。/);
  assert.match(game,/失敗してもHP1で生存。/);
  assert.match(shop.render({...shopInput,tab:'seal'}).listHtml,/戦利品の抽選から除外/);

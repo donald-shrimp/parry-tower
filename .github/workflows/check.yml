@@ -52,7 +52,7 @@ jobs:
           build = 'v0.9.9'
           paths = [
               'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'run-state.js', 'combat-math.js', 'combat-health.js', 'skills.js', 'shop-view.js', 'codex-view.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'final-boss-music.js', 'music.js', 'audio-clock.js', 'audio-session.js', 'player-settings.js', 'run-checkpoint.js', 'save-store.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
+              'progression.js', 'run-state.js', 'combat-math.js', 'combat-health.js', 'skills.js', 'shop-view.js', 'codex-view.js', 'relics.js', 'rewards-view.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'final-boss-music.js', 'music.js', 'audio-clock.js', 'audio-session.js', 'player-settings.js', 'run-checkpoint.js', 'save-store.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
           ]
           for page in ['index.html', 'dev.html']:
               text = Path(page).read_text(encoding='utf-8')
@@ -66,7 +66,8 @@ jobs:
               assert text.index('assets/stage-music.js') < music
               assert text.index('assets/final-boss-music.js') < music
               assert text.index('assets/combat-math.js') < text.index('assets/combat-health.js') < text.index('assets/game.js')
-              for view in ['shop-view.js', 'codex-view.js']:
+              assert text.index('assets/relics.js') < text.index('assets/rewards-view.js') < text.index('assets/game.js')
+              for view in ['shop-view.js', 'codex-view.js', 'rewards-view.js']:
                   assert text.index('assets/skills.js') < text.index('assets/'+view) < text.index('assets/game.js')
               assert text.index('assets/save-store.js') < text.index('assets/game.js')
               assert text.index('assets/audio-session.js') < text.index('assets/game.js')

@@ -94,6 +94,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
  vm.runInNewContext(readProjectFile('assets/skills.js'),context,{filename:'skills.js'});
  vm.runInNewContext(readProjectFile('assets/shop-view.js'),context,{filename:'shop-view.js'});
  vm.runInNewContext(readProjectFile('assets/codex-view.js'),context,{filename:'codex-view.js'});
+ vm.runInNewContext(readProjectFile('assets/rewards-view.js'),context,{filename:'rewards-view.js'});
  vm.runInNewContext(readProjectFile('assets/run-state.js'),context,{filename:'run-state.js'});
  vm.runInNewContext(readProjectFile('assets/music.js'),context,{filename:'music.js'});
  vm.runInNewContext(readProjectFile('assets/audio-session.js'),context,{filename:'audio-session.js'});

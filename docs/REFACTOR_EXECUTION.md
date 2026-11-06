@@ -178,6 +178,19 @@
 
 4A実装済み：`shop-view.js` と `codex-view.js` は必要な恒久情報/図鑑情報/タブ/スキル説明コンテキストを読み取り、表示文字列と数値だけの新しいviewを返す。引数を保持/更新せず、DOM・保存・音声へ依存しない。gameはviewをDOMへ反映し、既存の委譲イベントと操作再検証を維持する。スキン画像の先読みもgame側に残す。この境界で256条件のview一致と実Chromeの3幅の文字/寸法/操作一致を確認済み。画面遷移controllerの抽出は5Bで扱う。既存メニュー5種、図鑑全フィルター、購入前後/装備/封印/稽古を旧版と比較し、Chromeの320/390/PC幅でレイアウトと操作を確認する。
 
+### 4Bの保存と表示の順序
+
+| 入口 | 現在維持する順序 | 抽出先 |
+| --- | --- | --- |
+| renderRewards | 既に選ばれた候補を表示→候補のclick結線→reroll/heal/note表示→checkpoint | rewards-viewのskills。抽選/取得/引き直しは操作側 |
+| renderRelicReward | mode検査→checkpoint→提示/交換対象の表示→back/skip表示 | rewards-viewのrelics。交換成立前の所持品変更なし |
+| renderEventSkillOffer | 保持済みrouteSkillSetの表示。単独のcheckpointはない | rewards-viewのeventSkills。setModeや支払側の保存順は維持 |
+| renderRelicInventory | validIds/現在説明を解決→表示のみ | rewards-viewのinventory |
+| renderRoom | mode検査→checkpoint→モーダルscrollTop=0→部屋有効性検査→表示 | room-view。抽選/支払/回復/報酬候補は持たない |
+| openSettings | 禁止mode/死亡直後検査→必要ならpause→戻りmode記録→settings→値表示→必要な場合だけ中断存在確認/表示 | 設定表示の値だけを分離。較正音声/入力時計の管理は別責務 |
+
+4B-1で報酬/遺物、4B-2で部屋/イベント、4B-3で設定を扱う。既存関数は画面の操作adapterとして保存・DOM・結線を保持し、新しいviewモジュールは生成済みの候補と解決済み値から表示だけを返す。名前をrenderへ揃えるために保存時点を移さない。controllerへの物理的な分離は5Bで扱う。
+
 4Bはreward/relic、room/event、settingsを別変更にする。現在 `renderRoom` / `renderRewards` などは保存も呼ぶため、HTML生成だけを移し、保存タイミングは先に呼出順を記録してから操作側へ戻す。画面の再描画だけで抽選・課金・回復が再発動しないことを確認する。
 
 320px/390px/PC幅で長文・MAX・購入前後・一覧切替を確認。今回採用済みの中央タブ・モンスターカード・ゲージ幅を維持する。デザイン再提案やCSS全面改編は別変更。

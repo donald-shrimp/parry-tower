@@ -5,6 +5,7 @@ const shop=require('../assets/shop-view.js');
 const codex=require('../assets/codex-view.js');
 const progression=require('../assets/progression.js');
 const encounters=require('../assets/encounters.js');
+const rewards=require('../assets/rewards-view.js');
 
 function freeze(value){
  for(const child of Object.values(value))if(child&&typeof child==='object')freeze(child);
@@ -43,4 +44,18 @@ test('codex presentation reads immutable discovery data without granting practic
  const second=codex.render({...input,tab:'skills'});
  assert.match(second.listHtml,/最大HP \+15/);
  assert.equal(Object.keys(book.seen).length,1);
+});
+
+test('reward presentation uses frozen choices and current skill values without consuming the offer',()=>{
+ const heal=require('../assets/skills.js').SKILLS.find(skill=>skill.id==='heal');
+ const input=freeze({choices:[{...heal}],levels:{heal:1},skillContext:{baseAtk:46,bladeLevel:0,baseHp:235},
+  floor:80,finalClear:true,rerolls:1,maxHp:254,lastDiscovered:true,rare:false});
+ const view=rewards.skills(input);
+ assert.match(view.cardsHtml,/現在：最大HP \+19/);
+ assert.match(view.cardsHtml,/最大HP \+38/);
+ assert.match(view.title,/80F制覇/);
+ assert.equal(view.rerollDisabled,false);
+ assert.deepEqual(rewards.skills(input),view);
+ assert.match(rewards.eventSkills({...input,title:'選択中'}).cardsHtml,/data-route-skill="heal"/);
+ assert.equal(input.choices.length,1);
 });
