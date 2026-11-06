@@ -4,7 +4,7 @@
 
 Lv.15／16／17で最大HPが+150／+160／+170、価格は380／420／460欠片。装備補正前の基準HPは上限で235。購入内容は新規ランから反映し、中断ランは開始時の生命の祝福を使う。既存のショップ・保存処理を使用する。
 
-旧セーブからの購入・再読込、購入上限の表示、生命の器の加算、中断ランの継続、ボス試算を検証した。公開候補は `feat/life-blessing-17`。
+旧セーブからの購入・再読込、購入上限の表示、生命の器の加算、中断ランの継続、ボス試算を検証した。[PR #38](https://github.com/donald-shrimp/parry-tower/pull/38)で公開済み（`4b5a77b`）。[PR CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42151214309)、[main CI](https://github.com/donald-shrimp/parry-tower/actions/runs/42151389525)、[Pages](https://github.com/donald-shrimp/parry-tower/actions/runs/42151388364)が成功。本編・DevのHTMLとJSの計7 URLを公開コミットと照合した。
 
 ## コンボ・耐久調整を公開
 
