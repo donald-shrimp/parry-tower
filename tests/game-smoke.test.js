@@ -2613,6 +2613,13 @@ test('shop offers the new recovery and boss barrier tiers while preserving older
   'parryTowerPermanent_v1':JSON.stringify({regen:3,bossWard:3,soulGain:3})});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  const before=g.el.get('upgradeList').innerHTML;
+ assert.match(before,/現在：階層クリア時 HP 15%回復 → Lv.4：18%回復/);
+ assert.match(before,/現在：ボス戦開始時 障壁 \+15 → Lv.4：\+25/);
+ assert.match(before,/現在：障壁の補充上限 \+0 → Lv.1：\+20（スキル補正前）/);
+ assert.match(before,/現在：新しい戦闘階の障壁補修 最大HP0%まで → Lv.1：最大HP5%まで（通常上限内）/);
+ assert.match(before,/現在：未取得 → Lv.1：戦利品が4択になる/);
+ assert.equal((before.match(/role="progressbar"/g)||[]).length,9,'all multi-tier upgrades show progress');
+ assert.match(before,/aria-label="再生力 強化進捗" aria-valuemin="0" aria-valuemax="7" aria-valuenow="3"/);
  for(const [name,max] of [['再生力',7],['守護の備え',7],['魂の共鳴',5]]){
   assert.match(before,new RegExp(name+'[^]*?Lv.3/'+max));
  }
@@ -2625,7 +2632,7 @@ test('shop offers the new recovery and boss barrier tiers while preserving older
  const saved=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
  assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[7,7,5]);
  const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/階層クリア時 HP 26%回復/);
+ assert.match(after,/現在：階層クリア時 HP 26%回復<\/div>/);
  assert.match(after,/ボス戦開始時 障壁 \+75/);
  assert.match(after,/獲得する魂の欠片 \+25%/);
  const coins=g.state().souls;
