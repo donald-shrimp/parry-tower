@@ -137,7 +137,7 @@ const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
 let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,audioContext=null,choiceSet=[],cuePlayed=false;
 let devSfxVolume=1,devSfxBus=null,playerSfxBus=null;
-let devMusicTheme='auto',devMusicAudition=false;
+let devMusicTheme='auto',devMusicAudition=false,devMusicLatter=null;
 function effectDestination(){
  if(!playerSfxBus){playerSfxBus=audioContext.createGain();playerSfxBus.gain.value=audioEnabled?preferences.sfx/100:0;playerSfxBus.connect(audioContext.destination);}
  return playerSfxBus;
@@ -222,7 +222,7 @@ const motionFor=(e,opening=attackPresentation.opening)=>{
  return {...m,prepare,swing,recovery,cuePrepare:prepare,noWindup};
 };
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
-const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,theme:0,music:'crypt',bus:null,noise:null,
+const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,latter:false,theme:0,music:'crypt',bus:null,noise:null,
  get bpm(){return Math.round(60/this.beat)}};
 let latencyOffset=0;try{
  const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
@@ -304,8 +304,8 @@ function playMusicStep(n,t){
  }
  // Preserve the existing count-in suppression for the eight adopted themes.
  if(game.mode==='phase'&&game.phaseStage==='countin')return;
- if(STAGE_MUSIC&&score.music!=='crypt'){
-  for(const event of STAGE_MUSIC.step(score.music,n,score.beat,score.boss)){
+ if(STAGE_MUSIC&&(score.music!=='crypt'||score.latter)){
+  for(const event of STAGE_MUSIC.step(score.music,n,score.beat,score.boss,score.latter)){
    const at=t+event.offset;
    if(event.kind==='noise')scoreNoise(at,event.duration,event.volume,event.cutoff);
    else if(event.kind==='bell')for(const [ratio,level,decay]of [[1,1,1],[2.76,.20,.55],[5.4,.065,.25]])
@@ -336,7 +336,7 @@ function encounterBpm(enemy){
  game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
-function startScore(enemy){attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:FINAL_MUSIC?.forEncounter(enemy)?.id||STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);$('trackLabel').textContent=(selected&&!selected.original?selected.name:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';scheduleScore()}
+function startScore(enemy){attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:FINAL_MUSIC?.forEncounter(enemy)?.id||STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.latter=!FINAL_MUSIC?.get(score.music)&&(DEV_MODE&&devMusicLatter!==null?devMusicLatter:P.positionInZone(game.floor||1)>=5);score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);const titleText=selected&&!selected.original?(score.latter&&selected.latterName?selected.latterName:selected.name):score.latter&&selected?.latterName?selected.latterName:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE';$('trackLabel').textContent=titleText+' · '+score.bpm+' BPM';scheduleScore()}
 function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
 function readAudioClock(){
  let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
@@ -831,10 +831,10 @@ function tutorialResult(kind){
  else if(game.tutorialStep>=2&&['just','parry'].includes(kind))game.tutorialFinishing=true;
  syncTutorial();
 }
-function title(){attackPresentation.contact=null;runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
+function title(){attackPresentation.contact=null;runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';devMusicLatter=null;clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
 function start(practice=false,practiceKey=null,devOptions=null){
  const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
- if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';}
+ if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';devMusicLatter=typeof devOptions?.latter==='boolean'?devOptions.latter:null;}
  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
  const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const lifeBonus=PR.baseValue(meta,'life'),baseHp=65+lifeBonus,rawMaxHp=baseHp+PR.lifeVesselBonus(baseHp,initial.heal||0),startingHp=Math.ceil(rawMaxHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardCapacity','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=lifeBonus;game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
@@ -2694,22 +2694,22 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   musicList(){return STAGE_MUSIC?.themes||[]},
   musicReviews(){return FINAL_MUSIC?.pieces||[]},
   previewMusic(id,variant='normal'){
-   if(!audioEnabled||!musicDefinition(id)||!['normal','boss'].includes(variant))return false;
+   if(!audioEnabled||!musicDefinition(id)||!['normal','latter','boss'].includes(variant))return false;
    const review=FINAL_MUSIC?.get(id);
-   title();devMusicTheme=id;devMusicAudition=true;startScore({kind:'knight',boss:!!review||variant==='boss'});
+   title();devMusicTheme=id;devMusicAudition=true;devMusicLatter=!review&&(variant==='latter'||variant==='boss');startScore({kind:'knight',boss:!!review||variant==='boss'});
    if(!score.active)devMusicAudition=false;return score.active;
   },
-  stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;return true},
+  stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;devMusicLatter=null;return true},
   practiceMusic(id,variant='normal'){
-   const theme=musicDefinition(id);if(!theme||!['normal','boss'].includes(variant))return false;
-   const review=FINAL_MUSIC?.get(id),zone=P.zoneForFloor(theme.from),floor=review?review.floor:theme.from+(variant==='boss'?4:0),enemy=review||variant==='boss'?zone.boss:zone.fixed[1];
+   const theme=musicDefinition(id);if(!theme||!['normal','latter','boss'].includes(variant))return false;
+   const review=FINAL_MUSIC?.get(id),zone=P.zoneForFloor(theme.from),floor=review?review.floor:theme.from+(variant==='boss'?4:variant==='latter'?5:0),enemy=review||variant==='boss'?zone.boss:zone.fixed[1];
    const key=enemy+(review?.floor===80?':elite':':normal');
-   title();start(true,key,{floor,allowUnseenPractice:true,musicId:id});return true;
+   title();start(true,key,{floor,allowUnseenPractice:true,musicId:id,latter:!review&&(variant==='latter'||variant==='boss')});return true;
   },
   musicState(){
    const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
    const bars=musicDefinition(score.music)?.bars||8;
-   return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
+   return {active:score.active,audition:devMusicAudition,id:score.music,latter:!!score.latter,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
   getSfxVolume(){return Math.round(devSfxVolume*100)},
   setSfxVolume(percent){
