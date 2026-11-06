@@ -1221,101 +1221,275 @@ function getAttackMultiplier(){
   combo:game.combo,hp:game.hp,maxHp:game.maxHp,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp
  });
 }
-function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
-  game.relicJustStreak=0;game.justStreak=0;
-  if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
-   game.relicStopUsed++;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
-  }else game.combo=guardComboAfterHit(game.combo);
-  game.guards++;
-  if(!lvl('aegis'))game.charge=0;
-  applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
-  if(game.mode!=='combat')return;
-  if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射');if(game.mode!=='combat')return;}feedback('GUARD','#f6c473');
-}else if(kind==='miss'){
-  game.lastTimingDeltaMs=game.lastAttemptDelta===null?null:Math.round(game.lastAttemptDelta);game.lastTimingKind='miss';
-  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');if(!splitContact())sound(145,.21,'sawtooth',.045,-85);shake=12;
-}else{
-  game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
-  const heavyJust=perfect&&!attackPresentation.opening&&(e.boss||e.elite)&&(game.attackSpan/(score.beat*1000))>=2.99;
-  game.lastDeflectAt=effectAt;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.floorPerfects=(game.floorPerfects||0)+1;game.charge=Math.min(7,game.charge+(heavyJust?3:2))}else{game.charge=Math.min(7,game.charge+1)}
-  if(heavyJust)showText('HEAVY BREAK!',w*.52,h*.21,'#ffd984',19);
-  game.justStreak=perfect?(game.justStreak||0)+1:0;
-  // Record success and JUST thresholds before damage can end the floor.
-  if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
-  const heartbeatProc=!!(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3));
-  if(heartbeatProc){game.justStreak=0;game.charge=Math.min(7,game.charge+1)}
-  game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
-  game.parryRecoveryActive=true;
-  if(hasRelic('conduit_stone')&&!game.relicBoltDue)game.relicBoltDue=relicBump('conduit_stone',4);
-  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&!game.relicEmperorDue)
-   game.relicEmperorDue=relicBump('emperor_conduit',5);
-  if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
-  if(hasRelic('ember_vial'))game.enemy.burn+=Math.round(relicPower('ember_vial')*skillAtkScale());
-  if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(relicPower('royal_banner'));
-  if(hasRelic('broken_gear')&&game.relicGearReady){game.relicGearReady=false;relicShield(relicPower('broken_gear'))}
-  if(hasRelic('serene_crystal')){
-   game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
-   if(game.relicJustStreak>=3){game.relicJustStreak=0;relicShield(relicPower('serene_crystal'));showText('静謐!',w*.34,h*.36,'#c7e5f9',17)}
+// Resolve each phase synchronously; every damaging follow-up can end combat immediately.
+function strikeResult(kind,at,effectAt=at){
+ tutorialResult(kind);
+ const e=game.enemy;
+ if(!e||game.mode!=='combat')return;
+ presentStrikeResult(kind,at,effectAt,e);
+ const perfect=kind==='just';
+ if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){
+  game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;
+  game[kind==='guard'?'guards':'misses']++;
+  game.lastDamageAt=effectAt;game.hp=0;game.shield=0;
+  feedback('一撃で決着！','#ff9292');die();syncHUD();return;
+ }
+ const completed=kind==='guard'?resolveGuardStrike(e):
+  kind==='miss'?resolveMissStrike(e,effectAt):resolveParryStrike(e,perfect,at,effectAt);
+ if(!completed)return;
+ if(game.mode==='combat')nextStrike();
+ syncHUD();
+}
+function presentStrikeResult(kind,at,effectAt,e){
+ game.lastInputTargetAt=inputTargetAt();
+ game.attackResolved=true;
+ game.lastImpactAt=at;
+ game.lastStrikeKind=kind;
+ if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;
+ musicParry(kind);
+ game.lateReported=false;
+ game.lastHitAt=effectAt;
+ triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);
+ if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;
+ if(game.practice){
+  if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');
+  else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');
+ }
+}
+function resolveGuardStrike(e){
+ game.relicJustStreak=0;
+ game.justStreak=0;
+ if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
+  game.relicStopUsed++;
+  showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
+ }else game.combo=guardComboAfterHit(game.combo);
+ game.guards++;
+ if(!lvl('aegis'))game.charge=0;
+ applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
+ if(game.mode!=='combat')return false;
+ if(lvl('thorns')){
+  let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();
+  if(has('aegis','thorns'))reflect+=game.shield*.4;
+  damageEnemy(reflect,'#dbb7ff','反射');
+  if(game.mode!=='combat')return false;
+ }
+ feedback('GUARD','#f6c473');
+ return true;
+}
+function resolveMissStrike(e,effectAt){
+ game.lastTimingDeltaMs=game.lastAttemptDelta===null?null:Math.round(game.lastAttemptDelta);
+ game.lastTimingKind='miss';
+ game.relicJustStreak=0;
+ game.justStreak=0;
+ game.combo=0;
+ game.misses++;
+ game.charge=0;
+ game.lastDamageAt=effectAt;
+ applyDamage(e.atk,'MISS');
+ if(game.mode!=='combat')return false;
+ if(!game.practice)feedback('HIT!','#ff8295');
+ if(!splitContact())sound(145,.21,'sawtooth',.045,-85);
+ shake=12;
+ return true;
+}
+function prepareParryTriggers(e,perfect,at,effectAt){
+ game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
+ const heavyJust=perfect&&!attackPresentation.opening&&(e.boss||e.elite)&&(game.attackSpan/(score.beat*1000))>=2.99;
+ game.lastDeflectAt=effectAt;
+ game.combo++;
+ game.peakCombo=Math.max(game.peakCombo,game.combo);
+ game.parries++;
+ if(perfect){
+  game.perfects++;
+  game.floorPerfects=(game.floorPerfects||0)+1;
+  game.charge=Math.min(7,game.charge+(heavyJust?3:2));
+ }else game.charge=Math.min(7,game.charge+1);
+ if(heavyJust)showText('HEAVY BREAK!',w*.52,h*.21,'#ffd984',19);
+ game.justStreak=perfect?(game.justStreak||0)+1:0;
+ // Record success and JUST thresholds before damage can end the floor.
+ if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
+ const heartbeatProc=!!(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3));
+ if(heartbeatProc){
+  game.justStreak=0;
+  game.charge=Math.min(7,game.charge+1);
+ }
+ game.parryDamage=0;
+ game.parryDamageActive=!!lvl('blood')&&!game.practice;
+ game.parryRecoveryActive=true;
+ if(hasRelic('conduit_stone')&&!game.relicBoltDue)game.relicBoltDue=relicBump('conduit_stone',4);
+ if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&!game.relicEmperorDue)
+  game.relicEmperorDue=relicBump('emperor_conduit',5);
+ if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
+ if(hasRelic('ember_vial'))game.enemy.burn+=Math.round(relicPower('ember_vial')*skillAtkScale());
+ if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(relicPower('royal_banner'));
+ if(hasRelic('broken_gear')&&game.relicGearReady){
+  game.relicGearReady=false;
+  relicShield(relicPower('broken_gear'));
+ }
+ if(hasRelic('serene_crystal')){
+  game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
+  if(game.relicJustStreak>=3){
+   game.relicJustStreak=0;
+   relicShield(relicPower('serene_crystal'));
+   showText('静謐!',w*.34,h*.36,'#c7e5f9',17);
   }
-  const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
-  game.relicMaskReady=hasRelic('duet_mask')&&perfect;
-  if(lvl('frost')&&!game.frostWard){
-   game.frostCount=(game.frostCount||0)+1;
-   if(game.frostCount>=4){game.frostCount=0;game.frostWard=true;showText('氷の加護!',w*.32,h*.34,'#c5ecff',18)}
+ }
+ const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
+ game.relicMaskReady=hasRelic('duet_mask')&&perfect;
+ if(lvl('frost')&&!game.frostWard){
+  game.frostCount=(game.frostCount||0)+1;
+  if(game.frostCount>=4){
+   game.frostCount=0;
+   game.frostWard=true;
+   showText('氷の加護!',w*.32,h*.34,'#c5ecff',18);
   }
-  let val=game.baseAtk*getAttackMultiplier()*(perfect?(1.6+lvl('precision')*.35):1)*(heavyJust?1.25:1);
-  if(lvl('double')&&Math.random()<(.14+lvl('double')*.09)){val*=2;showText('DOUBLE!',w*.51,h*.22,'#fdd99d',18)}
-  if(game.fortitudeReady&&lvl('fortitude')){
-   val*=1+(.15+.1*lvl('fortitude'));game.fortitudeReady=false;
-   if(has('fortitude','aegis'))addShield(5,true);
-   showText('不屈!',w*.54,h*.27,'#e6e9a7',17);
-  }
-  // Spend last parry's stored healing before newly earned recovery can be calculated.
-  if(lvl('bloodlust')&&game.bloodlustPending>0){
-   val+=game.bloodlustPending;showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);game.bloodlustPending=0;
-  }
-  if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
-   game.relicStardustUsed=true;val*=1+relicPower('stardust_whetstone');
-  }
-  if(hasRelic('reaper_pact'))val*=1+relicPower('reaper_pact');
-  if(hasRelic('golden_festival_bell')&&e.boss)val*=1+relicPower('golden_festival_bell');
-  damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
-  if(relicMaskSlash){
-   damageEnemy(val*relicPower('duet_mask'),'#dfb8f5','仮面');if(game.mode!=='combat')return;
-  }
-  if(hasRelic('conduit_stone')&&game.relicBoltDue){
-   game.relicBoltDue=false;damageEnemy(relicPower('conduit_stone')*skillAtkScale(),'#a1e8ff','雷導');if(game.mode!=='combat')return;
-  }
-  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&game.relicEmperorDue){
-   game.relicEmperorDue=false;damageEnemy(relicPower('emperor_conduit',true)*skillAtkScale(),'#bceeff','雷帝');if(game.mode!=='combat')return;
-  }
-  if(heartbeatProc){
-   damageEnemy(game.baseAtk*heartbeatDamagePercent(lvl('heartbeat'))/100,'#9ee8f7','拍動');if(game.mode!=='combat')return;
-  }
-  if(lvl('overcharge')){
-   if(game.overchargeCount>=3){
-    game.overchargeCount=0;
-    damageEnemy(game.baseAtk*(.7+.4*lvl('overcharge')),'#8cecff','過充電');if(game.mode!=='combat')return;
-    if(has('overcharge','thunder')){
-     damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*.5,'#94e8ff','雷霆');if(game.mode!=='combat')return;
-    }
+ }
+ return {heavyJust,heartbeatProc,relicMaskSlash};
+}
+function applyBaseCounterattack(e,perfect,heavyJust){
+ let val=game.baseAtk*getAttackMultiplier()*(perfect?(1.6+lvl('precision')*.35):1)*(heavyJust?1.25:1);
+ if(lvl('double')&&Math.random()<(.14+lvl('double')*.09)){
+  val*=2;
+  showText('DOUBLE!',w*.51,h*.22,'#fdd99d',18);
+ }
+ if(game.fortitudeReady&&lvl('fortitude')){
+  val*=1+(.15+.1*lvl('fortitude'));
+  game.fortitudeReady=false;
+  if(has('fortitude','aegis'))addShield(5,true);
+  showText('不屈!',w*.54,h*.27,'#e6e9a7',17);
+ }
+ // Spend last parry's stored healing before newly earned recovery can be calculated.
+ if(lvl('bloodlust')&&game.bloodlustPending>0){
+  val+=game.bloodlustPending;
+  showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);
+  game.bloodlustPending=0;
+ }
+ if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
+  game.relicStardustUsed=true;
+  val*=1+relicPower('stardust_whetstone');
+ }
+ if(hasRelic('reaper_pact'))val*=1+relicPower('reaper_pact');
+ if(hasRelic('golden_festival_bell')&&e.boss)val*=1+relicPower('golden_festival_bell');
+ damageEnemy(val,perfect?'#93eafa':'#fff5cb');
+ return val;
+}
+function applyRelicAndThunderFollowups(val,{relicMaskSlash,heartbeatProc}){
+ if(relicMaskSlash){
+  damageEnemy(val*relicPower('duet_mask'),'#dfb8f5','仮面');
+  if(game.mode!=='combat')return false;
+ }
+ if(hasRelic('conduit_stone')&&game.relicBoltDue){
+  game.relicBoltDue=false;
+  damageEnemy(relicPower('conduit_stone')*skillAtkScale(),'#a1e8ff','雷導');
+  if(game.mode!=='combat')return false;
+ }
+ if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&game.relicEmperorDue){
+  game.relicEmperorDue=false;
+  damageEnemy(relicPower('emperor_conduit',true)*skillAtkScale(),'#bceeff','雷帝');
+  if(game.mode!=='combat')return false;
+ }
+ if(heartbeatProc){
+  damageEnemy(game.baseAtk*heartbeatDamagePercent(lvl('heartbeat'))/100,'#9ee8f7','拍動');
+  if(game.mode!=='combat')return false;
+ }
+ if(lvl('overcharge')){
+  if(game.overchargeCount>=3){
+   game.overchargeCount=0;
+   damageEnemy(game.baseAtk*(.7+.4*lvl('overcharge')),'#8cecff','過充電');
+   if(game.mode!=='combat')return false;
+   if(has('overcharge','thunder')){
+    damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*.5,'#94e8ff','雷霆');
+    if(game.mode!=='combat')return false;
    }
   }
-  if(lvl('thunder')){const thunder=(10+12*lvl('thunder'))*skillAtkScale();damageEnemy(thunder*(1+game.combo*.018),'#86e8ff','⚡');if(game.mode!=='combat')return}
-  if(lvl('echo')){let echo=val*(.25+lvl('echo')*.13);damageEnemy(echo,'#d8baff','残響');if(game.mode!=='combat')return;if(has('thunder','echo'))damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*(1+lvl('echo')*.24),'#86e8ff','雷鳴');if(game.mode!=='combat')return}
-  if(lvl('ember')){const burnGain=Math.round(lvl('ember')*7*skillAtkScale());e.burn+=burnGain;showText('炎 +'+burnGain,w*.75,h*.33,'#ffba83',13);if(has('ember','execute')&&e.hp/e.maxHp<.35){damageEnemy(e.burn*2,'#ff996f','紅蓮');e.burn=0;if(game.mode!=='combat')return}}
-  if(perfect&&lvl('aegis')){addShield(3+3*lvl('aegis'),true);if(has('aegis','thorns')){damageEnemy(game.shield*.28,'#c5adff','鏡壁');if(game.mode!=='combat')return}}
-  if(lvl('pulse')&&game.combo%PULSE_COMBO_STEP===0){damageEnemy(42*lvl('pulse')*skillAtkScale()*(1+game.combo*.02),'#ffe298','共鳴波');if(game.mode!=='combat')return}
-  if(lvl('king')&&game.combo%kingComboStep()===0){
-   damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
-   if(game.mode!=='combat')return;
-  }
-  let ultFired=false;
-  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*ULTIMATE_BASE_MULTIPLIER+lvl('rune')*45*baseAttackScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110)}
-  finishParryRecovery();
-  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);if(!ultFired){flash=.67;flashColor='#a0e8ff';}shake=Math.max(shake,5)}else if(!ultFired){flash=Math.max(flash,.18);flashColor='#9accff'};
+ }
+ if(lvl('thunder')){
+  const thunder=(10+12*lvl('thunder'))*skillAtkScale();
+  damageEnemy(thunder*(1+game.combo*.018),'#86e8ff','⚡');
+  if(game.mode!=='combat')return false;
+ }
+ if(lvl('echo')){
+  const echo=val*(.25+lvl('echo')*.13);
+  damageEnemy(echo,'#d8baff','残響');
+  if(game.mode!=='combat')return false;
+  if(has('thunder','echo'))damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*(1+lvl('echo')*.24),'#86e8ff','雷鳴');
+  if(game.mode!=='combat')return false;
+ }
+ return true;
 }
-if(game.mode==='combat')nextStrike();syncHUD();}
+function applyElementAndBarrierFollowups(e,perfect){
+ if(lvl('ember')){
+  const burnGain=Math.round(lvl('ember')*7*skillAtkScale());
+  e.burn+=burnGain;
+  showText('炎 +'+burnGain,w*.75,h*.33,'#ffba83',13);
+  if(has('ember','execute')&&e.hp/e.maxHp<.35){
+   damageEnemy(e.burn*2,'#ff996f','紅蓮');
+   e.burn=0;
+   if(game.mode!=='combat')return false;
+  }
+ }
+ if(perfect&&lvl('aegis')){
+  addShield(3+3*lvl('aegis'),true);
+  if(has('aegis','thorns')){
+   damageEnemy(game.shield*.28,'#c5adff','鏡壁');
+   if(game.mode!=='combat')return false;
+  }
+ }
+ return true;
+}
+// A null result means an earlier blow ended combat; no later charge or effect is consumed.
+function applyComboFinishers(effectAt){
+ if(lvl('pulse')&&game.combo%PULSE_COMBO_STEP===0){
+  damageEnemy(42*lvl('pulse')*skillAtkScale()*(1+game.combo*.02),'#ffe298','共鳴波');
+  if(game.mode!=='combat')return null;
+ }
+ if(lvl('king')&&game.combo%kingComboStep()===0){
+  damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
+  if(game.mode!=='combat')return null;
+ }
+ let ultFired=false;
+ if(game.charge>=7){
+  ultFired=true;
+  game.charge=0;
+  game.lastUltimateAt=effectAt;
+  if(hasRelic('broken_gear'))game.relicGearReady=true;
+  const ult=(game.baseAtk*ULTIMATE_BASE_MULTIPLIER+lvl('rune')*45*baseAttackScale())*getAttackMultiplier();
+  damageEnemy(ult,'#a8f7ff','奥義');
+  if(game.mode!=='combat')return null;
+  if(has('rune','precision')){
+   damageEnemy(ult*.65,'#d2b0ff','時空切断');
+   if(game.mode!=='combat')return null;
+  }
+  shake=Math.max(shake,12);
+  puff(w*.7,h*.55,'#9ef6ff',36,1.8);
+  sound(660,.33,'sawtooth',.05,-340);
+  sound(220,.38,'triangle',.06,-110);
+ }
+ return {ultFired};
+}
+function presentParryFeedback(perfect,ultFired){
+ if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');
+ if(perfect){
+  chord();
+  if(navigator.vibrate)navigator.vibrate(15);
+  if(!ultFired){flash=.67;flashColor='#a0e8ff';}
+  shake=Math.max(shake,5);
+ }else if(!ultFired){
+  flash=Math.max(flash,.18);flashColor='#9accff';
+ }
+}
+function resolveParryStrike(e,perfect,at,effectAt){
+ const triggers=prepareParryTriggers(e,perfect,at,effectAt);
+ const val=applyBaseCounterattack(e,perfect,triggers.heavyJust);
+ if(game.mode!=='combat')return false;
+ if(!applyRelicAndThunderFollowups(val,triggers))return false;
+ if(!applyElementAndBarrierFollowups(e,perfect))return false;
+ const finishers=applyComboFinishers(effectAt);
+ if(!finishers)return false;
+ finishParryRecovery();
+ presentParryFeedback(perfect,finishers.ultFired);
+ return true;
+}
 function clearFloor(){
  if(game.mode!=='combat')return;
  if(game.tutorial&&!game.tutorialFinishing){game.enemy.hp=1;return;}

@@ -4,13 +4,15 @@
 
 [段階的リファクタリング](./REFACTOR_PLAN.md)をローカルで継続中、未公開。以後はユーザーの最新指定により主担当が計画・実装・検証・差分確認を一貫して行う。サブエージェントの起動は不要。
 
-音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）、3A（戦闘数式/スキル定義）、4A（ショップ/図鑑表示）、3B（回復/障壁/被ダメージ）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
+音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）、3A（戦闘数式/スキル定義）、4A（ショップ/図鑑表示）、3B（回復/障壁/被ダメージ）、3C（反撃の段階整理）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
 
 `combat-math.js` は必要な値を受け取る純粋な計算。`skills.js` が25スキル・11相乗効果と説明を所有し、describe(id,level,{baseAtk,bladeLevel,baseHp})で現在の表示値を受ける。全表示呼出を移行し、旧descのゲーム状態クロージャーを除去した。戦闘効果の適用・撃破・乱数消費の順序は変更していない。
 
 `shop-view.js` / `codex-view.js` は明示的な表示入力からHTML/文字列/先読みスキンIDのviewを返す。入力状態を変更・保持せず、DOM/保存/進行の操作はgame側。購入/装備/封印/稽古の再検証と既存リスナーの配置を維持した。CSS/デザインは変更なし。
 
 `combat-health.js` はHP/障壁と関連フラグの同期更新を担当。スキル/遺物の数値を呼出側が渡し、文字・パーティクル・復活/死亡・氷鏡・HUDのcallbackを従来の位置で呼ぶ。生存/進行を最後にまとめて適用しない。必要な状態フィールドはREFACTOR_EXECUTIONの3B表を参照。
+
+3Cはgameの組み立て層で名前付き同期段階へ整理。strikeResultは接触表示と結果別の入口、成功時は準備→基本反撃→遺物/雷/残響→炎/鏡壁→共鳴波/王/奥義→回復/フィードバックの順。各打撃後に即mode検査する。巨大な演出/状態依存オブジェクトを作る抽出は避け、controllerの物理分離は5Bで扱う。
 
 - ブランチ：`refactor/run-state`（音声基盤と計画を含む）
 - 作業ツリー：`E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display`
@@ -25,6 +27,8 @@
 - 重要な既存テストの対応表を REFACTOR_PLAN に追加。
 
 ## 検証済み
+
+- 3C：全Node518件（40.2秒）成功。基準661a1f9と通常/稽古/ふんどし/80F、JUST/PARRY/GUARD/MISS、スキル・遺物あり/なし、敵HP6水準の192条件を実ゲームハーネスで比較。7,826 callback前後の全状態、乱数消費数、最終パーティクル/文字が一致。耐久36比較とfixturesも一致。Chromeで通常PARRYの6コンボ追撃と奥義チャージ消費、その次のガード被弾を確認。構文/diff check成功。scratchのverify-strike-order.cjs、strike-order-parity.log、strike-order-node.log、strike-order-survival.json、verify-strike-browser.cjsが証跡。恒久テストの追加なし。
 
 - 3B（11/07）：全Node518件（39.6秒）成功。基準a740057と16,384条件で全状態と文字/パーティクル/音声/死亡/氷鏡/HUD各callback時点の状態・呼出順が一致。耐久36比較とfixturesも一致。Chromeで実際に被弾してHP減少後の中断→reload→再開、初撃4拍、Devヒヨコ稽古の保存無変更とエラーなしを確認。構文/Pages/diff check成功。scratchのverify-combat-health.cjs、combat-health-node.log、combat-health-survival.json、verify-health-browser.cjsが証跡。
 
@@ -47,7 +51,7 @@
 
 ## 残る範囲と次の一手
 
-次は3C。strikeResultの反撃/追撃を名前付きの段階へ整理し、各段の読む/書く状態と停止条件を記録する。通常PARRYでの奥義、追撃途中の撃破で即停止、実ダメージ吸血、80Fの50%下限、乱数/演出の順序を保つ。その後4B残りの画面、5A〜C描画/Dev/配信境界へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+次は4B。報酬/遺物→部屋/イベント→設定の順に、HTML生成と保存/抽選/課金/回復を分ける。render中のcheckpoint呼出タイミングを記録し、変更前後の呼出順を比較する。以後5A〜C描画/Dev/配信境界へ進む。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 
