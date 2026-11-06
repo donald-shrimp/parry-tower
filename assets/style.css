@@ -259,7 +259,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .floorlabel{font-size:12px}
 }
 
-.upgrade-tier .upgrade-main>div{min-width:0;overflow-wrap:anywhere}
+.upgrade-tier .upgrade-main>div{flex:1;min-width:0;overflow-wrap:anywhere}
 .upgrade-progress{display:flex;gap:3px;width:min(100%,260px);margin-top:8px}
 .upgrade-progress span{height:7px;flex:1 1 0;border-radius:3px;background:#344357;min-width:0}
 .upgrade-progress span.filled{background:#78baa2}
