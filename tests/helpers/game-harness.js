@@ -88,6 +88,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
   ResizeObserver:undefined,console,Math:math
  };
+ vm.runInNewContext(readProjectFile('assets/run-state.js'),context,{filename:'run-state.js'});
  vm.runInNewContext(readProjectFile('assets/music.js'),context,{filename:'music.js'});
  vm.runInNewContext(readProjectFile('assets/audio-session.js'),context,{filename:'audio-session.js'});
  vm.runInNewContext(readProjectFile('assets/combat-sfx.js'),context);

@@ -1,6 +1,6 @@
 # 構成と保守上の注意
 
-2026-11-06、`refactor/audio-foundation` の構成。公開版との差と検証結果は [HANDOFF](./HANDOFF.md)、今後の工程は [REFACTOR_PLAN](./REFACTOR_PLAN.md) を参照。
+2026-11-06、`refactor/run-state` の構成。公開版との差と検証結果は [HANDOFF](./HANDOFF.md)、今後の工程は [REFACTOR_PLAN](./REFACTOR_PLAN.md) を参照。
 
 ## 技術構成
 
@@ -14,6 +14,7 @@ Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localSto
 | `assets/encounters.js` / `enemy-motions.js` | 敵・階層・譜面・モーション定義 |
 | `assets/progression.js` / `relics.js` | 恒久育成・スキンと遺物の定義・計算 |
 | `assets/routes.js` / `events.js` | 経路・イベントの定義と選択 |
+| `assets/run-state.js` | 確定済みの育成値・スキン・開始時刻から新規ランの状態を作る。稽古の許可やDevの特例は呼び出し側が担当 |
 | `assets/run-checkpoint.js` / `player-settings.js` | 中断保存の正規化・検証、設定と補正値 |
 | `assets/music.js` | 本編とDev共通の曲カタログ・選曲・音色再生。最初の階層の旧曲、共通アレンジ、開始太鼓も含む |
 | `assets/stage-music.js` / `final-boss-music.js` | 通常曲の譜面、終王の譜面と既存楽器レンダラー。共通窓口から利用 |
