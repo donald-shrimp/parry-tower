@@ -20,11 +20,11 @@ test('skill prices are registry-driven, epic defaults to 300 and future skills n
  assert.equal(P.skillPrice({id:'unknown_rarity',rarity:'mythic'}),35);
 });
 
-test('inheritance defaults and all three permanent purchase tiers survive normalization',()=>{
+test('inheritance defaults and all five permanent purchase tiers survive normalization',()=>{
  assert.equal(P.defaults().wardInheritance,0);
- assert.deepEqual([0,1,2,3].map(level=>P.value({wardInheritance:level},'wardInheritance')),[0,5,8,10]);
- assert.deepEqual([0,1,2,3].map(level=>P.costNext({wardInheritance:level},'wardInheritance')),[60,120,220,Infinity]);
- assert.equal(P.normalize({wardInheritance:999},skills).wardInheritance,3);
+ assert.deepEqual([0,1,2,3,4,5].map(level=>P.value({wardInheritance:level},'wardInheritance')),[0,5,8,10,15,20]);
+ assert.deepEqual([0,1,2,3,4,5].map(level=>P.costNext({wardInheritance:level},'wardInheritance')),[60,120,220,240,320,Infinity]);
+ assert.equal(P.normalize({wardInheritance:999},skills).wardInheritance,5);
  assert.equal(P.normalize({wardInheritance:'3'},skills).wardInheritance,0);
 });
 test('normalizer rejects malformed progress, forged levels, invalid slots and duplicate equipment',()=>{
@@ -35,7 +35,7 @@ test('normalizer rejects malformed progress, forged levels, invalid slots and du
  assert.deepEqual(p.unlockedSkills,['blood','blade','future_epic']);
  assert.deepEqual(p.equipped,['blood',null]);
  assert.equal(p.regen,0);
- assert.equal(p.bossWard,6);
+ assert.equal(p.bossWard,7);
  assert.equal(p.revive,0);
  assert.equal(p.choice4,1);
  assert.deepEqual(P.normalize(null,skills),P.defaults());
@@ -80,7 +80,7 @@ test('permanent modifiers have explicit level caps and price steps',()=>{
  assert.equal(P.costNext({revive:1},'revive'),Infinity);
  assert.equal(P.costNext({},'nonexistent'),Infinity);
  assert.equal(P.SLOT_COSTS.length,2);
- assert.equal(P.UPGRADES.length,9);
+ assert.equal(new Set(P.UPGRADES.map(def=>def.id)).size,P.UPGRADES.length,'upgrade IDs must be unique');
  assert.equal(P.defaults().coinGain,0);
  assert.deepEqual([0,1,2,3,4].map(l=>P.value({coinGain:l},'coinGain')),[0,10,20,30,45]);
  assert.deepEqual([0,1,2,3,4].map(l=>P.costNext({coinGain:l},'coinGain')),[25,55,100,160,Infinity]);
@@ -130,7 +130,7 @@ test('Fate Seal load normalizes duplicates, malformed IDs, future removals and e
 test('v0.9.3 baseline stat tiers retain all five original prices and effects',()=>{
  const defs=Object.fromEntries(P.BASE_UPGRADES.map(x=>[x.id,x]));
  assert.equal(P.BASE_UPGRADES.length,3);
- assert.deepEqual(P.BASE_UPGRADES.map(x=>x.max),[12,8,12]);
+ assert.deepEqual(P.BASE_UPGRADES.map(x=>x.max),[14,8,14]);
  for(const id of ['life','attack','ward']){
   assert.deepEqual([...defs[id].costs.slice(0,5)],[8,21,40,65,96]);
   for(let level=0;level<5;level++)
@@ -143,15 +143,15 @@ test('v0.9.3 baseline stat tiers retain all five original prices and effects',()
 });
 test('new survivability levels, slowed attack growth, prices and upgrade caps are exact',()=>{
  for(const id of ['life','ward'])
-  assert.deepEqual(Array.from({length:7},(_,i)=>P.baseCostNext({[id]:i+5},id)),[100,130,165,205,250,300,360]);
+  assert.deepEqual(Array.from({length:9},(_,i)=>P.baseCostNext({[id]:i+5},id)),[100,130,165,205,250,300,360,240,340]);
  assert.deepEqual(Array.from({length:3},(_,i)=>P.baseCostNext({attack:i+5},'attack')),[150,210,285]);
  assert.equal(P.baseCostNext({attack:8},'attack'),Infinity);
- assert.equal(P.baseCostNext({life:12},'life'),Infinity);
- assert.equal(P.baseCostNext({ward:12},'ward'),Infinity);
- assert.equal(P.baseValue({life:12},'life'),120);
- assert.equal(P.baseValue({ward:12},'ward'),96);
+ assert.equal(P.baseCostNext({life:14},'life'),Infinity);
+ assert.equal(P.baseCostNext({ward:14},'ward'),Infinity);
+ assert.deepEqual([12,13,14].map(l=>P.baseValue({life:l},'life')),[120,130,140]);
+ assert.deepEqual([12,13,14].map(l=>P.baseValue({ward:l},'ward')),[96,104,112]);
  assert.deepEqual([5,6,7,8].map(l=>P.baseValue({attack:l},'attack')),[15,17,19,21]);
- assert.equal(P.BASE_UPGRADES[0].costs.reduce((a,b)=>a+b),1740);
+ assert.equal(P.BASE_UPGRADES[0].costs.reduce((a,b)=>a+b),2320);
  assert.equal(P.BASE_UPGRADES[1].costs.reduce((a,b)=>a+b),875);
 });
 test('base-stat reads normalize legacy, malformed and forged levels without changing permanent-save v1',()=>{
@@ -172,10 +172,11 @@ test('base-stat reads normalize legacy, malformed and forged levels without chan
  assert.equal(P.VERSION,1);
 });
 
-test('v0.9.3 phase 2 expands regen, boss ward, and soul reward without changing old tiers',()=>{
+test('permanent recovery, boss ward, ward vessel and soul reward tiers match the shop',()=>{
  const expectations={
-  regen:{costs:[12,24,45,80,140],values:[5,10,15,18,20]},
-  bossWard:{costs:[15,30,55,90,155,235],values:[5,10,15,25,40,55]},
+  regen:{costs:[12,24,45,80,140,180,260],values:[5,10,15,18,20,23,26]},
+  bossWard:{costs:[15,30,55,90,155,235,260],values:[5,10,15,25,40,55,75]},
+  wardCapacity:{costs:[60,110,180],values:[20,40,60]},
   soulGain:{costs:[30,60,100,150,225],values:[5,10,15,20,25]}
  };
  for(const [id,exp] of Object.entries(expectations)){

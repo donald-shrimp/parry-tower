@@ -315,7 +315,7 @@ test('survival: Wardcraft amplifies every combat source and supports both limit 
  d.setSkill('fortitude',1);d.setFortitudeReady(true);d.setShield(0);resolveBloodParry(g,20);assert.equal(g.state().shield,8);
  for(const [id,prepare,expected]of [
   ['broken_gear',d=>d.setRelicFlag('relicGearReady',true),8],
-  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),12],
+  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),30],
   ['royal_banner',d=>d.setCombo(9),15]
  ]){const x=survivalHarness([id],{wardcraft:3});prepare(x.d);resolveBloodParry(x.g);assert.equal(x.g.state().shield,expected,id);}
  d.setSkill('aegis',1);d.setSkill('wardcraft',4);d.setBreaks('wardcraft',1);d.setShield(0);resolveBloodParry(g);assert.equal(g.state().shield,10);
@@ -340,15 +340,46 @@ test('survival: Unbroken Sigil protects spill once, preserves exact blocks, and 
 });
 
 test('survival: inheritance is purchased, fixed at run start, and replenishes only new combat floors',()=>{
- const seed={parryTowerPrototype_v1:JSON.stringify({coins:500}),parryTowerPermanent_v1:JSON.stringify({wardInheritance:2})};
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:800}),parryTowerPermanent_v1:JSON.stringify({wardInheritance:3})};
  const g=makeHarness(seed);g.press('upgradeOpenBtn');g.upgradeTab('base');assert.match(g.el.get('upgradeList').innerHTML,/守護の継承/);
- g.upgradeBuy('extra','wardInheritance');assert.equal(g.state().permanent.wardInheritance,3);assert.equal(g.state().souls,280);
- g.press('upgradeCloseBtn');g.press('startBtn');const d=g.bloodTest();assert.equal(g.state().shield,7);assert.equal(d.bonus('wardInheritance'),10);
+ g.upgradeBuy('extra','wardInheritance');g.upgradeBuy('extra','wardInheritance');
+ assert.equal(g.state().permanent.wardInheritance,5);assert.equal(g.state().souls,240);
+ g.press('upgradeCloseBtn');g.press('startBtn');const d=g.bloodTest();assert.equal(g.state().shield,13);assert.equal(d.bonus('wardInheritance'),20);
  d.setShield(0);g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.state().shield,0);
- d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().shield,0,'reload does not replenish');
- d.jumpFloor(4);assert.equal(g.state().shield,0,'route is not combat');g.routeSelect('rest');g.roomChoose('rest:heal');g.roomChoose('continue');assert.equal(g.state().shield,7);
+ d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().shield,0,'reload does not replenish');assert.equal(re.bloodTest().bonus('wardInheritance'),20);
+ d.jumpFloor(4);assert.equal(g.state().shield,0,'route is not combat');g.routeSelect('rest');g.roomChoose('rest:heal');g.roomChoose('continue');assert.equal(g.state().shield,13);
  d.setShield(151);d.jumpFloor(6);assert.equal(g.state().shield,151,'minimum, not additive');
  const boss=makeHarness({parryTowerPermanent_v1:JSON.stringify({wardInheritance:3,bossWard:6})});boss.press('startBtn');boss.bloodTest().setShield(0);boss.bloodTest().jumpFloor(5);assert.equal(boss.state().shield,55,'boss barrier not multiplied');
+});
+
+test('ward vessel increases the replenishment ceiling, preserves existing shields and is fixed per run',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:500})};
+ const g=makeHarness(seed);g.press('startBtn');
+ const d=g.bloodTest();d.setShield(151);
+ g.press('pauseBtn');g.press('suspendBtn');
+ const oldRun=JSON.parse(g.storage.get(RUN_KEY));delete oldRun.game.bonuses.wardCapacity;
+ g.storage.set(RUN_KEY,JSON.stringify(oldRun));
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ assert.match(g.el.get('upgradeList').innerHTML,/障壁の器/);
+ for(let i=0;i<4;i++)g.upgradeBuy('extra','wardCapacity');
+ assert.equal(g.state().permanent.wardCapacity,3);
+ assert.equal(g.state().souls,150);
+ g.press('upgradeCloseBtn');g.press('continueBtn');
+ assert.equal(d.bonus('wardCapacity'),0);
+ d.setSkill('aegis',1);resolveBloodParry(g,0);
+ assert.equal(g.state().shield,151,'replenishment cannot truncate an over-cap shield');
+
+ const fresh=makeHarness({parryTowerPermanent_v1:g.storage.get('parryTowerPermanent_v1')});
+ fresh.press('startBtn');const f=fresh.bloodTest();
+ assert.equal(f.bonus('wardCapacity'),60);
+ assert.equal(fresh.state().shield,0,'capacity does not grant any starting shield');
+ f.setSkill('aegis',1);f.setSkill('wardcraft',3);f.setShield(265);
+ resolveBloodParry(fresh,0);
+ assert.equal(fresh.state().shield,270,'(100 + 60 + 20) × 1.5 caps replenishment at 270');
+ assert.match(fresh.el.get('combatBuffs').textContent,/障壁の補充上限 270/);
+ f.checkpoint();const resumed=reloadHarness(fresh);resumed.press('continueBtn');
+ assert.equal(resumed.bloodTest().bonus('wardCapacity'),60);
+ assert.equal(resumed.state().shield,270);
 });
 
 test('survival: checkpoint keeps consumed sigil and new skills, migrates legacy bonuses, and rejects malformed values',()=>{
@@ -1245,18 +1276,25 @@ test('Fortitude boosts the next parry after HP damage, consumed once; Immortal S
  resolveBloodParry(withWard,20);
  assert.equal(withWard.state().shield,5,'next successful parry restores five ward');
 });
-test('Heartbeat charges once at three consecutive JUSTs, or twice with Focus synergy',()=>{
+test('Heartbeat deals 45 at level one and adds one charge after three JUSTs, or two with Focus',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
- d.setSkill('heartbeat',1);d.setEnemyHp(10000);
+ d.setSkill('heartbeat',1);d.setBaseAttack(25);d.setEnemyHp(10000);
+ resolveBloodParry(g,0);
  resolveBloodParry(g,20);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
- resolveBloodParry(g,0);resolveBloodParry(g,0);resolveBloodParry(g,0);
- assert.equal(d.hits().filter(x=>x.label==='拍動').length,1);
+ d.setCharge(0);
+ resolveBloodParry(g,0);resolveBloodParry(g,0);
+ assert.equal(g.state().charge,4);assert.equal(d.hits().some(x=>x.label==='拍動'),false);
+ resolveBloodParry(g,0);
+ assert.equal(d.hits().find(x=>x.label==='拍動').dealt,45);
+ assert.ok(d.hits().some(x=>x.label==='奥義'),'the third JUST reaches seven only with Heartbeat');
+ assert.equal(g.state().charge,0);
  assert.equal(g.state().justStreak,0);
  assert.equal(g.el.get('combatBuffs').hidden,false,'live ability counters shown');
  const synergized=makeHarness();synergized.press('startBtn');const y=synergized.bloodTest();
- y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setEnemyHp(10000);
+ y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setBaseAttack(25);y.setEnemyHp(10000);
  resolveBloodParry(synergized,0);resolveBloodParry(synergized,0);
- assert.equal(y.hits().filter(x=>x.label==='拍動').length,1,'Focus synergy shortens JUST chain to two');
+ assert.equal(y.hits().find(x=>x.label==='拍動').dealt,45,'Focus shortens the chain without changing damage');
+ assert.equal(synergized.state().charge,5);
 });
 test('Overcharge works without thunder on every third parry; Thunder synergy fires extra lightning',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
@@ -1308,19 +1346,26 @@ test('Ice ward mitigates the next incoming hit and Ice Mirror reflects mitigated
  assert.ok(m.info().enemyHp<before,'ice mirror damages the enemy');
  assert.equal(m.hits().filter(x=>x.label==='氷鏡').length,1);
 });
-test('King Strike procs at ten combos, or simultaneously with Pulse at eight via synergy',()=>{
+test('Pulse procs at six combos and King Strike at eight, or both at six via synergy',()=>{
  const basic=makeHarness();basic.press('startBtn');const b=basic.bloodTest();
- b.setSkill('king',1);b.setEnemyHp(10000);b.setCombo(9);
- resolveBloodParry(basic);
- assert.equal(b.hits().filter(x=>x.label==='王の一撃').length,1);
+ b.setSkill('pulse',1);b.setBaseAttack(25);b.setEnemyHp(10000);b.setCombo(5);
+ resolveBloodParry(basic,20);
+ assert.equal(b.hits().find(hit=>hit.label==='共鳴波').dealt,47);
+ b.setSkill('pulse',0);b.setSkill('king',1);b.setCharge(6);b.resetHits();
+ resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,7);assert.equal(b.hits().find(hit=>hit.label==='奥義').dealt,49);
+ assert.equal(b.hits().some(hit=>hit.label==='王の一撃'),false);
+ assert.match(basic.el.get('combatBuffs').textContent,/王の一撃 あと1/);
+ b.resetHits();resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,8);assert.equal(b.hits().find(hit=>hit.label==='王の一撃').dealt,82);
  const both=makeHarness();both.press('startBtn');const x=both.bloodTest();
  x.setSkill('king',1);x.setSkill('pulse',1);x.setSkill('blood',1);
- x.setEnemyHp(10000);x.setCombo(7);x.setHp(10);x.setMaxHp(500);
+ x.setBaseAttack(25);x.setEnemyHp(10000);x.setCombo(5);x.setHp(10);x.setMaxHp(500);
  const before=x.info().enemyHp;
  resolveBloodParry(both);
- const hits=x.hits().map(hit=>hit.label);
- assert.ok(hits.includes('王の一撃'),'King synergy triggers at combo eight');
- assert.ok(hits.includes('共鳴波'),'Pulse still fires at combo eight');
+ assert.equal(both.state().combo,6);
+ assert.equal(x.hits().find(hit=>hit.label==='王の一撃').dealt,80);
+ assert.equal(x.hits().find(hit=>hit.label==='共鳴波').dealt,47);
  const total=before-x.info().enemyHp;
  assert.equal(both.state().hp,10+Math.min(Math.max(2,Math.round(total*.08)),125),'bonus hits included in one lifesteal transaction');
 });
@@ -1349,7 +1394,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9(?:&[^"]+)?"/);
   assert.match(html,/v0\.9\.9/);
  }
  const g=makeHarness({},true);
@@ -1482,7 +1527,7 @@ test('rare relic: serene crystal reacts to three consecutive JUSTs and ignores n
  resolveBloodParry(g,20);
  assert.equal(g.state().shield,0,'normal parry breaks JUST streak');
  for(let i=0;i<3;i++)resolveBloodParry(g,0);
- assert.equal(g.state().shield,8);
+ assert.equal(g.state().shield,20);
  assert.equal(d.relicInfo().justStreak,0);
 });
 test('rare relic: emperor conduit creates autonomous lightning only when lightning skills are absent',()=>{
@@ -2479,14 +2524,14 @@ test('combo HUD and floor entry title have non-overlapping, stable lanes on desk
  }
 });
 
-test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then stop at cap',()=>{
+test('legacy 5/5 purchases continue through the expanded tiers, then stop at cap',()=>{
  const prev={coins:10000,life:5,attack:5,ward:5,bestFloor:60,runs:25};
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify(prev)});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  let html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/生命の祝福[^]*?Lv.5\/12/);
+ assert.match(html,/生命の祝福[^]*?Lv.5\/14/);
  assert.match(html,/剣の研鑽[^]*?Lv.5\/8/);
- assert.match(html,/守護の祈り[^]*?Lv.5\/12/);
+ assert.match(html,/守護の祈り[^]*?Lv.5\/14/);
  assert.match(html,/現在：最大HP \+50 → Lv.6：\+60/);
  assert.match(html,/現在：基礎反撃ダメージ \+15 → Lv.6：\+17/);
  assert.match(html,/現在：初期障壁 \+40 → Lv.6：\+48/);
@@ -2495,29 +2540,29 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  g.upgradeBuy('legacy','attack');
  g.upgradeBuy('legacy','ward');
  assert.equal(g.state().souls,9650,'first extra HP/attack/ward tiers cost 100+150+100');
- for(let i=0;i<6;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
+ for(let i=0;i<8;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
  for(let i=0;i<2;i++)g.upgradeBuy('legacy','attack');
- const expected=10000-((1740-230)*2)-(875-230);
+ const expected=10000-((2320-230)*2)-(875-230);
  assert.equal(g.state().souls,expected);
  const saved=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
- assert.deepEqual([saved.life,saved.attack,saved.ward],[12,8,12]);
+ assert.deepEqual([saved.life,saved.attack,saved.ward],[14,8,14]);
  assert.equal(saved.bestFloor,60);
  assert.equal(saved.runs,25);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),{...PR.defaults(),skinRecords:{normal:{bestFloor:60,bestCombo:0,runs:25}}},
   'legacy upgrades preserve equipment and migrate only the pre-skin normal record');
  html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/Lv.12\/12/);
+ assert.match(html,/Lv.14\/14/);
  assert.match(html,/Lv.8\/8/);
  assert.doesNotMatch(html,/最大強化/);
  assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
- assert.equal((html.match(/aria-valuenow="12"/g)||[]).length,2);
+ assert.equal((html.match(/aria-valuenow="14"/g)||[]).length,2);
  assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
  g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','attack');g.upgradeBuy('legacy','ward');
  g.upgradeBuy('legacy','invalid');
  assert.equal(g.state().souls,expected,'a maxed or unknown upgrade cannot spend currency');
  g.press('upgradeCloseBtn');g.press('startBtn');
- assert.equal(g.state().maxHp,185,'12 HP levels give +120 HP');
- assert.equal(g.state().shield,96,'12 ward levels give +96 initial shield');
+ assert.equal(g.state().maxHp,205,'14 HP levels give +140 HP');
+ assert.equal(g.state().shield,112,'14 ward levels give +112 initial shield');
  assert.equal(g.state().souls,expected);
  const d=g.bloodTest();
  assert.equal(d.info().baseAtk,46,'five original +3 and three new +2 levels give 25+21 attack');
@@ -2548,8 +2593,8 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
  assert.equal(dev.state().souls,640,'level 12 costs 360 shards');
  const invalid=makeHarness({'parryTowerPrototype_v1':JSON.stringify({life:999,ward:999,attack:999,coins:10})});
  invalid.press('startBtn');
- assert.equal(invalid.state().maxHp,185);
- assert.equal(invalid.state().shield,96);
+ assert.equal(invalid.state().maxHp,205);
+ assert.equal(invalid.state().shield,112);
 });
 
 function loseRun(g){
@@ -2557,43 +2602,43 @@ function loseRun(g){
  for(let i=0;i<12&&g.state().mode==='combat';i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'gameover','player must eventually die without parries');
 }
-test('v0.9.3 phase 2 shop expands only recovery, boss shield and soul gain, leaving older prices intact',()=>{
+test('shop offers the new recovery and boss barrier tiers while preserving older prices',()=>{
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:2200}),
   'parryTowerPermanent_v1':JSON.stringify({regen:3,bossWard:3,soulGain:3})});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  const before=g.el.get('upgradeList').innerHTML;
- for(const [name,max] of [['再生力',5],['守護の備え',6],['魂の共鳴',5]]){
+ for(const [name,max] of [['再生力',7],['守護の備え',7],['魂の共鳴',5]]){
   assert.match(before,new RegExp(name+'[^]*?Lv.3/'+max));
  }
- for(const [id,n] of [['regen',2],['bossWard',3],['soulGain',2]])
+ for(const [id,n] of [['regen',4],['bossWard',4],['soulGain',2]])
   for(let i=0;i<n;i++)g.upgradeBuy('extra',id);
- assert.equal(g.state().souls,2200-(80+140+90+155+235+150+225));
- assert.equal(g.state().permanent.regen,5);
- assert.equal(g.state().permanent.bossWard,6);
+ assert.equal(g.state().souls,2200-(80+140+180+260+90+155+235+260+150+225));
+ assert.equal(g.state().permanent.regen,7);
+ assert.equal(g.state().permanent.bossWard,7);
  assert.equal(g.state().permanent.soulGain,5);
  const saved=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
- assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[5,6,5]);
+ assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[7,7,5]);
  const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/階層クリア時 HP 20%回復/);
- assert.match(after,/ボス戦開始時 障壁 \+55/);
+ assert.match(after,/階層クリア時 HP 26%回復/);
+ assert.match(after,/ボス戦開始時 障壁 \+75/);
  assert.match(after,/獲得する魂の欠片 \+25%/);
  const coins=g.state().souls;
  for(const id of ['regen','bossWard','soulGain'])g.upgradeBuy('extra',id);
  assert.equal(g.state().souls,coins,'MAX upgrades never spend souls');
  const dev=makeHarness({'parryTowerPermanent_v1':JSON.stringify(saved)},true);
  assert.equal(dev.dev().launch(5,'guardian:normal'),true);
- assert.equal(dev.state().shield,55,'boss receives new +55 ward');
+ assert.equal(dev.state().shield,75,'boss receives new +75 ward');
 });
-test('fifth regeneration tier heals 20% after clearing a floor',()=>{
- const seed={'parryTowerPermanent_v1':JSON.stringify({regen:5})};
+test('seventh regeneration tier heals 26% after clearing a floor',()=>{
+ const seed={'parryTowerPermanent_v1':JSON.stringify({regen:7})};
  const g=makeHarness(seed);g.press('startBtn');
  const d=g.bloodTest();
  settleCurrentAttack(g);
  assert.equal(g.state().hp,51);
- d.setEnemyHp(1);
+ d.setHp(40);d.setEnemyHp(1);
  resolveBloodParry(g,20);
  assert.equal(g.state().mode,'victory');
- assert.equal(g.state().hp,64,'65 max HP regains ceil(65*.20)=13 on floor clear');
+ assert.equal(g.state().hp,57,'65 max HP regains ceil(65*.26)=17 on floor clear');
 });
 test('rescue payments at 3, 8, and 15 defeated attempts are one-time and use saved run count',()=>{
  const cases=[
@@ -2986,7 +3031,7 @@ test('polished relics apply their improved damage, recovery, shields and guard r
  x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
  x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
  x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,0);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
- x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
+ x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,30);
  x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
  x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
  x=polishedFight('silver_mirror');x.d.setEnemyAttack(50);resolveBloodParry(x.g,-40);assert.equal(x.g.state().hp,54);
@@ -3313,6 +3358,39 @@ test('local checkpoint restores combat on a fresh clock without new encounter ro
  const re=reloadHarness(g);assert.equal(re.el.get('continueBtn').hidden,false);re.random(.99);re.press('continueBtn');
  assert.equal(re.state().mode,'combat');assert.equal(re.state().encounterKey,original.encounterKey);assert.equal(re.state().shield,original.shield);assert.equal(re.state().enemyHp,10000);assert.equal(re.state().runSkills.focus,7);assert.equal(re.state().skillBreaks.focus,1);
  assert.equal(re.state().attackBeat,4);assert.ok(re.state().attackAt>re.now);assert.equal(re.state().scoreActive,true);
+});
+
+test('life vessel starts with the larger HP bonus and rounds the total before skin and relic multipliers',()=>{
+ const g=makeHarness({
+  parryTowerPrototype_v1:JSON.stringify({life:14}),
+  parryTowerPermanent_v1:JSON.stringify({slots:1,unlockedSkills:['heal'],equipped:['heal'],unlockedSkins:['chick'],equippedSkin:'chick'})
+ });
+ const d=g.bloodTest(),skill=d.skillCatalog().find(s=>s.id==='heal');
+ assert.match(skill.desc(3),/最大HP \+50/);
+ g.press('startBtn');assert.equal(g.state().runSkills.heal,1);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[333,333]);
+ d.setHp(100);assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[357,136]);
+ assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[383,174]);
+ assert.equal(d.grantRelic('reaper_pact'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[306,174]);
+});
+
+test('life vessel updates an old checkpoint maximum with its frozen blessing and preserves current HP',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({life:13})});
+ g.press('startBtn');const d=g.bloodTest();
+ for(let i=0;i<3;i++)assert.equal(d.gainSkill('heal'),true);
+ d.setHp(100);const old=d.checkpoint();
+ Object.assign(old.game,{rawMaxHp:240,maxHp:240});
+ const re=makeHarness({[RUN_KEY]:JSON.stringify(old),parryTowerPrototype_v1:JSON.stringify({life:14})});
+ re.press('continueBtn');
+ assert.equal(re.state().mode,'combat');
+ assert.deepEqual([re.state().maxHp,re.state().hp],[242,100]);
+ const migrated=re.bloodTest().checkpoint();
+ assert.deepEqual([migrated.game.rawMaxHp,migrated.game.lifeBonus],[242,130]);
+ const again=reloadHarness(re);again.press('continueBtn');
+ assert.deepEqual([again.state().maxHp,again.state().hp],[242,100]);
 });
 
 test('saved rewards, paid merchant selections and refinement resume without rerolls, refunds or another payment',()=>{
@@ -3849,8 +3927,8 @@ test('review fixes: rune uses permanent attack scaling and exactly one blade mul
    d.setBaseAttack(baseAtk);d.setSkill('blade',blade);d.setSkill('rune',rune);d.setSkill('precision',1);d.setCharge(7);
    resolveBloodParry(g,20);assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().charge,0);
    const ult=d.hits().find(h=>h.label==='奥義').dealt;damage.push(ult);
-   const expected=Math.round((baseAtk*1.5+rune*45*(baseAtk/25))*(1+blade*.25)*1.012);
-   assert.equal(ult,expected);
+   const expected=(baseAtk*1.8+rune*45*(baseAtk/25))*(1+blade*.25)*1.012;
+   assert.equal(ult,Math.round(expected));
    if(rune)assert.equal(d.hits().find(h=>h.label==='時空切断').dealt,Math.round(expected*.65));
   }
   assert.ok(Math.abs((damage[1]-damage[0])-45*(baseAtk/25)*(1+blade*.25)*1.012)<=1);
