@@ -91,7 +91,7 @@ function simulate(profile,floor,style,seed=1,options={}){
    }
    if(enemy>0&&just&&lev('aegis'))
     shield=Math.min(100+20*lev('aegis'),shield+3+3*lev('aegis'));
-   if(enemy>0&&charge>=7){charge=0;dealt+=deal((eq.attack*1.5+lev('rune')*45)*mult);}
+   if(enemy>0&&charge>=7){charge=0;dealt+=deal((eq.attack*1.8+lev('rune')*45*(eq.attack/25))*mult);}
    if(lev('blood')&&dealt>0){
     const bonus=lev('fury')?combo:0;
     const recovered=Math.min(Math.max(2,Math.round(dealt*(6+2*lev('blood')+bonus)/100)),ceil(eq.hp*(25+bonus)/100));

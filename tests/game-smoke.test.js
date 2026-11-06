@@ -315,7 +315,7 @@ test('survival: Wardcraft amplifies every combat source and supports both limit 
  d.setSkill('fortitude',1);d.setFortitudeReady(true);d.setShield(0);resolveBloodParry(g,20);assert.equal(g.state().shield,8);
  for(const [id,prepare,expected]of [
   ['broken_gear',d=>d.setRelicFlag('relicGearReady',true),8],
-  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),12],
+  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),30],
   ['royal_banner',d=>d.setCombo(9),15]
  ]){const x=survivalHarness([id],{wardcraft:3});prepare(x.d);resolveBloodParry(x.g);assert.equal(x.g.state().shield,expected,id);}
  d.setSkill('aegis',1);d.setSkill('wardcraft',4);d.setBreaks('wardcraft',1);d.setShield(0);resolveBloodParry(g);assert.equal(g.state().shield,10);
@@ -1245,18 +1245,25 @@ test('Fortitude boosts the next parry after HP damage, consumed once; Immortal S
  resolveBloodParry(withWard,20);
  assert.equal(withWard.state().shield,5,'next successful parry restores five ward');
 });
-test('Heartbeat charges once at three consecutive JUSTs, or twice with Focus synergy',()=>{
+test('Heartbeat deals 45 at level one and adds one charge after three JUSTs, or two with Focus',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
- d.setSkill('heartbeat',1);d.setEnemyHp(10000);
+ d.setSkill('heartbeat',1);d.setBaseAttack(25);d.setEnemyHp(10000);
+ resolveBloodParry(g,0);
  resolveBloodParry(g,20);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
- resolveBloodParry(g,0);resolveBloodParry(g,0);resolveBloodParry(g,0);
- assert.equal(d.hits().filter(x=>x.label==='拍動').length,1);
+ d.setCharge(0);
+ resolveBloodParry(g,0);resolveBloodParry(g,0);
+ assert.equal(g.state().charge,4);assert.equal(d.hits().some(x=>x.label==='拍動'),false);
+ resolveBloodParry(g,0);
+ assert.equal(d.hits().find(x=>x.label==='拍動').dealt,45);
+ assert.ok(d.hits().some(x=>x.label==='奥義'),'the third JUST reaches seven only with Heartbeat');
+ assert.equal(g.state().charge,0);
  assert.equal(g.state().justStreak,0);
  assert.equal(g.el.get('combatBuffs').hidden,false,'live ability counters shown');
  const synergized=makeHarness();synergized.press('startBtn');const y=synergized.bloodTest();
- y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setEnemyHp(10000);
+ y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setBaseAttack(25);y.setEnemyHp(10000);
  resolveBloodParry(synergized,0);resolveBloodParry(synergized,0);
- assert.equal(y.hits().filter(x=>x.label==='拍動').length,1,'Focus synergy shortens JUST chain to two');
+ assert.equal(y.hits().find(x=>x.label==='拍動').dealt,45,'Focus shortens the chain without changing damage');
+ assert.equal(synergized.state().charge,5);
 });
 test('Overcharge works without thunder on every third parry; Thunder synergy fires extra lightning',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
@@ -1308,19 +1315,26 @@ test('Ice ward mitigates the next incoming hit and Ice Mirror reflects mitigated
  assert.ok(m.info().enemyHp<before,'ice mirror damages the enemy');
  assert.equal(m.hits().filter(x=>x.label==='氷鏡').length,1);
 });
-test('King Strike procs at ten combos, or simultaneously with Pulse at eight via synergy',()=>{
+test('Pulse procs at six combos and King Strike at eight, or both at six via synergy',()=>{
  const basic=makeHarness();basic.press('startBtn');const b=basic.bloodTest();
- b.setSkill('king',1);b.setEnemyHp(10000);b.setCombo(9);
- resolveBloodParry(basic);
- assert.equal(b.hits().filter(x=>x.label==='王の一撃').length,1);
+ b.setSkill('pulse',1);b.setBaseAttack(25);b.setEnemyHp(10000);b.setCombo(5);
+ resolveBloodParry(basic,20);
+ assert.equal(b.hits().find(hit=>hit.label==='共鳴波').dealt,47);
+ b.setSkill('pulse',0);b.setSkill('king',1);b.setCharge(6);b.resetHits();
+ resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,7);assert.equal(b.hits().find(hit=>hit.label==='奥義').dealt,49);
+ assert.equal(b.hits().some(hit=>hit.label==='王の一撃'),false);
+ assert.match(basic.el.get('combatBuffs').textContent,/王の一撃 あと1/);
+ b.resetHits();resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,8);assert.equal(b.hits().find(hit=>hit.label==='王の一撃').dealt,82);
  const both=makeHarness();both.press('startBtn');const x=both.bloodTest();
  x.setSkill('king',1);x.setSkill('pulse',1);x.setSkill('blood',1);
- x.setEnemyHp(10000);x.setCombo(7);x.setHp(10);x.setMaxHp(500);
+ x.setBaseAttack(25);x.setEnemyHp(10000);x.setCombo(5);x.setHp(10);x.setMaxHp(500);
  const before=x.info().enemyHp;
  resolveBloodParry(both);
- const hits=x.hits().map(hit=>hit.label);
- assert.ok(hits.includes('王の一撃'),'King synergy triggers at combo eight');
- assert.ok(hits.includes('共鳴波'),'Pulse still fires at combo eight');
+ assert.equal(both.state().combo,6);
+ assert.equal(x.hits().find(hit=>hit.label==='王の一撃').dealt,80);
+ assert.equal(x.hits().find(hit=>hit.label==='共鳴波').dealt,47);
  const total=before-x.info().enemyHp;
  assert.equal(both.state().hp,10+Math.min(Math.max(2,Math.round(total*.08)),125),'bonus hits included in one lifesteal transaction');
 });
@@ -1349,7 +1363,7 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9"/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9(?:&[^"]+)?"/);
   assert.match(html,/v0\.9\.9/);
  }
  const g=makeHarness({},true);
@@ -1482,7 +1496,7 @@ test('rare relic: serene crystal reacts to three consecutive JUSTs and ignores n
  resolveBloodParry(g,20);
  assert.equal(g.state().shield,0,'normal parry breaks JUST streak');
  for(let i=0;i<3;i++)resolveBloodParry(g,0);
- assert.equal(g.state().shield,8);
+ assert.equal(g.state().shield,20);
  assert.equal(d.relicInfo().justStreak,0);
 });
 test('rare relic: emperor conduit creates autonomous lightning only when lightning skills are absent',()=>{
@@ -2986,7 +3000,7 @@ test('polished relics apply their improved damage, recovery, shields and guard r
  x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
  x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
  x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,0);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
- x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
+ x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,30);
  x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
  x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
  x=polishedFight('silver_mirror');x.d.setEnemyAttack(50);resolveBloodParry(x.g,-40);assert.equal(x.g.state().hp,54);
@@ -3849,8 +3863,8 @@ test('review fixes: rune uses permanent attack scaling and exactly one blade mul
    d.setBaseAttack(baseAtk);d.setSkill('blade',blade);d.setSkill('rune',rune);d.setSkill('precision',1);d.setCharge(7);
    resolveBloodParry(g,20);assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().charge,0);
    const ult=d.hits().find(h=>h.label==='奥義').dealt;damage.push(ult);
-   const expected=Math.round((baseAtk*1.5+rune*45*(baseAtk/25))*(1+blade*.25)*1.012);
-   assert.equal(ult,expected);
+   const expected=(baseAtk*1.8+rune*45*(baseAtk/25))*(1+blade*.25)*1.012;
+   assert.equal(ult,Math.round(expected));
    if(rune)assert.equal(d.hits().find(h=>h.label==='時空切断').dealt,Math.round(expected*.65));
   }
   assert.ok(Math.abs((damage[1]-damage[0])-45*(baseAtk/25)*(1+blade*.25)*1.012)<=1);
