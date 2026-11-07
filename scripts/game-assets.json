@@ -1,5 +1,5 @@
 {
-  "build": "v1.0.2",
+  "build": "v1.0.3",
   "pages": [
     "index.html",
     "dev.html"
@@ -7,6 +7,10 @@
   "styles": [
     {
       "file": "style.css",
+      "diagnose": true
+    },
+    {
+      "file": "menu-layout.css",
       "diagnose": true
     },
     {
@@ -324,6 +328,22 @@
       "module": {
         "name": "characterRenderer",
         "global": "ParryCharacterRenderer"
+      }
+    },
+    {
+      "file": "menu-layout.js",
+      "diagnose": true,
+      "module": {
+        "name": "menuLayout",
+        "global": "ParryMenuLayout"
+      }
+    },
+    {
+      "file": "menu-layout-config.js",
+      "diagnose": true,
+      "module": {
+        "name": "menuLayoutConfig",
+        "global": "ParryMenuLayoutConfig"
       }
     },
     {

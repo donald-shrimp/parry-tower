@@ -2,7 +2,55 @@
 
 ## 現在の状態
 
-v1.0.2の本番公開指示を受領。UI文言・岐路バッジ・保存済みB編集内容・C04〜C07・ローカル文言エディタをまとめて配信する。共鳴説明は「習得済みスキルに共鳴するスキルを1つ習得。」が最終形。ゲーム仕様と保存形式は維持。リリース候補の全Node530件、画像8件、フォント2件、構文、生成一致、バランス試算が成功。Chrome320/390/1280pxで保存済み文言・補正後報酬・Lv比較・岐路バッジ・下段削除・横はみ出しなしを確認。本編中断/再読込/4拍復帰、80FヒヨコDevの保存分離、8ツール/file://起動も成功。新しい「歌」と分離済みview/skillsの文字を表示フォントへ収録（1,232文字、CSSフォント版9）。証跡はscratchのv102-node-final.log、v102-balance.log、verify-user-copy.cjs、verify-v102-routes.cjs、verify-final-entries.cjs。PR/main統合、タグ、CI/Pages、ライブ配信確認を進める。
+本番公開の指示を受領し、確定済みレイアウトをv1.0.3として公開する。保存版updatedAt 1794041567925（SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19）を維持。タイトル/挑戦終了のサブ書体は通常、一時停止はピクセル、主操作は全画面ピクセル。リザルトは使用スキン＋挑戦回数。版・生成物・README・V103を同期し、全検証→PR/main統合→タグ→CI/Pages→本番のファイル一致・操作確認を行う。リリース候補の全Node533件、画像8件、フォント2件、構文/生成一致、バランス試算、diff check成功。Chrome320/390/1280pxで確定値一致・3画面の書体/改行・結果バッジ・開始/中断/再開/再挑戦を確認。本編/Dev診断、80FヒヨコDev保存分離、10ツール、file://起動も成功。証跡はscratchのv103-node.log、v103-balance.log、verify-final-menu-design.cjs、verify-result-current-run.cjs、verify-v103-local-entries.cjs。次はPR/main統合とCI/Pages・本番確認。以下のローカル確定版・未公開の記述は公開準備前の記録。
+
+ユーザーが「今保存したレイアウトデザインで確定」と指定した版を採用済み。updatedAt 1794041567925、SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19。サブ書体はタイトル/挑戦終了が通常、一時停止がピクセル。主操作は全画面ピクセル。サブサイズは全画面スマホ13px/PC16px、主操作はスマホのタイトル20px・挑戦終了/一時停止17px、PC全画面25px。保存済みの余白・列数・並びもそのまま採用。実際の編集ファイルはバイト不変で、正規化した保存データと採用設定が完全一致する。リザルトは使用スキン＋挑戦回数、最高到達/最高コンボはタイトルのみに表示。アイコン分離とPC結果文中央寄せも維持する。
+
+確定版の検証：全Node533件、フォント2件、構文/生成一致/diff check成功。Chrome320/390/1280pxで3画面の保存値/書体/改行/余白、つづきから、開始・中断・再開・敗北・再挑戦を確認。工房の編集中/採用中両表示の結果バッジ2個/タイトル3個、書体切り替えも確認。本編/Dev診断、80FヒヨコDev保存分離、8ツール、file://起動も成功。証跡はscratchのlayout-final-design-node.log、verify-final-menu-design.cjs、verify-result-current-run.cjs、verify-final-entries.cjs、adopted-layout-title-390.png、adopted-layout-death-390.png。
+
+現在の実装はローカル確定版。本番はv1.0.2のまま。入口は http://127.0.0.1:8017/ と http://127.0.0.1:8017/layout-studio.html 。レイアウトの追加調整は不要。次に本番公開を依頼されたら、この確定版を土台に版更新と公開検証へ進む。
+
+以下は調整途中の記録。
+
+挑戦終了のバッジから最高到達階・最高コンボを削除し、使用スキンと挑戦回数を残す変更をローカル反映済み。ユーザーの追加指定により挑戦回数は維持。recordsのresult指定を死亡時とショップ復帰時の両方へ適用。タイトルは従来どおり3つの累計記録を表示し、永続記録の更新・保存も維持する。工房の結果見本も同じ表示にし、並べ替え欄の名称は「使用スキン・挑戦回数」とした。既存のrecords設定キー・配置編集データは維持。本番未公開。
+
+検証：新規の結果バッジ回帰と既存スキン購入/ゲームオーバー往復のNode2件、配置/生成の5件、構文/生成一致/diff check成功。Chrome320/390/1280pxの工房で編集中/採用中両方の結果バッジ2個（使用スキン・挑戦回数）・今回の結果文・タイトルの累計記録3個・横はみ出しなしを確認。実ゲームでも死亡→ショップ往復→タイトルで同様の表示、記録55F/900コンボを維持し挑戦回数149→150を確認。証跡はscratchのresult-records-tests.log、verify-result-current-run.cjs、result-current-run-390.png。工房/ローカル本編の再読み込みで反映する。
+
+サブボタンのピクセルフォント化でショップの✦が消える件を修正。タイトル/挑戦終了のショップ・図鑑・稽古のアイコン5箇所をmenu-button-iconのspanへ分離し、絵文字/システム書体を明示。ラベルのピクセルフォントは維持。index/devの両入口と共有CSSに反映し再生成済み。装飾アイコンはaria-hiddenでボタン名の読み上げから除く。
+
+関連Node9件、生成一致/diff check、Chrome320/390/1280pxでアイコン5個とラベルの書体分離、ショップ往復、ショップを主操作にした場合、工房プレビュー、保存済み3画面のサイズ/改行/再開/再挑戦を確認。ショップの✦が実際に見えることも画像で確認。ユーザー編集データは不変。証跡はscratchのverify-menu-icons.cjs、shop-icon-390.png、shop-icon-editor.png、verify-adopted-menu-layout.cjs。本番未公開。工房/ローカル本編の再読み込みで反映。
+
+ユーザーの保存済みレイアウト（updatedAt 1794040490837、SHA256 815405c61d60a471c6287af8b9ca9df10a33a2e35bee8ba20d04fd6ae26d9ac1）をローカル本編へ採用済み。採用スクリプトとエントリー再生成を実行し、列数・余白・サイズ・並びを保存値のまま反映。サブボタンはタイトルのスマホ15px、挑戦終了/一時停止のスマホ13px、PCは全画面16px。ユーザー指定によりサブにもピクセルフォントを適用した。pixelSecondary（初期true）を追加し、工房のボタン欄で主操作と独立して切り替えられる。旧保存/下書きはtrueを補完し、実際の編集ファイルは上書きしていない。サーバー8017は新しいモデルで再起動済み。本番はv1.0.2のまま。
+
+検証：関連Node9件、フォント2件、構文/生成一致/diff check成功。Chrome320/390/1280pxで3画面の保存値一致、メイン/サブのフォント・サイズ・余白、改行/横はみ出しなしを確認。開始・一時停止/再開・中断後のつづきから・敗北後再挑戦も成功。工房のサブ書体切り替えが主操作と独立すること、保存ファイルのバイト不変、採用設定と正規化した保存データの完全一致を確認。証跡はscratchのverify-adopted-menu-layout.cjs、adopted-layout-title-390.png、adopted-layout-death-390.png、adopted-layout-title-1280.png。
+
+次：ローカル本編/工房を再読み込みして採用済みの見た目を確認できる。後続の編集は保存後に同じ採用手順で反映。公開はまだ依頼されていない。
+
+工房の「大きさ・余白」にサブボタンの文字サイズ（10〜24px、初期12px）を追加。3画面それぞれでスマホ/PC別に指定できる。menu-layoutのsecondarySizeを設定・CSS・採用用データ・保存APIへ通し、旧データ/下書きは未設定を12pxへ補完する。ユーザーの保存ファイルは上書きしていない。採用済みの配置値は維持して新項目のみ補完。サーバー8017を新しい検証モデルで再起動する必要があるため、この変更時に再起動済み。
+
+検証：関連Node7件、JS構文/生成一致/diff check成功。別の一時保存先と専用Chromeで3画面×320/390/1280px、スマホ16px/PC20pxの独立設定、主操作サイズの維持、旧保存の読み込み・他設定の維持・保存/再読込を確認。320px/3列/24pxでも横にはみ出さない。証跡はscratchのverify-layout-secondary-size.cjs、layout-secondary-size.png。工房を再読み込みすると新しい入力欄が現れる。本番未公開。
+
+工房のPC幅で挑戦終了の結果文が左へ寄る不具合を修正。共通の段間隔指定でpの横auto marginを打ち消し、max-width:470pxの本文だけ左へ寄っていた（1280pxで編集中41px、採用中57px）。menu-layout.cssで本文枠へalign-self:centerとwidth:100%を指定。Chromeの編集中/採用中両プレビューを320/390/960/1280pxで測定し、結果文・見出し・モーダルの中心が一致、横はみ出しなしを確認。関連Node5件、生成一致、diff check成功。証跡はscratchのverify-layout-result-center.cjsとlayout-result-centered.png。
+
+ユーザーの.local-only/layout-editor/project.jsonは保存済み（修正前後SHA256:53ba37dabb6973f9015a7c197f6339107e5e8b98d0b86e8df2b75bbc0e5de8d3）。下記の「実際の編集ファイルは未作成」は工房作成時の記録。この修正では編集データを変更・本編へ採用していない。再読み込みで修正CSSを読み込める。本番未公開。
+
+最新の作業：レイアウト工房をローカル実装済み。ブランチui/menu-layout-studio、作業ツリーは引き続きshop-upgrade-display。サーバー8017を起動済みで、入口は http://127.0.0.1:8017/layout-studio.html 、実プレイ候補は http://127.0.0.1:8017/ 。今回の依頼は準備まで。本番は下記v1.0.2のまま。
+
+タイトル・挑戦終了・一時停止の3画面に共通のmenu-layoutモデル/DOM適用/CSSと採用設定を導入。主操作を上段単独＋ピクセルフォント、補助操作を下段へ配置し、端数も中央寄せ。タイトルは中断データがあればつづきからを主操作へ変更。既存DOMを移動し、イベント・hidden・disabled・敗北後の入力ロックを維持する。工房では同じindex.html/CSSをスクリプトなしsandboxへ読み込み、主操作・書体・ボタン順・画面の並び/装飾表示・スマホ/PC別の寸法を編集し、320/390/520/960/1280pxで比較する。
+
+編集ファイルは.local-only/layout-editor/project.json、バックアップはproject.backup.json、ブラウザー下書きはparry.menu-layout.draft.v1。実際の編集ファイルは未作成。検証用保存は別の一時フォルダーと専用ブラウザーで行い、既存の文言編集ファイルとプレイヤーの保存を維持。copy/layoutのローカル保存処理をlocal-editor-project.jsへ共通化し、分割されたUTF-8の本文もBuffer結合後に読む。
+
+検証：全Node532件、追加後の関連7件、JS構文、フォント2件、生成一致、diff check成功。Chromeで3画面×320/390/1280px、主操作/書体/並び/表示/サイズ変更、比較、保存/バックアップ/新規ブラウザー復元、JSON入出力/不正データ、画面リセットを確認。実ゲームの開始・中断・再開・新規開始確認、敗北入力ロック・ショップ往復・再挑戦も成功。既存の本編/Dev診断、80FヒヨコDevの保存分離、8ツール、file://起動も成功。採用設定スクリプト欠落時にも初期配置へ退避して戦闘開始できる。証跡はscratchのlayout-node-final.log、verify-layout-studio.cjs、verify-layout-fallback.cjs、layout-studio-desktop.png、layout-studio-mobile.png、layout-game-title-390.png、layout-game-death.png。
+
+次：ユーザーが工房で編集して「保存」後に採用を依頼したら、保存ファイルを確認し、node scripts/adopt-menu-layout.js .local-only/layout-editor/project.json、node scripts/build-game-entries.jsで候補へ反映する。画面追加は今回の3画面の確認後に行う。使い方/契約はMENU_LAYOUT_STUDIO.md、設計判断はDECISIONS.mdを参照。
+
+### 公開済みの状態
+
+v1.0.2を本番公開済み。PR #43、main統合08ce3cb19f762d921f696374caea89abba61006b、タグv1.0.2。ユーザー承認済みのUI文言・岐路バッジ・保存済みB編集内容・C04〜C07・ローカル文言エディタを配信した。共鳴説明は「習得済みスキルに共鳴するスキルを1つ習得。」が最終形。ゲーム仕様と保存形式は維持。
+
+検証：全Node530件、画像8件、フォント2件、構文、生成一致、バランス試算が成功。PRのStatic checks（42352553480）、mainのStatic checks（42352697502）、Pages（42352696798）はすべて成功。ライブの本編/Dev HTML・45 JS/CSS・フォント・文言エディタ・リンク集が統合コミットとバイト一致。新しい「歌」と分離済みview/skillsの文字を表示フォントへ収録（1,232文字、CSSフォント版9）。Chrome320/390/1280pxで保存済み文言・補正後報酬・Lv比較・岐路バッジ・下段削除・横はみ出しなしをローカル/本番で確認。本番でも中断/再読込/4拍復帰、80FヒヨコDevの保存分離、8ツールを確認。file://起動も成功。本番のnetworkidle待ちが一度タイムアウトしたため、load待ちへ変更して再確認し全項目成功。実装変更は不要だった。
+
+証跡：物理checkoutの.local-only/scratch内のv102-node-final.log、v102-balance.log、verify-v102-assets.cjs、verify-v102-live-copy.cjs、verify-v102-live-routes.cjs、verify-v102-live.cjs、v102-live-sanctuary.png。リリース作業の残りはなし。この公開結果の追記は配信後の文書記録であり、v1.0.2の配信対象ツリーは上記main統合コミット。
 
 以下のローカル候補・未公開の記述は各変更作成時の記録。
 

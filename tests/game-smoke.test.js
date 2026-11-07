@@ -385,8 +385,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.2&r=[a-f0-9]{12}"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.2&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.3&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.3&r=[a-f0-9]{12}"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -779,6 +779,27 @@ test('soul gains and once-per-run revive apply while preserving combat timing',(
  g.press('upgradeCloseBtn');
  assert.equal(g.state().mode,'gameover');
 });
+test('result badges show skin and run count while title retains saved personal bests',()=>{
+ const g=makeHarness({parryTowerPermanent_v1:JSON.stringify({skinRecords:{normal:{bestFloor:55,bestCombo:900,runs:149}}})});
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>149回<\/b>/);
+ g.press('startBtn');g.bloodTest().incoming(99999);assert.equal(g.state().mode,'gameover');
+ const checkResult=()=>{
+  assert.match(g.el.get('deathRecords').innerHTML,/いつもの主人公/);
+  assert.doesNotMatch(g.el.get('deathRecords').innerHTML,/最高到達|最高コンボ/);
+  assert.match(g.el.get('deathRecords').innerHTML,/挑戦 <b>150回<\/b>/);
+  assert.match(g.el.get('deathSummary').innerHTML,/1F[\s\S]*ジャストパリィ[\s\S]*最大コンボ[\s\S]*魂の欠片/);
+ };
+ checkResult();g.frame(g.now+700);g.press('deathUpgradeBtn');g.press('upgradeCloseBtn');checkResult();
+ g.press('homeBtn');assert.equal(g.state().mode,'title');
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>150回<\/b>/);
+ const record=JSON.parse(g.storage.get('parryTowerPermanent_v1')).skinRecords.normal;
+ assert.deepEqual(record,{bestFloor:55,bestCombo:900,runs:150});
+});
+
 test('practice and developer page do not write permanent progression',()=>{
  const raw=JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:3,bossWard:3});
  const meta=JSON.stringify({coins:450,life:1,runs:3});
@@ -966,7 +987,7 @@ test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v1\.0\.2/);
+  assert.match(html,/v1\.0\.3/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1179,8 +1200,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.2(?:&[^"]+)?"/);
-  assert.match(html,/v1\.0\.2/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.3(?:&[^"]+)?"/);
+  assert.match(html,/v1\.0\.3/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1498,8 +1519,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.2&r='),asset);
-  assert.match(html,/v1\.0\.2/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.3&r='),asset);
+  assert.match(html,/v1\.0\.3/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
