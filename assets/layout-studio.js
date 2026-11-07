@@ -78,7 +78,7 @@
   for(const value of ['auto',...M.screens[id].buttons]){
    const option=node('option',value==='auto'?'おすすめ（自動）':labels[value]);option.value=value;$('mainAction').append(option);
   }
-  $('mainAction').value=current().main;$('pixelMain').checked=current().pixelMain;
+  $('mainAction').value=current().main;$('pixelMain').checked=current().pixelMain;$('pixelSecondary').checked=current().pixelSecondary;
   orderList($('buttonOrder'),'buttons',labels);orderList($('blockOrder'),'blocks',blockNames);sizes();preview();
  }
  function selectProfile(next){profile=next;$('previewWidth').value=next==='mobile'?'390':'1280';sizes();preview();}
@@ -119,6 +119,7 @@
   }
   $('mainAction').addEventListener('change',()=>{current().main=$('mainAction').value;change();});
   $('pixelMain').addEventListener('change',()=>{current().pixelMain=$('pixelMain').checked;change();});
+  $('pixelSecondary').addEventListener('change',()=>{current().pixelSecondary=$('pixelSecondary').checked;change();});
   $('hasCheckpoint').addEventListener('change',preview);$('showOriginal').addEventListener('change',preview);
   $('previewWidth').addEventListener('change',()=>{profile=Number($('previewWidth').value)<=600?'mobile':'desktop';sizes();preview();});
   $('mobileProfile').addEventListener('click',()=>selectProfile('mobile'));$('desktopProfile').addEventListener('click',()=>selectProfile('desktop'));

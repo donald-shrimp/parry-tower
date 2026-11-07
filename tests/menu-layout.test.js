@@ -7,9 +7,10 @@ test('layout drafts preserve every action, validate dimensions and round-trip th
  project.screens.title.mobile.secondarySize=14;project.screens.title.desktop.secondarySize=20;
  const normalized=M.normalize(project);assert.deepEqual(normalized,project);
  normalized.screens.title.mobile.gap=20;assert.equal(project.screens.title.mobile.gap,8);
- const legacy=JSON.parse(JSON.stringify(project));delete legacy.screens.title.mobile.secondarySize;delete legacy.screens.title.desktop.secondarySize;
+ const legacy=JSON.parse(JSON.stringify(project));delete legacy.screens.title.mobile.secondarySize;delete legacy.screens.title.desktop.secondarySize;delete legacy.screens.title.pixelSecondary;
  const restored=M.normalize(legacy);assert.equal(restored.screens.title.mobile.secondarySize,12);assert.equal(restored.screens.title.desktop.secondarySize,12);
  assert.deepEqual(restored.screens.title.buttons,project.screens.title.buttons);assert.equal(restored.screens.pause.desktop.mainSize,24);
+ assert.equal(restored.screens.title.pixelSecondary,true);project.screens.pause.pixelSecondary=false;
  assert.equal(M.primary('title',project.screens.title,false),'startBtn');assert.equal(M.primary('title',project.screens.title,true),'continueBtn');
  project.screens.title.main='practiceBtn';assert.equal(M.primary('title',project.screens.title,true),'practiceBtn');
  const context={module:{exports:{}}};vm.runInNewContext(render(project),context);
@@ -17,7 +18,7 @@ test('layout drafts preserve every action, validate dimensions and round-trip th
  for(const mutate of [p=>p.screens.title.buttons.pop(),p=>p.screens.title.buttons[1]=p.screens.title.buttons[0],
   p=>p.screens.pause.hidden.push('actions'),p=>p.screens.title.mobile.mainSize=200,p=>p.screens.title.desktop.columns=1.5,
   p=>p.screens.title.main='newRunConfirm',p=>p.screens.title.pixelMain='true',p=>p.screens.constructor={},p=>p.screens.title.mobile.toString=1,
-  p=>p.screens.title.mobile.secondarySize=9,p=>p.screens.title.desktop.secondarySize=25,p=>p.screens.title.mobile.secondarySize='14']){
+  p=>p.screens.title.mobile.secondarySize=9,p=>p.screens.title.desktop.secondarySize=25,p=>p.screens.title.mobile.secondarySize='14',p=>p.screens.title.pixelSecondary='true']){
   const invalid=M.defaults();mutate(invalid);assert.throws(()=>M.normalize(invalid));
  }
  assert.throws(()=>M.normalize({schema:'wrong',version:1,screens:{}}));

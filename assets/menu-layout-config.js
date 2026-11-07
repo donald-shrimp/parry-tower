@@ -2,11 +2,12 @@
 (function(root){const config={
   "schema": "parry-menu-layout",
   "version": 1,
-  "updatedAt": 0,
+  "updatedAt": 1794040490837,
   "screens": {
     "title": {
       "main": "auto",
       "pixelMain": true,
+      "pixelSecondary": true,
       "buttons": [
         "startBtn",
         "continueBtn",
@@ -23,29 +24,30 @@
       "mobile": {
         "columns": 2,
         "mainWidth": 100,
-        "mainSize": 18,
-        "secondarySize": 12,
-        "height": 48,
-        "gap": 8,
-        "rowGap": 16,
-        "blockGap": 14,
-        "padding": 8
+        "mainSize": 20,
+        "secondarySize": 15,
+        "height": 40,
+        "gap": 9,
+        "rowGap": 20,
+        "blockGap": 17,
+        "padding": 16
       },
       "desktop": {
-        "columns": 2,
-        "mainWidth": 80,
-        "mainSize": 22,
-        "secondarySize": 12,
-        "height": 52,
-        "gap": 9,
-        "rowGap": 18,
-        "blockGap": 16,
-        "padding": 8
+        "columns": 3,
+        "mainWidth": 100,
+        "mainSize": 25,
+        "secondarySize": 16,
+        "height": 45,
+        "gap": 10,
+        "rowGap": 20,
+        "blockGap": 20,
+        "padding": 24
       }
     },
     "death": {
       "main": "auto",
       "pixelMain": true,
+      "pixelSecondary": true,
       "buttons": [
         "retryBtn",
         "deathPracticeBtn",
@@ -65,29 +67,30 @@
       "mobile": {
         "columns": 2,
         "mainWidth": 100,
-        "mainSize": 18,
-        "secondarySize": 12,
-        "height": 48,
-        "gap": 8,
-        "rowGap": 16,
+        "mainSize": 16,
+        "secondarySize": 13,
+        "height": 40,
+        "gap": 6,
+        "rowGap": 11,
         "blockGap": 8,
-        "padding": 8
+        "padding": 16
       },
       "desktop": {
         "columns": 2,
-        "mainWidth": 80,
-        "mainSize": 22,
-        "secondarySize": 12,
+        "mainWidth": 100,
+        "mainSize": 25,
+        "secondarySize": 16,
         "height": 52,
-        "gap": 9,
-        "rowGap": 18,
+        "gap": 10,
+        "rowGap": 20,
         "blockGap": 12,
-        "padding": 8
+        "padding": 24
       }
     },
     "pause": {
       "main": "auto",
       "pixelMain": true,
+      "pixelSecondary": true,
       "buttons": [
         "resumeBtn",
         "suspendBtn"
@@ -102,24 +105,24 @@
       "mobile": {
         "columns": 1,
         "mainWidth": 100,
-        "mainSize": 18,
-        "secondarySize": 12,
-        "height": 48,
+        "mainSize": 20,
+        "secondarySize": 13,
+        "height": 40,
         "gap": 8,
         "rowGap": 16,
         "blockGap": 14,
-        "padding": 8
+        "padding": 16
       },
       "desktop": {
         "columns": 1,
-        "mainWidth": 80,
-        "mainSize": 22,
-        "secondarySize": 12,
-        "height": 52,
-        "gap": 9,
-        "rowGap": 18,
-        "blockGap": 16,
-        "padding": 8
+        "mainWidth": 100,
+        "mainSize": 25,
+        "secondarySize": 16,
+        "height": 40,
+        "gap": 8,
+        "rowGap": 16,
+        "blockGap": 15,
+        "padding": 24
       }
     }
   }

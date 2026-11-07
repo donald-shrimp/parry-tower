@@ -14,7 +14,7 @@
  const cssNames={columns:'columns',mainWidth:'main-width',mainSize:'main-size',secondarySize:'secondary-size',height:'height',gap:'gap',rowGap:'row-gap',blockGap:'block-gap',padding:'padding'};
  function defaults(){
   return {schema:'parry-menu-layout',version:1,updatedAt:0,screens:Object.fromEntries(Object.entries(screens).map(([id,spec])=>[id,{
-   main:'auto',pixelMain:true,buttons:[...spec.buttons],blocks:Object.keys(spec.blocks),hidden:[],
+   main:'auto',pixelMain:true,pixelSecondary:true,buttons:[...spec.buttons],blocks:Object.keys(spec.blocks),hidden:[],
    mobile:{columns:id==='pause'?1:2,mainWidth:100,mainSize:18,secondarySize:12,height:48,gap:8,rowGap:16,blockGap:id==='death'?8:14,padding:8},
    desktop:{columns:id==='pause'?1:2,mainWidth:80,mainSize:22,secondarySize:12,height:52,gap:9,rowGap:18,blockGap:id==='death'?12:16,padding:8}
   }]))};
@@ -37,7 +37,7 @@
     target.hidden=[...value.hidden];
    }
    if(value.main!==undefined){if(value.main!=='auto'&&!spec.buttons.includes(value.main))throw Error('主操作が不正です。');target.main=value.main;}
-   if(value.pixelMain!==undefined){if(typeof value.pixelMain!=='boolean')throw Error('書体設定が不正です。');target.pixelMain=value.pixelMain;}
+   for(const key of ['pixelMain','pixelSecondary'])if(value[key]!==undefined){if(typeof value[key]!=='boolean')throw Error('書体設定が不正です。');target[key]=value[key];}
    for(const profile of ['mobile','desktop'])if(value[profile]!==undefined){
     if(!object(value[profile]))throw Error('表示サイズの設定が不正です。');
     for(const [key,number]of Object.entries(value[profile])){
@@ -74,7 +74,7 @@
    const button=doc.getElementById(buttonId);if(!button)continue;
    const isMain=buttonId===mainId;
    button.classList.toggle('primary',isMain);button.classList.toggle('secondary',!isMain);
-   button.classList.toggle('menu-main-button',isMain);button.classList.toggle('menu-pixel-button',isMain&&layout.pixelMain);
+   button.classList.toggle('menu-main-button',isMain);button.classList.toggle('menu-pixel-button',isMain?layout.pixelMain:layout.pixelSecondary);
    (isMain?main:secondary).append(button);
   }
   for(const key of layout.blocks)if(nodes[key])modal.append(nodes[key]);

@@ -22,7 +22,7 @@
  width:100%;min-height:var(--menu-height);padding:12px 14px;font-size:var(--menu-main-size);
  line-height:1.4;letter-spacing:.02em;white-space:normal;
 }
-.menu-main-button.menu-pixel-button{font-family:"Checkpoint Period Display",system-ui,sans-serif;font-weight:400;font-synthesis:none}
+.menu-modal .menu-pixel-button{font-family:"Checkpoint Period Display",system-ui,sans-serif;font-weight:400;font-synthesis:none}
 .menu-secondary>button,#pauseCover .menu-secondary>#suspendBtn{width:100%;min-height:var(--menu-height);margin:0;font-size:var(--menu-secondary-size);line-height:1.5;white-space:normal}
 .menu-modal button:focus-visible{outline:3px solid #fff1c9;outline-offset:3px}
 @media(max-width:600px){
