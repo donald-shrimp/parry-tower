@@ -2,6 +2,7 @@
 .menu-modal{
  --menu-columns:var(--menu-desktop-columns);--menu-main-width:var(--menu-desktop-main-width);
  --menu-main-size:var(--menu-desktop-main-size);--menu-height:var(--menu-desktop-height);
+ --menu-secondary-size:var(--menu-desktop-secondary-size);
  --menu-gap:var(--menu-desktop-gap);--menu-row-gap:var(--menu-desktop-row-gap);
  --menu-block-gap:var(--menu-desktop-block-gap);--menu-padding:var(--menu-desktop-padding);
  display:flex;flex-direction:column;gap:var(--menu-block-gap);padding:var(--menu-padding);
@@ -22,12 +23,13 @@
  line-height:1.4;letter-spacing:.02em;white-space:normal;
 }
 .menu-main-button.menu-pixel-button{font-family:"Checkpoint Period Display",system-ui,sans-serif;font-weight:400;font-synthesis:none}
-.menu-secondary>button,#pauseCover .menu-secondary>#suspendBtn{width:100%;min-height:var(--menu-height);margin:0;line-height:1.5;white-space:normal}
+.menu-secondary>button,#pauseCover .menu-secondary>#suspendBtn{width:100%;min-height:var(--menu-height);margin:0;font-size:var(--menu-secondary-size);line-height:1.5;white-space:normal}
 .menu-modal button:focus-visible{outline:3px solid #fff1c9;outline-offset:3px}
 @media(max-width:600px){
  .menu-modal{
   --menu-columns:var(--menu-mobile-columns);--menu-main-width:var(--menu-mobile-main-width);
   --menu-main-size:var(--menu-mobile-main-size);--menu-height:var(--menu-mobile-height);
+  --menu-secondary-size:var(--menu-mobile-secondary-size);
   --menu-gap:var(--menu-mobile-gap);--menu-row-gap:var(--menu-mobile-row-gap);
   --menu-block-gap:var(--menu-mobile-block-gap);--menu-padding:var(--menu-mobile-padding);
  }

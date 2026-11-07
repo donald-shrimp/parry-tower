@@ -4,15 +4,20 @@ const M=require('../assets/menu-layout'),{render}=require('../scripts/adopt-menu
 
 test('layout drafts preserve every action, validate dimensions and round-trip the adopted settings',()=>{
  const project=M.defaults();project.screens.title.buttons.reverse();project.screens.death.hidden=['records'];project.screens.pause.desktop.mainSize=24;
+ project.screens.title.mobile.secondarySize=14;project.screens.title.desktop.secondarySize=20;
  const normalized=M.normalize(project);assert.deepEqual(normalized,project);
  normalized.screens.title.mobile.gap=20;assert.equal(project.screens.title.mobile.gap,8);
+ const legacy=JSON.parse(JSON.stringify(project));delete legacy.screens.title.mobile.secondarySize;delete legacy.screens.title.desktop.secondarySize;
+ const restored=M.normalize(legacy);assert.equal(restored.screens.title.mobile.secondarySize,12);assert.equal(restored.screens.title.desktop.secondarySize,12);
+ assert.deepEqual(restored.screens.title.buttons,project.screens.title.buttons);assert.equal(restored.screens.pause.desktop.mainSize,24);
  assert.equal(M.primary('title',project.screens.title,false),'startBtn');assert.equal(M.primary('title',project.screens.title,true),'continueBtn');
  project.screens.title.main='practiceBtn';assert.equal(M.primary('title',project.screens.title,true),'practiceBtn');
  const context={module:{exports:{}}};vm.runInNewContext(render(project),context);
  assert.deepEqual(JSON.parse(JSON.stringify(context.module.exports)),project);
  for(const mutate of [p=>p.screens.title.buttons.pop(),p=>p.screens.title.buttons[1]=p.screens.title.buttons[0],
   p=>p.screens.pause.hidden.push('actions'),p=>p.screens.title.mobile.mainSize=200,p=>p.screens.title.desktop.columns=1.5,
-  p=>p.screens.title.main='newRunConfirm',p=>p.screens.title.pixelMain='true',p=>p.screens.constructor={},p=>p.screens.title.mobile.toString=1]){
+  p=>p.screens.title.main='newRunConfirm',p=>p.screens.title.pixelMain='true',p=>p.screens.constructor={},p=>p.screens.title.mobile.toString=1,
+  p=>p.screens.title.mobile.secondarySize=9,p=>p.screens.title.desktop.secondarySize=25,p=>p.screens.title.mobile.secondarySize='14']){
   const invalid=M.defaults();mutate(invalid);assert.throws(()=>M.normalize(invalid));
  }
  assert.throws(()=>M.normalize({schema:'wrong',version:1,screens:{}}));
@@ -26,13 +31,14 @@ test('layout saves retain a backup and never overwrite copy drafts or accept inv
  const copyFolder=path.join(root,'.local-only','copy-editor');await fs.mkdir(copyFolder,{recursive:true});await fs.writeFile(path.join(copyFolder,'project.json'),'user copy draft');
  try{
   assert.equal((await(await fetch(url)).json()).project,null);
-  const project=M.defaults();project.screens.title.mobile.columns=1;
+  const project=M.defaults();project.screens.title.mobile.columns=1;project.screens.title.mobile.secondarySize=14;project.screens.title.desktop.secondarySize=20;
   assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify(project)})).status,200);
   project.screens.title.mobile.columns=3;
   assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify(project)})).status,200);
   const folder=path.join(root,'.local-only','layout-editor'),saved=await fs.readFile(path.join(folder,'project.json'),'utf8');
   assert.equal(JSON.parse(await fs.readFile(path.join(folder,'project.backup.json'),'utf8')).screens.title.mobile.columns,1);
   assert.equal((await(await fetch(url)).json()).project.screens.title.mobile.columns,3);
+  const loaded=(await(await fetch(url)).json()).project;assert.equal(loaded.screens.title.mobile.secondarySize,14);assert.equal(loaded.screens.title.desktop.secondarySize,20);
   for(const [options,code]of [
    [{headers:{...headers,Origin:'https://example.org'},body:JSON.stringify(project)},403],
    [{headers:{...headers,'X-Parry-Layout-Editor':'0'},body:JSON.stringify(project)},403],

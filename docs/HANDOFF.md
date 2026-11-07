@@ -2,6 +2,10 @@
 
 ## 現在の状態
 
+工房の「大きさ・余白」にサブボタンの文字サイズ（10〜24px、初期12px）を追加。3画面それぞれでスマホ/PC別に指定できる。menu-layoutのsecondarySizeを設定・CSS・採用用データ・保存APIへ通し、旧データ/下書きは未設定を12pxへ補完する。ユーザーの保存ファイルは上書きしていない。採用済みの配置値は維持して新項目のみ補完。サーバー8017を新しい検証モデルで再起動する必要があるため、この変更時に再起動済み。
+
+検証：関連Node7件、JS構文/生成一致/diff check成功。別の一時保存先と専用Chromeで3画面×320/390/1280px、スマホ16px/PC20pxの独立設定、主操作サイズの維持、旧保存の読み込み・他設定の維持・保存/再読込を確認。320px/3列/24pxでも横にはみ出さない。証跡はscratchのverify-layout-secondary-size.cjs、layout-secondary-size.png。工房を再読み込みすると新しい入力欄が現れる。本番未公開。
+
 工房のPC幅で挑戦終了の結果文が左へ寄る不具合を修正。共通の段間隔指定でpの横auto marginを打ち消し、max-width:470pxの本文だけ左へ寄っていた（1280pxで編集中41px、採用中57px）。menu-layout.cssで本文枠へalign-self:centerとwidth:100%を指定。Chromeの編集中/採用中両プレビューを320/390/960/1280pxで測定し、結果文・見出し・モーダルの中心が一致、横はみ出しなしを確認。関連Node5件、生成一致、diff check成功。証跡はscratchのverify-layout-result-center.cjsとlayout-result-centered.png。
 
 ユーザーの.local-only/layout-editor/project.jsonは保存済み（修正前後SHA256:53ba37dabb6973f9015a7c197f6339107e5e8b98d0b86e8df2b75bbc0e5de8d3）。下記の「実際の編集ファイルは未作成」は工房作成時の記録。この修正では編集データを変更・本編へ採用していない。再読み込みで修正CSSを読み込める。本番未公開。

@@ -10,13 +10,13 @@
   death:{name:'挑戦終了',cover:'deathCover',main:'retryBtn',buttons:['retryBtn','deathPracticeBtn','deathUpgradeBtn','deathCodexBtn','homeBtn'],blocks:{symbol:'.modal-symbol',kicker:'.modal-kicker',heading:'h2',summary:'#deathSummary',records:'.records',actions:'.actionrow'}},
   pause:{name:'一時停止',cover:'pauseCover',main:'resumeBtn',buttons:['resumeBtn','suspendBtn'],blocks:{symbol:'.modal-symbol',heading:'h2',summary:'#pauseStatus',actions:'.actionrow'}}
  };
- const ranges={columns:[1,3],mainWidth:[50,100],mainSize:[16,28],height:[40,68],gap:[4,24],rowGap:[8,40],blockGap:[4,32],padding:[4,24]};
- const cssNames={columns:'columns',mainWidth:'main-width',mainSize:'main-size',height:'height',gap:'gap',rowGap:'row-gap',blockGap:'block-gap',padding:'padding'};
+ const ranges={columns:[1,3],mainWidth:[50,100],mainSize:[16,28],secondarySize:[10,24],height:[40,68],gap:[4,24],rowGap:[8,40],blockGap:[4,32],padding:[4,24]};
+ const cssNames={columns:'columns',mainWidth:'main-width',mainSize:'main-size',secondarySize:'secondary-size',height:'height',gap:'gap',rowGap:'row-gap',blockGap:'block-gap',padding:'padding'};
  function defaults(){
   return {schema:'parry-menu-layout',version:1,updatedAt:0,screens:Object.fromEntries(Object.entries(screens).map(([id,spec])=>[id,{
    main:'auto',pixelMain:true,buttons:[...spec.buttons],blocks:Object.keys(spec.blocks),hidden:[],
-   mobile:{columns:id==='pause'?1:2,mainWidth:100,mainSize:18,height:48,gap:8,rowGap:16,blockGap:id==='death'?8:14,padding:8},
-   desktop:{columns:id==='pause'?1:2,mainWidth:80,mainSize:22,height:52,gap:9,rowGap:18,blockGap:id==='death'?12:16,padding:8}
+   mobile:{columns:id==='pause'?1:2,mainWidth:100,mainSize:18,secondarySize:12,height:48,gap:8,rowGap:16,blockGap:id==='death'?8:14,padding:8},
+   desktop:{columns:id==='pause'?1:2,mainWidth:80,mainSize:22,secondarySize:12,height:52,gap:9,rowGap:18,blockGap:id==='death'?12:16,padding:8}
   }]))};
  }
  const object=value=>value&&typeof value==='object'&&!Array.isArray(value);

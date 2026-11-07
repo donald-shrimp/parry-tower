@@ -5,7 +5,7 @@
  let project=M.normalize(adopted),selected='title',profile='mobile',canSave=false,ready=false,labels={},savedWarning='';
  const status=text=>{$('studioStatus').textContent=text;};
  const blockNames={symbol:'シンボル',kicker:'英語小見出し',heading:'見出し',summary:'説明・結果',records:'記録',actions:'ボタン'};
- const sizeNames={columns:['下段の列数','列'],mainWidth:['主操作の幅','%'],mainSize:['主操作の文字サイズ','px'],height:['ボタンの最小高さ','px'],gap:['下段ボタンの間隔','px'],rowGap:['主操作と下段の間隔','px'],blockGap:['各表示項目の間隔','px'],padding:['画面内側の余白','px']};
+ const sizeNames={columns:['下段の列数','列'],mainWidth:['主操作の幅','%'],mainSize:['主操作の文字サイズ','px'],secondarySize:['サブボタンの文字サイズ','px'],height:['ボタンの最小高さ','px'],gap:['下段ボタンの間隔','px'],rowGap:['主操作と下段の間隔','px'],blockGap:['各表示項目の間隔','px'],padding:['画面内側の余白','px']};
  const current=()=>project.screens[selected];
  function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
  function persist(){
