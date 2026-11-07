@@ -3831,16 +3831,23 @@ test('review fixes: codex keeps 50 variant discoveries while grouping 26 species
 });
 
 
-test('production adopts X5F scores across cycles, resume and checkpoints while preserving 70F/royal bosses',()=>{
+test('production adopts X6F scores across cycles, resume and checkpoints while preserving 70F/royal bosses',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
- for(const cycle of [0,80])for(const [floor,latter] of [[3,false],[5,true],[6,true],[10,true],[13,false],[15,true],[60,true],[63,false],[65,false],[66,true],[69,true],[70,false],[73,false],[75,false],[76,true],[79,true],[80,false],[81,false]]){
+ for(const cycle of [0,80])for(const [floor,latter] of [[3,false],[5,false],[6,true],[10,true],[13,false],[15,false],[60,true],[63,false],[65,false],[66,true],[69,true],[70,false],[73,false],[75,false],[76,true],[79,true],[80,false],[81,false]]){
   g.bloodTest().jumpFloor(floor+cycle);assert.equal(g.bloodTest().musicLatter(),latter,'floor '+(floor+cycle));
   const bpm=g.state().bpm,origin=g.state().scoreOrigin;
   assert.equal(g.bloodTest().musicTheme(),catalogForFloor(floor+cycle));
   assert.ok(Number.isFinite(origin));
   g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.bloodTest().musicLatter(),latter);assert.equal(g.state().bpm,bpm);
  }
- for(const floor of [6,70,75,76,80]){
+ for(const cycle of [0,80])for(let zone=0;zone<8;zone++)for(const position of [5,6,10]){
+  const floor=cycle+zone*10+position,enemy=P.encounterForFloor(floor,()=>.5);
+  g.bloodTest().jumpFloor(floor);
+  const latter=position>=6&&!enemy.finalBoss&&!(enemy.boss&&zone>=6);
+  assert.equal(g.bloodTest().musicLatter(),latter,'boundary '+floor);
+  if(position!==6)assert.equal(g.state().bpm,136+(enemy.elite?6:0),'boss tempo '+floor);
+ }
+ for(const floor of [5,6,15,16,70,75,76,80]){
   g.bloodTest().jumpFloor(floor);g.bloodTest().checkpoint();const re=reloadHarness(g);re.press('continueBtn');
   assert.equal(re.bloodTest().musicLatter(),g.bloodTest().musicLatter(),'checkpoint '+floor);
   assert.equal(re.bloodTest().musicTheme(),g.bloodTest().musicTheme());

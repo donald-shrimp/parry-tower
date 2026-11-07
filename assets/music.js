@@ -19,10 +19,10 @@
   return stages?.themes[encounters.ZONES.indexOf(zone)]||get('crypt');
  }
 
- // The second half starts at X5F, including later tower cycles. Royal pieces
+ // The second half starts at X6F, including later tower cycles. Royal pieces
  // and the last two areas' bosses keep their existing arrangements.
  function latterForEncounter(floor,enemy,piece=forEncounter(floor,enemy)){
-  return !!(piece&&piece.floor==null&&encounters.positionInZone(floor)>=5&&!(enemy?.boss&&piece.from>=61));
+  return !!(piece&&piece.floor==null&&encounters.positionInZone(floor)>=6&&!(enemy?.boss&&piece.from>=61));
  }
 
  function playTone(ac,destination,frequency,duration,volume,at,type='triangle',bend=0){
