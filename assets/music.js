@@ -19,6 +19,12 @@
   return stages?.themes[encounters.ZONES.indexOf(zone)]||get('crypt');
  }
 
+ // The second half starts at X6F, including later tower cycles. Royal pieces
+ // and the last two areas' bosses keep their existing arrangements.
+ function latterForEncounter(floor,enemy,piece=forEncounter(floor,enemy)){
+  return !!(piece&&piece.floor==null&&encounters.positionInZone(floor)>=6&&!(enemy?.boss&&piece.from>=61));
+ }
+
  function playTone(ac,destination,frequency,duration,volume,at,type='triangle',bend=0){
   if(!ac||!destination)return;
   const oscillator=ac.createOscillator(),gain=ac.createGain();
@@ -138,7 +144,7 @@
   }
  }
 
- function playStep(ac,{destination,noiseBuffer,id,step,at,beat,boss=false,movement=1,startStep=0,countIn=false,arrangement=false}){
+ function playStep(ac,{destination,noiseBuffer,id,step,at,beat,boss=false,latter=false,movement=1,startStep=0,countIn=false,arrangement=false}){
   let musicStep=step;
   if(royal?.get(id)){
    // Lookahead may queue the first downbeat while the count-in is still visible.
@@ -148,8 +154,9 @@
     royal.play(ac,event,at+event.offset,destination,noiseBuffer);
   }else{
    if(countIn)return;
-   if(stages&&id!=='crypt'){
-    for(const event of stages.step(id,step,beat,boss))
+   if(stages&&(id!=='crypt'||latter)){
+    // The latter crypt score includes its backing; render it once.
+    for(const event of stages.step(id,step,beat,boss,latter))
      playStageEvent(ac,destination,noiseBuffer,event,at+event.offset);
    }else{
     playCrypt(ac,destination,noiseBuffer,step,at,beat,boss);
@@ -158,5 +165,5 @@
   if(arrangement)playArrangement(ac,destination,noiseBuffer,musicStep,at,beat);
  }
 
- return Object.freeze({get,list,forEncounter,playStep,playCountIn,playTone,playNoise});
+ return Object.freeze({get,list,forEncounter,latterForEncounter,playStep,playCountIn,playTone,playNoise});
 });

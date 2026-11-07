@@ -3,6 +3,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {makeHarness}=require('./helpers/game-harness.js');
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
+const BUILD=require('../scripts/game-assets.json').build;
+const BUILD_PATTERN=BUILD.replaceAll('.',String.raw`\.`);
 const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
 
 function settleCurrentAttack(g){
@@ -392,8 +394,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.5&r=[a-f0-9]{12}"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.5&r=[a-f0-9]{12}"/);
+ assert.match(dev,new RegExp(String.raw`src="\.\/assets\/enemy-motions\.js\?v=${BUILD_PATTERN}&r=[a-f0-9]{12}"`));
+ assert.match(dev,new RegExp(String.raw`src="\.\/assets\/dev-tools\.js\?v=${BUILD_PATTERN}&r=[a-f0-9]{12}"`));
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -994,7 +996,7 @@ test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v1\.0\.5/);
+  assert.match(html,new RegExp(String.raw`${BUILD_PATTERN}`));
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1207,8 +1209,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.5(?:&[^"]+)?"/);
-  assert.match(html,/v1\.0\.5/);
+  assert.match(html,new RegExp(String.raw`src="\.\/assets\/relics\.js\?v=${BUILD_PATTERN}(?:&[^"]+)?"`));
+  assert.match(html,new RegExp(String.raw`${BUILD_PATTERN}`));
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1526,8 +1528,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.5&r='),asset);
-  assert.match(html,/v1\.0\.5/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v='+BUILD+'&r='),asset);
+  assert.match(html,new RegExp(String.raw`${BUILD_PATTERN}`));
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -3828,4 +3830,34 @@ test('review fixes: codex keeps 50 variant discoveries while grouping 26 species
   const g=makeHarness(seed),saved=[...g.storage];g.press('practiceBtn');assert.equal(g.el.get('codexSummary').textContent,keys.length+' / 50 発見');
   assert.equal((g.el.get('codexList').innerHTML.match(/class="codex-card/g)||[]).length,26);assert.deepEqual([...g.storage],saved);
  }
+});
+
+
+test('production adopts X6F scores across cycles, resume and checkpoints while preserving 70F/royal bosses',()=>{
+ const g=makeHarness();g.random(.5);g.press('startBtn');
+ for(const cycle of [0,80])for(const [floor,latter] of [[3,false],[5,false],[6,true],[10,true],[13,false],[15,false],[60,true],[63,false],[65,false],[66,true],[69,true],[70,false],[73,false],[75,false],[76,true],[79,true],[80,false],[81,false]]){
+  g.bloodTest().jumpFloor(floor+cycle);assert.equal(g.bloodTest().musicLatter(),latter,'floor '+(floor+cycle));
+  const bpm=g.state().bpm,origin=g.state().scoreOrigin;
+  assert.equal(g.bloodTest().musicTheme(),catalogForFloor(floor+cycle));
+  assert.ok(Number.isFinite(origin));
+  g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.bloodTest().musicLatter(),latter);assert.equal(g.state().bpm,bpm);
+ }
+ for(const cycle of [0,80])for(let zone=0;zone<8;zone++)for(const position of [5,6,10]){
+  const floor=cycle+zone*10+position,enemy=P.encounterForFloor(floor,()=>.5);
+  g.bloodTest().jumpFloor(floor);
+  const latter=position>=6&&!enemy.finalBoss&&!(enemy.boss&&zone>=6);
+  assert.equal(g.bloodTest().musicLatter(),latter,'boundary '+floor);
+  if(position!==6)assert.equal(g.state().bpm,136+(enemy.elite?6:0),'boss tempo '+floor);
+ }
+ for(const floor of [5,6,15,16,70,75,76,80]){
+  g.bloodTest().jumpFloor(floor);g.bloodTest().checkpoint();const re=reloadHarness(g);re.press('continueBtn');
+  assert.equal(re.bloodTest().musicLatter(),g.bloodTest().musicLatter(),'checkpoint '+floor);
+  assert.equal(re.bloodTest().musicTheme(),g.bloodTest().musicTheme());
+ }
+ const dev=makeHarness({},true);
+ for(const theme of dev.dev().musicList()){
+  dev.dev().previewMusic(theme.id,'boss');assert.equal(dev.dev().musicState().latter,theme.from<61,'boss audition '+theme.id);
+  dev.dev().previewMusic(theme.id,'normal');assert.equal(dev.dev().musicState().latter,false);
+ }
+ function catalogForFloor(floor){return require('../assets/music').forEncounter(floor,P.encounterForFloor(floor,()=>.5)).id;}
 });

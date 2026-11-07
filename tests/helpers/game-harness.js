@@ -180,6 +180,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
    presentation:()=>({contact:attackPresentation.contact?{...attackPresentation.contact}:null,clash:clashFX?{...clashFX}:null}),
    fallbackSfx:legacy=>{if(legacy){delete window.ParryCombatSfx.playContact;delete window.ParryCombatSfx.playTail;}else window.ParryCombatSfx=null;},
    musicTheme:()=>score.music,
+   musicLatter:()=>score.latter,
    musicBus:()=>score.bus,audioContext:()=>audio.context,
    mixGains:()=>({bgm:score.bus?.gain.value,steel:audio.devBus?.gain.value}),
    phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
