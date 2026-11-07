@@ -11,7 +11,7 @@
  }
  function routes(options){
   return options.map(room=>`<button type="button" class="route-card" data-route="${room.id}">
- <span class="route-symbol">${room.icon}</span><span class="route-card-body"><b>${room.name}</b><small>${room.tag} · ${room.desc}</small><span class="route-warning">${room.risk}</span></span><span aria-hidden="true">›</span></button>`).join('');
+ <span class="route-symbol">${room.icon}</span><span class="route-card-body"><span class="route-card-heading"><b>${room.name}</b><span class="route-badge route-badge--${room.id}">${room.tag}</span></span><small>${room.desc}</small><span class="route-warning">${room.risk}</span></span><span aria-hidden="true">›</span></button>`).join('');
  }
  function merchantActions(items){
   return items.map(({item,already,available,affordable})=>action('buy:'+item.id,
