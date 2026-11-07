@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -22,14 +23,14 @@ test('approved knight static SVG is vector artwork, not a reillustrated sprite',
 });
 test('only art=knight-trace selects knight art; existing art modes and hitboxes stay intact',()=>{
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.match(game,/CHARACTER_KNIGHT_ENABLED&&CHARACTER_KNIGHT\?\.drawEnemy/);
- assert.match(game,/art=knight-trace/);
- assert.match(game,/CHARACTER_READY_ENABLED&&CHARACTER_READY\?\.drawHero/);
- assert.match(game,/CHARACTER_ART_ENABLED&&CHARACTER_ART\?\.drawEnemy/);
+ assertPilotSelected('knight-trace','enemy');
+
+ assertPilotSelected('ready','hero');
+ assertPilotSelected('prototype','enemy');
  assert.match(game,/knight:\{swing:270,prepare:850,reach:110,stage:130,recovery:380/);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.ok(html.includes('assets/character-knight.js?v=v0.9.9'));
+  assert.ok(html.includes('assets/character-knight.js?v=v1.0.0'));
   assert.ok(html.indexOf('assets/character-ready.js')<html.indexOf('assets/character-knight.js'));
   assert.ok(html.indexOf('assets/character-knight.js')<html.indexOf('assets/game.js'));
  }

@@ -1,0 +1,243 @@
+# リファクタリング実行計画
+
+2026-11-07更新。全体方針は [REFACTOR_PLAN](./REFACTOR_PLAN.md)。計画準備時の調査基準は `3a16cc5`。ユーザーから継続実装の指示を受けており、以後は主担当が計画・実装・検証・差分確認を行う。サブエージェントの起動や工程ごとの追加承認は不要。本番公開は今回の範囲外。
+
+## 到達点と順序
+
+音声基盤、2A初期化、2B復元、2C保存IO、3A数式とスキル定義、4Aショップ/図鑑、3B被ダメージ/回復/障壁、3C反撃段階整理は完了。次は **4B 報酬/部屋/設定画面**。各単位を検証・差分確認・コミットで区切り、前の合格コミットから進める。以下のIDは作業単位であり、必ず1コミットや1晩に収めるという意味ではない。
+
+| 順序 | 対象 | 前提 | 合格すると可能になること |
+| --- | --- | --- | --- |
+| 2A | 新規ランの生成 | 音声基盤 | DOMなしで初期能力・初期状態を検証できる |
+| 2B | 保存データからの復元準備 | 2A | 新規開始と復帰の違い、旧データ補完を追える |
+| 2C | 保存IOと失敗の扱い | 2B | 画面処理から保存操作を切り離せる |
+| 3A | 戦闘数式とスキル説明の値 | 2A、2Bの状態分類 | 数値の参照元を揃え、DOMなしで計算できる |
+| 4A | ショップ、次に図鑑 | 2C、3A | 画面の変更が戦闘処理へ広がりにくくなる |
+| 3B | 被ダメージ・回復・障壁の処理順 | 3A | 耐久効果を計算と演出に分けて追える |
+| 3C | 成功反撃・追撃の処理順 | 3B | 撃破・フェーズ境界を保ってスキルを拡張できる |
+| 4B | 報酬・部屋・設定 | 4A、3C | 進行操作と表示を区別できる |
+| 5A | 描画とアートの入口 | 3C、4B | 描画入力・生成アート・工房の依存が明確になる |
+| 5B | Devと検証の操作API | 各抽出済み境界 | テストのソース差し込みを段階的に減らせる |
+| 5C | アセット参照・版管理 | 入口が安定 | 本編とDevの参照漏れを一つの定義で検出できる |
+
+4Aは複雑な戦闘分離の前に挟む。既に独立しているprogressionの購入計算を足場にし、画面分離の形を小さく試す。5Bは一括作業にせず、2A以降で公開された境界ごとに前倒しする。
+
+## 今回固定する設計方針
+
+- `game.js` は当面、進行と外部機能の組み立て役。一度にゲーム全体のクラス化・イベントバス化・状態のネスト変更をしない。既存のフラットなラン状態は互換期間として維持する。
+- 機能モジュールには必要な値を渡す。UIへ可変のラン全体を渡したり、すべての旧関数を巨大な依存オブジェクトで渡す移動は完了としない。
+- `run-checkpoint.js` のversion 1と既存保存キーを維持。初期化の抽出と保存項目の許可リスト化は同時にしない。未知の項目を落とす変更は、全保存可能モードの分類が済んでから別変更にする。
+- ブラウザー公開API＋Node exportの既存方式を使う。ES Modules、TypeScript、バンドラー、外部状態管理ライブラリーは今回の前提にしない。
+- 曲・戦闘・入力・バランスの仕様変更は混ぜない。不具合を見つけたら再現を記録し、抽出に必要な修正と仕様判断を区別する。
+- 元の演算順・丸め位置・副作用の順序を保つ。「式を簡潔にする」ための分配、ceil/roundの移動、閾値の共通化も挙動差を生むので別レビューとする。
+
+## 2A：新規ラン生成（最初に実行）
+
+### 変更範囲
+
+新規 `assets/run-state.js`、`game.js` の `start` の状態構築部分。両HTML、診断、CI、共通ハーネスのロードを更新する。`spawnEnemy`、`enterFloor`、`restoreCheckpoint`、`title`、保存形式、戦闘式はこの変更では触らない。
+
+現状 `start` には巨大なオブジェクト生成とその直後の固定値設定、Dev用ビルド上書き、表示・音声の操作が同居する。最初は**標準状態の生成だけ**を取り出す。
+
+### API契約
+
+`ParryRunState.create(options, now)` は新しいラン状態を返す。既存の `ParryProgression` を明示的なモジュール依存として使ってよい。ブラウザーのDOM・localStorage・AudioContext・時計・乱数へアクセスしない。
+
+`options` は呼び出し側が確定した次の値。無関係なmeta/permanent全体を渡さない。
+
+| 入力 | 内容 |
+| --- | --- |
+| `practice`, `practiceKey` | 開始方法。稽古を許可するかの判定は呼び出し側 |
+| `skin`, `skinEffects` | 選択済みスキンと効果ON/OFF |
+| `floor`, `devOverride` | 呼び出し側で既存ルールどおり正規化した階層・敵指定 |
+| `initialLevels`, `sealedSkillIds` | 既存PR関数で決めた初期スキルと封印。返す状態にコピーする |
+| `lifeBonus`, `initialShield`, `baseAtk`, `extraRerolls` | 既存の恒久強化計算結果。extraRerollsは追加分 |
+| `bonuses` | soulGain/bossWard/regen/revive/choice4/wardCapacity/wardInheritance/coinGainを確定した値 |
+| `legacyVisual`, `tutorial` | 開始時に固定する表示方式とチュートリアル指定 |
+| `now`（第2引数） | 呼び出し側のperformance時刻。内部で時刻を読み直さない |
+
+生成するHPは現在どおり、基準HP=`65+lifeBonus`、rawMaxHp=`基準HP+PR.lifeVesselBonus(基準HP, initialLevels.heal||0)`、開始HP=`ceil(rawMaxHp×PR.skinRules(skinEffects?skin:'normal').hp)`。遺物補正はこの段階で追加しない。
+
+### 実装順
+
+1. `start` の生成直前/直後にある入力・副作用を読み、現行状態の比較用データを取得する。参照範囲は標準初期化からtutorial設定まで。
+2. 純粋なfactoryへ既存フィールドを移す。既存フィールドの有無も維持し、まだ作られていなかったプロパティを一律0に補わない。配列/辞書をラン間・入力元と共有しない。
+3. `start` で選択・正規化・稽古の許可判定を行い、factoryへ渡す。particles/texts/clashのリセット、syncArtMode、enterFloor、HUD、開始SEの呼び出し順を維持する。
+4. Devのtempo、survival、merchant上書きはfactoryの後に従来どおり適用する。Devの特例を新factoryへ持ち込まない。
+5. ハーネスは新モジュールを読み込むだけにし、既存戦闘テストの期待値を都合よく変更しない。
+
+### 特に維持する挙動
+
+- 稽古では初期スキル/封印は空、追加引き直しは0。一方、生命・初期障壁・基礎攻撃・bonusesは現在の算出を保つ。「練習だから恒久補正を全部消す」は変更になる。
+- 本編は装備スキンと効果ON、Devは指定スキンと指定効果。チュートリアルは本編のスキン/育成を使い、敵固定と非致死化は既存の後段処理に任せる。
+- 初期の敵はnull。敵抽選・時空スキンのテンポ抽選は `spawnEnemy` で行い、factoryの導入で乱数を1回も増減しない。
+- タイトル状態はHP65等を持つ別の表示用状態。新規ランfactoryで置き換えない。
+- `game` の参照同一性を使うアート読込の取消判定を維持する。全画面で使い回すsingleton状態にしない。
+
+### 検証と完了条件
+
+固定された同じ入力について、基準 `3a16cc5` の初期状態と新factoryの結果を比較する。通常/最大育成/全スキン/稽古/Dev効果OFF/チュートリアルを小さな表駆動ケースへまとめ、入力の非変更・2ラン間の非共有も直接確認する。比較対象はHUD/debugの一部項目ではなく、敵生成前のラン状態全体とする。基準版の全状態比較は検証専用の一時成果物に記録し、巨大な固定JSONを恒久テストへ持ち込まない。恒久テストは主要な能力値・例外・非共有に絞る。既存スモークでDev merchant/survival/tempo、開始音、保存値、新規ラン、再開の無影響を確認する。
+
+全Nodeが成功し、耐久試算のfixtures/comparisonsが基準と一致。factory単体がDOMなしで使える。`start` が状態定義の正本を持たず、操作の順序を読める。この条件でレビューし、2Aをコミットする。その後2Bへ進む。
+
+## 2B：復元準備と状態の寿命
+
+実装済み。APIは `RunState.prepareRestore(validatedGame,now)`。CP.validateで複製済みのオブジェクトをin-placeで更新する。呼出順は保存読込/検証→旧入力・音声・演出取消→gameへ引継ぎ→見た目同期/報酬ID解決→復元準備→アート待ち/画面復帰。最大HPの補正とパリィ入力4項目の解除をrun-stateの共通関数へ移し、通常の取得/交換/遭遇/ポーズ復帰でも同じ処理を使う。押下ソース集合や音声はgame側で解除する。全7モードを含む336条件の独立比較で状態と外部呼出順が一致した。
+
+対象は `restoreCheckpoint` の旧データ補正・ランの一時値リセット、`run-checkpoint.js` の既存正規化。新しい移行系を並立させない。CP.validateは入力検証/旧項目補完、run-stateは検証済み状態からのラン内一時値復帰、gameは音声/入力取消・アート待ち・モード遷移を担当する。
+
+`restore(validatedGame, now)` 相当をrun-stateへ追加する。新規factoryと合成して全初期値を上書きする方法は採らない。旧生命の器の最大HP修正は残HP回復を伴わず、スキン/死神契約の丸め順も維持。既存補正箇所を一つに移し、二重適用を避ける。
+
+| 状態群 | 具体例 | 寿命/復帰方針 |
+| --- | --- | --- |
+| 恒久情報 | meta、permanent、book、preferences | ラン外。再開時に最新購入値で既存ランを作り直さない |
+| 開始時に固定 | lifeBonus、bonuses、skin、skinEffects、sealedSkillIds、legacyVisual | 保存値を採用。旧欠損時の補完は現行規則を維持 |
+| 進行・戦闘の結果 | HP/障壁/lv/skillBreaks、遺物/研磨、charge/連続数/使用済フラグ、enemy HP/phase/index/burn | 状態を保持。再抽選・再付与しない |
+| 遭遇時に固定 | skinTempoOffset、tempoBpmReduction | 新遭遇で算出。再開では保存値を維持し、旧tempo欠損時のみ既存補完 |
+| 部屋・未選択報酬 | roomStage/roomLocked/merchantBought、relicOffer、choices、routeSkillSet | 支払い済み/未選択を区別。復元で課金・抽選・報酬付与しない |
+| 入力・描画の一時値 | guardHeld、入力ロック、parryReadyAt、各種performance時刻、artLoading | 復帰時に解除/再構築。負のsentinelと0の意味を勝手に統一しない |
+| ラン外の一時資源 | audio session、particles、texts、clash、押下source集合 | 保存しない。所有者が解除/再構築する |
+
+これは役割の分類であり、保存項目の完全な許可リストではない。CPのtransient一覧と `start/spawnEnemy/beginEncounter/setMode/restoreCheckpoint` の代入、computed keyによる更新を照合して、実装時に分類表を確定する。`attackBeat` 等の再設定される既存保存項目は、その場で削除しない。
+
+完了条件：combat/victory/reward/relic/route/room/routeSkillで現行保存→復元の意味が同じ。旧生命、旧tempo/bonuses、遺物使用済み、入力解除、初撃4拍、ボス障壁と守護の継承の二重付与なしを既存ケースで検証する。
+
+## 2C：保存IO（完了）
+
+実装は `ParrySaveStore.create({storage:()=>localStorage,writable:!DEV_MODE})`。結果は `{ok,value,skipped,error}`。raw offsetも同じ窓口へ接続済み。CPのcapture/validateと各保存の正規化は既存の責務を維持し、storeはIO/JSONだけを扱う。自動中断保存の `discardOnFailure:true` は旧中断の除去結果も返す。手動中断失敗は旧データを残してポーズに留まる既存の扱いを保持する。キー/保存version/複数キーの順序は変更なし。
+
+`game.js` の `readCheckpoint/checkpoint/removeCheckpoint` からstorage操作を `save-store.js` 相当へ移す。キー/JSON変換/CP検証を共通化し、UIのsaveWarning・continueボタンは呼び出し側。`{ok,value,error}` 等で結果を返し、storage例外を黙って成功扱いしない。
+
+最初は中断だけを移す。meta/permanent/book/settingsはその後に同じ窓口へ接続するが、既存の複数キー書込を「原子的な保存」と呼ばない。課金・報酬操作の順序は維持する。Devは進行を書かず、稽古も中断を作らず、読込不能/容量超過時の現行挙動を検証。既存checkpoint書込失敗時に旧中断を除去する処理を保つ。セーブキー変更・保存消去・移行v2は別案件。
+
+## 3A：数式とスキル定義（完了）
+
+`combat-math.js` へ候補11関数、拍動の倍率と奥義定数を抽出。`skills.js` のSKILLSは表示用metadata、SYNERGIESは定義、describeは `{baseAtk,bladeLevel,baseHp}` を受ける。gameのdescribeSkillが最新の状態からこれらを選ぶ。全UIをdescribeへ移行できたため、旧desc互換adapterは本番に残していない（既存のテスト補助APIだけ薄いwrapper）。タイトルの生命補正、ラン中に固定された生命補正、稽古/剛剣レベル差は従来どおり。15,872説明と60,000計算結果を旧実装と比較して一致。
+
+`baseAttackScale/skillAtkScale/scaleSkillDmg/runBaseHp/hpSkillScale/tempoReduction/frostReduction/wardcraftBonus/bloodHealAmount/shieldCap/getAttackMultiplier` を候補に、小さな純粋関数を `combat-math.js` 相当へ抽出する。最初は副作用を持つaddShield/heal/damageEnemyを動かさない。
+
+次に `SKILLS` と `SYNERGIES` を `skills.js` 相当へ移す。現在descはscaleSkillDmgやrunBaseHpなどの暗黙参照を持つため、`describe(id,level,context)` へ数値コンテキストを明示する。短期互換アダプターで既存呼び出しをつなぎ、使われなくなったものだけ除去する。Shop/図鑑は現在値・次レベル・最大育成・title/practiceの違いを現行どおり表示する。
+
+実ダメージにはコンボ/敵HP/追撃固有補正があり、説明中の基礎値と必ずしも同じでない。表示される基礎値の計算を共通化し、「説明の値をそのまま全攻撃のダメージにする」変更はしない。計算の重複は識別してからまとめる。
+
+## 3B/3C：効果適用の順序を保つ
+
+3Bは被ダメージ・障壁・回復、3Cは反撃の順に分ける。最初は名前付きの順序付き関数へ切り分け、既存の即時更新を維持する。すべての効果を事前計算した配列や非同期イベントへ置き換えない。各打撃後の敵HPで条件が変わる。
+
+**実装前のレビュー成果物**：各関数の読む/書く戦闘フィールド、数式、停止条件、副作用呼出順の表。これを3Aの確定APIに合わせて作り、主担当が既存の呼出順と照合してから抽出する。純粋計算は値を渡し、更新処理は必要な戦闘状態と同期した演出/終了の入口だけを受ける。UI/保存/音声への直接依存はadapter側。巨大gameの再配布を必要とする設計なら、この単位をさらに分割する。
+
+### 3Bの確定境界と順序（実装済み）
+
+`combat-health.js` はHP/障壁/回復の同期更新を担当する。既存フラット状態のうち以下に列挙するフィールドだけを読み書きする構造的な部分型を入力とし、全gameへのgetterや恒久データ/DOM/時計/音声への参照を持たせない。ルール値はgameが解決して渡し、演出と進行のコールバックを従来の位置で同期実行する。戻り値を最後にまとめて適用する方式は、途中状態と乱数消費の順序を変えるため採らない。関数単位の最小状態で呼べることを直接検証する。
+
+| 処理 | 読む状態 | 書く状態 | 適用と外部呼出順 |
+| --- | --- | --- | --- |
+| addShield | shield | shield | 戦闘中の増幅→容量との差だけ補充。既存の容量超過分は削らない |
+| heal | hp/maxHp/shield、共有recovery.converted | hp/shield/recovery.converted | HP回復→HP表示→余剰回復変換→障壁表示。過回復分だけ変換し、1パリィの共有予算と総容量の小さい方を使用 |
+| finishParryBlood | parryDamageActive/parryDamage/combo/maxHp | parryDamage=0、active=false | 一度だけ計上→実ダメージで吸血量→heal |
+| finishParryRecovery | practice/baseAtk/lv相当のルール、parryRecoveryActive、bell/pactDue | active=false、bell/pactDue=false、bloodlustPending | 吸血→血の渇望→鐘→契約杯（同じrecovery）→実回復合計から次の一撃を準備。フラグ解除の位置維持 |
+| applyDamage | practice/tutorial/mode/hp/maxHp/shield/frostWard、各遺物使用済/準備フラグ、reviveUsed | hp/shield/frostWard、bulwark/rusty/pact/fortitude/reviveのフラグ | 免除→ceil→氷結/表示→障壁→紋章/表示→銀鏡→錆紋章→HP→契約/不屈→被弾表示/puff/shake→復活/死亡→生存戦闘中だけ氷鏡→HUD |
+
+`damageEnemy` と死亡/勝利進行は3Bではgameに保持する。被ダメージからの氷鏡、回復完了後の撃破進行は既存関数を同期コールバックで呼び、コールバックが更新したmodeをその場で確認する。比較対象は最終HPだけでなく各表示/演出/終了時点の状態と呼出順。乱数を消費するpuff/音声の位置も維持する。
+
+### 3Cの実装境界（完了）
+
+最初に `strikeResult` 内の密集した分岐を、同じ組み立て層の名前付き同期関数へ整理する。3Bで耐久更新は独立済みだが、反撃には音声/入力/描画と多くの即時コールバックが結びつくため、これら全部を別ファイルへ渡す巨大な依存オブジェクトは作らない。game内の小さな進行関数として順序を明示し、既存の計算/耐久モジュールを呼ぶ。今回の完了条件は手順の可読化、各停止点の固定、全状態/実演出/乱数列の一致。画面や描画の責務が減った後のcontroller抽出は5Bで行う。
+
+| 段階 | 状態の読書と次への条件 |
+| --- | --- |
+| 接触結果の表示 | 入力目標/解決済/命中時刻/最後の結果と接触表示を更新。音声→clash→稽古フィードバック順 |
+| GUARD/MISS | 連続数/コンボ/チャージ/回数→被ダメージ→生存時だけ反射またはMISS演出。戦闘外に変われば戻る |
+| 成功トリガー準備 | コンボ/奥義チャージ/JUST/過充電/吸血範囲/遺物周期/炎/障壁/仮面準備/氷結。heavyJust、拍動、前回仮面の結果をローカル値として返す |
+| 基本反撃 | 現在倍率→双撃抽選→不屈→前回渇望を消費→星屑/契約/王鈴→damageEnemy。直後にmodeを検査 |
+| 遺物・雷・残響 | 仮面→雷導→雷帝→拍動→過充電/雷霆→落雷→残響/雷鳴。各打撃の直後にmode検査 |
+| 炎・鏡壁 | 炎追加/紅蓮（burnのリセット位置も維持）→JUST障壁/鏡壁。各打撃後に停止判定 |
+| コンボの追撃・奥義 | 共鳴波→王→奥義/時空切断。消費フラグと発動演出は同じ位置。通常PARRYも対象 |
+| 成功確定 | 回復確定→フィードバック/chord/vibrate/flash/shake→次撃→HUD。途中撃破ではdamageEnemyが回復と勝利進行を担当し、この段階へ来ない |
+
+保持する反撃順序：
+
+1. 判定確定/接触の結果・演出、GUARD/MISS/突然死の分岐。
+2. 成功時のcombo/charge/JUST連続数、遺物カウンター、障壁・氷結準備。
+3. 基本反撃（双撃抽選、不屈、前回の血の渇望、遺物倍率）。
+4. 仮面 → 雷導 → 雷帝 → 拍動 → 過充電/雷霆 → 落雷 → 残響/雷鳴。
+5. 炎/紅蓮 → JUST障壁/鏡壁 → 共鳴波 → 王の一撃 → 奥義/時空切断。
+6. 成功パリィの回復を一度だけ確定、次撃または撃破進行。
+
+各段で撃破すると残りの追撃は止まる。`damageEnemy` は撃破時に回復確定を先に行い、その場でclearFloorへ入る。奥義は通常PARRYでも発動する現仕様を維持。チャージ/カウンターを消費する位置も変えない。
+
+被ダメージ順は、練習/チュートリアル免除 → ceil → 氷結 → 障壁吸収 → 紋章 → GUARD時の銀鏡 → 錆びた紋章 → HP → 契約/不屈 → 復活または死亡 → 生存戦闘中の氷鏡。回復は吸血・血の渇望・巡礼の鐘・契約杯の順、余剰回復の予算を共有する。
+
+特別な危険箇所：`damageEnemy` の `game.damage` は丸め後の表示ダメージ、吸血の `parryDamage` は残HP/フェーズ下限で制限した実損失。両者を同じ値へ統一しない。第一楽章では同じ反撃内の全打撃で50%下限を守る。
+
+**乱数の結合**：双撃/敵/報酬とpuff/画面揺れ/SEが同じMath.randomを消費する。演出通知をまとめて末尾へ送るだけでも次の抽選が変わる。初期抽出は同じ入力・同じフレーム列で乱数消費順と回数を保つ。演出用乱数の独立は別途の挙動変更として扱い、抽出に混ぜない。
+
+## 4A/4B：画面
+
+4Aは `renderUpgradeScreen/upgradeRow/renderSkinPicker`、次に `renderCodex/renderSkillCodex`。表示モデルは値のコピー、操作は `onBuy/onEquip/onFilter/onPractice/onBack` 等の明示コールバック。購入資格・課金・保存は操作側で再検証する。イベントリスナーをrenderごとに積み重ねない。選択タブ・スクロール・フォーカス・死亡直後の入力禁止を保つ。
+
+4A実装済み：`shop-view.js` と `codex-view.js` は必要な恒久情報/図鑑情報/タブ/スキル説明コンテキストを読み取り、表示文字列と数値だけの新しいviewを返す。引数を保持/更新せず、DOM・保存・音声へ依存しない。gameはviewをDOMへ反映し、既存の委譲イベントと操作再検証を維持する。スキン画像の先読みもgame側に残す。この境界で256条件のview一致と実Chromeの3幅の文字/寸法/操作一致を確認済み。画面遷移controllerの抽出は5Bで扱う。既存メニュー5種、図鑑全フィルター、購入前後/装備/封印/稽古を旧版と比較し、Chromeの320/390/PC幅でレイアウトと操作を確認する。
+
+### 4Bの保存と表示の順序
+
+| 入口 | 現在維持する順序 | 抽出先 |
+| --- | --- | --- |
+| renderRewards | 既に選ばれた候補を表示→候補のclick結線→reroll/heal/note表示→checkpoint | rewards-viewのskills。抽選/取得/引き直しは操作側 |
+| renderRelicReward | mode検査→checkpoint→提示/交換対象の表示→back/skip表示 | rewards-viewのrelics。交換成立前の所持品変更なし |
+| renderEventSkillOffer | 保持済みrouteSkillSetの表示。単独のcheckpointはない | rewards-viewのeventSkills。setModeや支払側の保存順は維持 |
+| renderRelicInventory | validIds/現在説明を解決→表示のみ | rewards-viewのinventory |
+| renderRoom | mode検査→checkpoint→モーダルscrollTop=0→部屋有効性検査→表示 | room-view。抽選/支払/回復/報酬候補は持たない |
+| openSettings | 禁止mode/死亡直後検査→必要ならpause→戻りmode記録→settings→値表示→必要な場合だけ中断存在確認/表示 | 設定表示の値だけを分離。較正音声/入力時計の管理は別責務 |
+
+4B-1で報酬/遺物、4B-2で部屋/イベント、4B-3で設定を扱う。既存関数は画面の操作adapterとして保存・DOM・結線を保持し、新しいviewモジュールは生成済みの候補と解決済み値から表示だけを返す。名前をrenderへ揃えるために保存時点を移さない。controllerへの物理的な分離は5Bで扱う。
+
+4B-2のroom-viewは経路カードと部屋の表示を生成する。game側が既存のmerchantAvailable/merchantTargets等で資格を解決し、商品ごとの購入済/資格/所持金、現在と次の説明値を渡す。イベントは実在する選択肢ごとの資格と補正済み報酬値だけを渡す。表示モジュールにゲーム状態やgetterを渡さず、支払・抽選・回復を呼ばせない。rest/merchant/全7イベント、result/target/mirror、無効な部屋の保存位置も比較対象。
+
+4B-3は新モジュールを作らず、openSettings（資格/停止/遷移）→renderSettingsPreferences（値表示）→syncSettingsSaveStatus（必要時だけ中断読取と状況表示）へ整理。3行の表示のためにscript依存を増やす利点がなく、残る較正は時計/音声/入力のcontrollerだから同時に移さない。表示後のstorage読取とDev/失敗時のshort-circuitを維持する。
+
+4Bはreward/relic、room/event、settingsを別変更にする。現在 `renderRoom` / `renderRewards` などは保存も呼ぶため、HTML生成だけを移し、保存タイミングは先に呼出順を記録してから操作側へ戻す。画面の再描画だけで抽選・課金・回復が再発動しないことを確認する。
+
+320px/390px/PC幅で長文・MAX・購入前後・一覧切替を確認。今回採用済みの中央タブ・モンスターカード・ゲージ幅を維持する。デザイン再提案やCSS全面改編は別変更。
+
+## 5A/5B/5C：描画、Dev、配信
+
+5Aの参照表は[ART_DEPENDENCIES](./ART_DEPENDENCIES.md)。character-rendererは描画方式の選択とworld/local描画のdispatchを所有し、原画・pose・Canvas変換・攻撃時刻・読込取消を変更しない。createに渡す依存は描画モジュールと固定modeだけで、ゲーム状態のgetter群は渡さない。工房は編集に必要なpuppet APIを直接利用し続ける。旧描画をgameから丸ごと移す作業は今回の境界整理に含めない。
+
+5Bはgameの組み立て層内にcreateGameControllerを置き、10操作と私有のpause/settings/開始確認状態を集約した。Devアダプターもfactory化し、共通controllerへ開始/終了を渡す。別ファイルへの移動のために多数のgetter/setter callbackを作る案は採らない。新規/復元のfactoryと計算は既存の独立モジュールを再利用する。skills.capを明示APIにし、ハーネスのskillCap/未使用merchantTargets差込を除去。残る差込は戦闘途中のfixtureと演出/音声の観測用でtests/helpersに限定し、本番に任意変更APIを追加しない。
+
+5C実装済み。scripts/game-assets.jsonから両HTMLのscript/style領域と診断定義を生成し、CIも同じ生成器の--checkを使う。固定deferタグとfile://起動を維持。手動query追記を内容ハッシュに置換し、CRLF/LF差以外の変更はURLを変える。生成の再実行は差分ゼロ。依存逆転/重複/Dev混入を検出する。詳細な実行結果は[比較記録](./REFACTOR_VERIFICATION_2026-11-07.md)。
+
+- 5A：既存character-*をまず参照表にする。本編/legacy/工房/比較ページの使用箇所、原画→studio-project→character-art-defaultsの生成関係を記録。描画側は時刻・姿勢・描画に必要な値を受ける。アート読込のrun/encounter同一性による取消を維持。未使用に見える画像を名前だけで削除しない。
+- 5B：実際に使う開始/稽古/一時停止/設定等の操作を共通controllerへ移し、Devはそれを呼ぶ。テスト専用の任意eval/任意フィールド書換えAPIを本番へ公開しない。factory/計算の単体テストからソース差し込みを置き換え、残りを明記する。全テストの一斉書換えはしない。
+- 5C：静的アセットの順序付きmanifestを一箇所に置き、両HTMLのscript領域とCI/診断向け必要一覧を生成/照合する。実行時の動的ローダーは導入しない。Dev専用scriptと本編用scriptを区別し、再生成して差分ゼロになる検査を用意する。更新queryの整理は同じ版の内容が入れ替わるキャッシュ事故を防ぐ単位で実施。
+- 音声残作業：通常SEと校正音のレシピは3A以降の独立変更でmusicから分離した音色入口へ移せる。終王のstompとcount-inの統合は、現行の音量/終了処理の差を保持できる場合だけ。変更前後の音声グラフ比較を再利用する。
+
+## 検証とレビューの運用
+
+各単位で、その直前の合格コミットを比較元として記録する。新しいテストは公開された境界と取りこぼしだけに追加し、移しただけの関数ごとに既存ケースを複製しない。
+
+| 変更 | 実行する検証 |
+| --- | --- |
+| 2A〜3C | 全Node、構文、Pages参照、耐久試算。保存はplayer-readinessとgame-smokeの該当ケース、戦闘は既存の効果順/撃破/80F境界を重点レビュー |
+| 4A/4B | 全Node、上記3幅のChrome表示と実操作。進行/計算にも触れたら耐久比較 |
+| 5A | 全Node、画像/フォントPython、生成物一致、代表敵/スキンの姿勢とアート読込失敗・中断 |
+| 5B/5C | 全Node、全入口の起動/依存順、Dev保存抑制、静的生成一致 |
+| 公開候補 | CI規定の全検証＋本編/Devの実行。公開承認後に統合・Pages・配信内容を確認 |
+
+基本コマンドは `node --test tests/*.test.js`、`node scripts/survival-analysis.js`、`node scripts/balance-simulation.js`。Pythonは `python -m unittest discover -s tests -p 'test_*art.py'` と `test_*font.py`。環境依存で失敗したら成功扱いせず、使用したPython/依存を記録する。CIのPython静的入口検査も照合する。
+
+耐久JSONはrevisionだけを除外してfixtures/comparisonsと方法記述を比較する。時刻や状態の比較では揺れる箇所を無制限に除外しない。501件/約39秒は基準記録であり、件数維持そのものが目的ではない。実行時間の悪化は同条件で再現する場合に調べ、CIのばらつきを厳密な失敗閾値にしない。
+
+### 進めてよい場合 / 立ち止まる場合
+
+普通の移動・命名・既存検証の移設は主担当が進める。期待値変更が必要、保存互換が崩れる、乱数/音色が変わる、未分類の状態が失われる、撃破順が変わる場合は差分の理由を調べて記録し、その単位の完了扱いを止める。別の独立作業は可能な範囲で進めてよい。
+
+主担当が差分と証拠を確認 → 必要な修正 → 関連再検証 → コミット → HANDOFF更新。失敗した候補へ次の単位を積まない。破棄にreset --hardやユーザーファイル削除を使わず、公開後の修正は対象コミットのrevert等を個別判断する。公開前に保存互換を守ることで、戻した版でも保存を読める状態を保つ。
+
+## 初回開始時の記録（実施済み）
+
+ユーザーのゴーサイン後、現在のHEAD/未コミット差分/AGENTS/HANDOFFを確認。この計画だけのコミットを挟むため、コード基準は `3a16cc5`、作業開始点はその時点の最新docsを含むHEADとする。他の変更が入っていれば対象差分を先に読む。
+
+新しい作業ブランチ `refactor/run-state` を最新ローカルHEADから作る。同名が存在したら内容を確認して継続し、強制上書きしない。音声基盤はまだローカルなので、公開mainから直接始めてその変更を取り落とさない。プレビュー8015は現在の作業ツリーを参照する。別worktreeを使う場合はサーバーの配信元も確認する。
+
+次にユーザー判断が必要なのは、仕様・見た目・音の変更を伴う提案、実機の主観確認、または本番公開。2Aの設計上の未決事項はない。後続の3B/3Cのフィールド/順序表と5Aの参照表は各作業の最初の成果物で、作成→既存コードとの照合までを範囲に含む。

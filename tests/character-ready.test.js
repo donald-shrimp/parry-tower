@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -13,12 +14,10 @@ test('combat-ready source preserves the original traced vector geometry',()=>{
 });
 
 test('ready mode is opt-in and retains all earlier modes',()=>{
- const src=fs.readFileSync('assets/game.js','utf8');
- assert.match(src,/art=ready/);
- assert.match(src,/CHARACTER_READY_ENABLED&&CHARACTER_READY\?\.drawHero/);
- for(const key of ['CHARACTER_TRACE_ENABLED','CHARACTER_FLAT_ENABLED','CHARACTER_SVG_ENABLED','CHARACTER_ART_ENABLED']){
-  assert.ok(src.includes(key),key);
- }
+
+
+ assertPilotSelected('ready','hero');
+ for(const mode of ['trace','flat','svg','prototype'])assertPilotSelected(mode);
  for(const name of ['index.html','dev.html']){
   const html=fs.readFileSync(name,'utf8');
   assert.ok(html.indexOf('assets/character-ready.js')>html.indexOf('assets/character-trace.js'));
