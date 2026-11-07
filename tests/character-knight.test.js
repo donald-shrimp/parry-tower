@@ -5,6 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 
+const BUILD=require('../scripts/game-assets.json').build;
 const SOURCE='assets/character-knight.js';
 const SVG='assets/character-art/tracing/knight/knight-static.svg';
 const script=fs.readFileSync(SOURCE,'utf8');
@@ -30,7 +31,7 @@ test('only art=knight-trace selects knight art; existing art modes and hitboxes 
  assert.match(game,/knight:\{swing:270,prepare:850,reach:110,stage:130,recovery:380/);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.ok(html.includes('assets/character-knight.js?v=v1.0.5'));
+  assert.ok(html.includes('assets/character-knight.js?v='+BUILD));
   assert.ok(html.indexOf('assets/character-ready.js')<html.indexOf('assets/character-knight.js'));
   assert.ok(html.indexOf('assets/character-knight.js')<html.indexOf('assets/game.js'));
  }

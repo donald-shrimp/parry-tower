@@ -29,5 +29,6 @@ test('cache revision changes with content but stays reproducible across Git line
  const a=assetUrl('game.js',manifest.build,"const x=1;\n");
  assert.equal(a,assetUrl('game.js',manifest.build,"const x=1;\r\n"));
  assert.notEqual(a,assetUrl('game.js',manifest.build,"const x=2;\n"));
- assert.match(a,/\?v=v1\.0\.5&r=[a-f0-9]{12}$/);
+ assert.equal(new URL(a,'http://localhost').searchParams.get('v'),manifest.build);
+ assert.match(a,/&r=[a-f0-9]{12}$/);
 });
