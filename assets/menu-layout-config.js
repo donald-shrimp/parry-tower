@@ -2,12 +2,12 @@
 (function(root){const config={
   "schema": "parry-menu-layout",
   "version": 1,
-  "updatedAt": 1794040490837,
+  "updatedAt": 1794041567925,
   "screens": {
     "title": {
       "main": "auto",
       "pixelMain": true,
-      "pixelSecondary": true,
+      "pixelSecondary": false,
       "buttons": [
         "startBtn",
         "continueBtn",
@@ -25,7 +25,7 @@
         "columns": 2,
         "mainWidth": 100,
         "mainSize": 20,
-        "secondarySize": 15,
+        "secondarySize": 13,
         "height": 40,
         "gap": 9,
         "rowGap": 20,
@@ -47,7 +47,7 @@
     "death": {
       "main": "auto",
       "pixelMain": true,
-      "pixelSecondary": true,
+      "pixelSecondary": false,
       "buttons": [
         "retryBtn",
         "deathPracticeBtn",
@@ -67,7 +67,7 @@
       "mobile": {
         "columns": 2,
         "mainWidth": 100,
-        "mainSize": 16,
+        "mainSize": 17,
         "secondarySize": 13,
         "height": 40,
         "gap": 6,
@@ -105,7 +105,7 @@
       "mobile": {
         "columns": 1,
         "mainWidth": 100,
-        "mainSize": 20,
+        "mainSize": 17,
         "secondarySize": 13,
         "height": 40,
         "gap": 8,
