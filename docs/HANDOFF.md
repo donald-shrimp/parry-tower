@@ -2,6 +2,8 @@
 
 ## 現在の状態
 
+本番公開の指示を受領し、確定済みレイアウトをv1.0.3として公開する。保存版updatedAt 1794041567925（SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19）を維持。タイトル/挑戦終了のサブ書体は通常、一時停止はピクセル、主操作は全画面ピクセル。リザルトは使用スキン＋挑戦回数。版・生成物・README・V103を同期し、全検証→PR/main統合→タグ→CI/Pages→本番のファイル一致・操作確認を行う。リリース候補の全Node533件、画像8件、フォント2件、構文/生成一致、バランス試算、diff check成功。Chrome320/390/1280pxで確定値一致・3画面の書体/改行・結果バッジ・開始/中断/再開/再挑戦を確認。本編/Dev診断、80FヒヨコDev保存分離、10ツール、file://起動も成功。証跡はscratchのv103-node.log、v103-balance.log、verify-final-menu-design.cjs、verify-result-current-run.cjs、verify-v103-local-entries.cjs。次はPR/main統合とCI/Pages・本番確認。以下のローカル確定版・未公開の記述は公開準備前の記録。
+
 ユーザーが「今保存したレイアウトデザインで確定」と指定した版を採用済み。updatedAt 1794041567925、SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19。サブ書体はタイトル/挑戦終了が通常、一時停止がピクセル。主操作は全画面ピクセル。サブサイズは全画面スマホ13px/PC16px、主操作はスマホのタイトル20px・挑戦終了/一時停止17px、PC全画面25px。保存済みの余白・列数・並びもそのまま採用。実際の編集ファイルはバイト不変で、正規化した保存データと採用設定が完全一致する。リザルトは使用スキン＋挑戦回数、最高到達/最高コンボはタイトルのみに表示。アイコン分離とPC結果文中央寄せも維持する。
 
 確定版の検証：全Node533件、フォント2件、構文/生成一致/diff check成功。Chrome320/390/1280pxで3画面の保存値/書体/改行/余白、つづきから、開始・中断・再開・敗北・再挑戦を確認。工房の編集中/採用中両表示の結果バッジ2個/タイトル3個、書体切り替えも確認。本編/Dev診断、80FヒヨコDev保存分離、8ツール、file://起動も成功。証跡はscratchのlayout-final-design-node.log、verify-final-menu-design.cjs、verify-result-current-run.cjs、verify-final-entries.cjs、adopted-layout-title-390.png、adopted-layout-death-390.png。
