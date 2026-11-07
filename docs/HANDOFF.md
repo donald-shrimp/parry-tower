@@ -2,7 +2,19 @@
 
 ## 現在の状態
 
-本番公開の指示を受領し、確定済みレイアウトをv1.0.3として公開する。保存版updatedAt 1794041567925（SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19）を維持。タイトル/挑戦終了のサブ書体は通常、一時停止はピクセル、主操作は全画面ピクセル。リザルトは使用スキン＋挑戦回数。版・生成物・README・V103を同期し、全検証→PR/main統合→タグ→CI/Pages→本番のファイル一致・操作確認を行う。リリース候補の全Node533件、画像8件、フォント2件、構文/生成一致、バランス試算、diff check成功。Chrome320/390/1280pxで確定値一致・3画面の書体/改行・結果バッジ・開始/中断/再開/再挑戦を確認。本編/Dev診断、80FヒヨコDev保存分離、10ツール、file://起動も成功。証跡はscratchのv103-node.log、v103-balance.log、verify-final-menu-design.cjs、verify-result-current-run.cjs、verify-v103-local-entries.cjs。次はPR/main統合とCI/Pages・本番確認。以下のローカル確定版・未公開の記述は公開準備前の記録。
+図鑑の上部固定をやめる依頼に対応し、ショップと同じモーダル全体スクロールへ変更。codex-modalのflex/overflow指定と一覧内スクロールを削除。再表示・タブ切替・フィルター変更でモーダルも先頭へ戻す。既存回帰テストを親スクロールの確認へ拡張し、関連3件成功。Chrome320/390/1280pxで実際のホイール操作を使い、図鑑/ショップの見出しがスクロール量と同じ距離だけ動くこと、一覧内の二重スクロールなし、魔物/スキル・絞り込み・再表示・稽古・横はみ出しなしを確認。証跡はscratchのcodex-scroll-node.log、verify-codex-whole-scroll.cjs、codex-whole-scroll-390.png。
+
+この修正も本番へ反映する旨をユーザーへ伝達済み。v1.0.4として版・生成物・READMEを同期し、公開候補の全Node533件、画像8件、フォント2件、構文/生成一致、バランス試算、diff check成功。本編/Dev診断、中断復帰、80FヒヨコDevの保存分離、10ツール、file://起動も確認済み。証跡はscratchのv104-node.log、v104-balance.log、verify-codex-whole-scroll.cjs、verify-v103-local-entries.cjs。次はPR/main統合→CI/Pages→本番確認。以下はv1.0.3までの公開/調整記録。
+
+
+v1.0.3を本番公開済み。PR #44、main統合894f7292a11425b8ffdd8562641db4285520a86b、タグv1.0.3。確定保存版updatedAt 1794041567925（SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19）の配置・サイズ・余白・書体をそのまま採用。主操作は単独上段、サブは下段中央寄せ。リザルトは使用スキン＋挑戦回数、最高到達/最高コンボはタイトルのみに表示。アイコン分離、PC結果文中央寄せ、レイアウト工房も含めて配信した。
+
+検証：公開候補の全Node533件、画像8件、フォント2件、構文/生成一致、バランス試算、diff check成功。PR Static checks（42358086694）、main Static checks（42358261265）、Pages（42358260482）はすべて成功。本番の両HTML・48 JS/CSS・フォント・工房/文言エディタ・リンク集がmain統合コミットとバイト一致。Chrome320/390/1280pxで確定値一致・3画面の書体/改行/余白・開始/中断/再開/敗北/再挑戦・リザルト2バッジ/タイトル3バッジを本番でも確認。本編/Dev診断、80FヒヨコDev保存分離、10ツールの起動、本編のfile://起動も成功。実際のユーザー編集ファイルは不変。
+
+証跡：物理checkoutの.local-only/scratch内のv103-node.log、v103-balance.log、verify-v103-assets.cjs、v103-live-verify-final-menu-design.cjs、v103-live-verify-result-current-run.cjs、verify-v103-live-entries.cjs、v103-live-layout-death-390.png。公開作業の残りなし。入口は https://donald-shrimp.github.io/parry-tower/?v=v1.0.3 、ローカル工房は http://127.0.0.1:8017/layout-studio.html 。この公開結果追記は配信後の文書記録であり、配信対象ツリーは上記main統合コミット。
+
+以下のローカル確定版・未公開の記述は公開前の記録。
+
 
 ユーザーが「今保存したレイアウトデザインで確定」と指定した版を採用済み。updatedAt 1794041567925、SHA256 ae43a7e69a91d82859e15f86b0d4e8029de1e63585c54d3973d9776133bf7b19。サブ書体はタイトル/挑戦終了が通常、一時停止がピクセル。主操作は全画面ピクセル。サブサイズは全画面スマホ13px/PC16px、主操作はスマホのタイトル20px・挑戦終了/一時停止17px、PC全画面25px。保存済みの余白・列数・並びもそのまま採用。実際の編集ファイルはバイト不変で、正規化した保存データと採用設定が完全一致する。リザルトは使用スキン＋挑戦回数、最高到達/最高コンボはタイトルのみに表示。アイコン分離とPC結果文中央寄せも維持する。
 

@@ -193,7 +193,7 @@ test('survival: sigil stays consumed through the final second movement',()=>{
  assert.equal(g.state().mode,'combat');assert.equal(d.bulwarkUsed(),true);assert.equal(g.state().shield,before,'phase count-in does not replenish inheritance');
 });
 
-test('codex shares the shop layout and keeps the list scrollable when switching tabs',()=>{
+test('codex shares the shop layout and resets the whole dialog when opening or changing lists',()=>{
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
   const codex=html.slice(html.indexOf('id="codexCover"'),html.indexOf('id="upgradeCover"'));
@@ -203,22 +203,27 @@ test('codex shares the shop layout and keeps the list scrollable when switching 
   assert.match(codex,/class="upgrade-tabs" id="codexTabs"/);
   assert.match(codex,/class="upgrade-list codex-list" id="codexList"/);
  }
- const g=makeHarness();g.press('practiceBtn');
+ const g=makeHarness(),modal={scrollTop:150};g.el.get('codexList').parentElement=modal;g.press('practiceBtn');
+ assert.equal(modal.scrollTop,0,'opening starts at the heading');
  const tabs=g.el.get('codexTabs').querySelectorAll('[data-codex-tab]');
  assert.equal(g.el.get('codexToolbar').hidden,false);
  assert.equal(tabs[0].className,'upgrade-tab active');
  assert.equal(tabs[1].className,'upgrade-tab');
  g.el.get('codexList').scrollTop=150;
+ modal.scrollTop=150;
  g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[1]}});
  assert.equal(g.el.get('codexToolbar').hidden,true,'skill codex should not show the monster filter label');
  assert.equal(tabs[0].className,'upgrade-tab');
  assert.equal(tabs[1].className,'upgrade-tab active');
  assert.equal(tabs[1].attributes['aria-pressed'],'true');
  assert.equal(g.el.get('codexList').scrollTop,0,'switching tabs should start from the first entry');
+ assert.equal(modal.scrollTop,0,'the shared dialog is the scroll container');
  assert.match(g.el.get('codexSummary').textContent,/解放/);
  g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[0]}});
  assert.equal(g.el.get('codexToolbar').hidden,false);
  assert.equal(tabs[0].className,'upgrade-tab active');
+ modal.scrollTop=150;g.el.get('codexFilter').value='discovered';g.el.get('codexFilter').listeners.change();
+ assert.equal(modal.scrollTop,0,'filter changes also start at the heading');
 });
 test('a cold start warms title assets and waits for artwork before drawing or starting the combat clock',async()=>{
  let loaded=false,finish,warmups=0,draws=0;
@@ -385,8 +390,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.3&r=[a-f0-9]{12}"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.3&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.4&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.4&r=[a-f0-9]{12}"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -987,7 +992,7 @@ test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v1\.0\.3/);
+  assert.match(html,/v1\.0\.4/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1200,8 +1205,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.3(?:&[^"]+)?"/);
-  assert.match(html,/v1\.0\.3/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.4(?:&[^"]+)?"/);
+  assert.match(html,/v1\.0\.4/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1519,8 +1524,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.3&r='),asset);
-  assert.match(html,/v1\.0\.3/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.4&r='),asset);
+  assert.match(html,/v1\.0\.4/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
