@@ -79,7 +79,7 @@
    const option=node('option',value==='auto'?'おすすめ（自動）':labels[value]);option.value=value;$('mainAction').append(option);
   }
   $('mainAction').value=current().main;$('pixelMain').checked=current().pixelMain;$('pixelSecondary').checked=current().pixelSecondary;
-  orderList($('buttonOrder'),'buttons',labels);orderList($('blockOrder'),'blocks',{...blockNames,records:id==='death'?'使用スキン':'記録'});sizes();preview();
+  orderList($('buttonOrder'),'buttons',labels);orderList($('blockOrder'),'blocks',{...blockNames,records:id==='death'?'使用スキン・挑戦回数':'記録'});sizes();preview();
  }
  function selectProfile(next){profile=next;$('previewWidth').value=next==='mobile'?'390':'1280';sizes();preview();}
  function frameSource(template){
@@ -89,7 +89,7 @@
   // The preview is static and sandboxed. It never boots the game or reads saves.
   doc.getElementById('titleRecords').innerHTML='<span>最高到達 55F</span><span>最高コンボ 68</span><span>挑戦 150回</span>';
   doc.getElementById('deathSummary').innerHTML='<b>55F</b>で力尽きた。<br>ジャストパリィ <b>120回</b> / 被弾 <b>12回</b><br>最大コンボ <b>68</b><br>魂の欠片 <b>+84 ✧</b>';
-  doc.getElementById('deathRecords').innerHTML='<span>⚔ いつもの主人公</span>';
+  doc.getElementById('deathRecords').innerHTML='<span>⚔ いつもの主人公</span><span>挑戦 150回</span>';
   doc.getElementById('runStateLabel').textContent='PREVIEW';
   return '<!doctype html>\n'+doc.documentElement.outerHTML;
  }
