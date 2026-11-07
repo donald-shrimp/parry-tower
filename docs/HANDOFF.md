@@ -2,12 +2,12 @@
 
 ## 現在の状態
 
-[段階的リファクタリング](./REFACTOR_PLAN.md)の段階0〜5Cまでローカルで実装・検証済み、未公開。主担当が計画・実装・差分確認を行った。ユーザーの指定によりサブエージェントの起動は不要。
+[段階的リファクタリング](./REFACTOR_PLAN.md)の段階0〜5Cを実装・検証し、ユーザーの公開指示に従い [v1.0.0](./V100.md) として統合する。主担当が計画・実装・差分確認を行った。
 
 - ブランチ：refactor/run-state
 - 作業ツリー：E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display
 - プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html) / [工房](http://127.0.0.1:8015/art-studio.html)
-- 公開中：db87a1c（PR #40、能力強化のゲージ幅統一）、v0.9.9。今回の変更はpush/公開していない。
+- 配信先：[本編](https://donald-shrimp.github.io/parry-tower/) / [Dev](https://donald-shrimp.github.io/parry-tower/dev.html)。前版は db87a1c（PR #40、v0.9.9）。公開結果は [main の CI と Pages](https://github.com/donald-shrimp/parry-tower/actions?query=branch%3Amain) を参照。
 
 ## 完了した範囲
 
@@ -31,9 +31,8 @@
 
 ## 次の一手・注意
 
-1. ユーザーの実機試遊を受ける。スピーカー/Bluetoothの聴感・入力遅延はヘッドレス検証だけでは確定できない。
-2. 公開指示を受けたらmainとの差分/競合を確認し、統合候補で規定チェック→CI→Pages→配信内容確認を行う。今回は未承認の公開を進めない。
-3. 今後JS/CSSを変更したら node scripts/build-game-entries.js で再生成し、--checkと全Nodeを実行する。生成領域を直接編集しない。
+1. 実機のスピーカー/Bluetoothで聴感・入力遅延を確認する場合は、v1.0.0の本編・Devで試遊する。
+2. 今後JS/CSSを変更したら node scripts/build-game-entries.js で再生成し、--checkと全Nodeを実行する。生成領域を直接編集しない。
 
 進行/演出の組み立て、legacy Canvas描画、通常SE/較正音のレシピはgame内に残る。多数のgetter/setterを渡すだけの物理分離を避けた。検証の任意状態fixture/音声観測の差込はtests/helpersに限定して残す。本番へテスト専用書換えAPIを追加しない。これらのさらなる分離は、その領域を変更する独立作業で扱う。
 

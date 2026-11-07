@@ -82,8 +82,8 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
  const required=assets.filter(asset=>asset.diagnose).map(asset=>asset.file);
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
-  assert.match(s,/<meta name="parry-build" content="v0\.9\.9">/);
-  assert.match(s,/v0\.9\.9/);
+  assert.match(s,/<meta name="parry-build" content="v1\.0\.0">/);
+  assert.match(s,/v1\.0\.0/);
   for(const name of required)assert.ok(s.includes('./assets/'+name+'?v='+BUILD),name+' in '+file);
   for(const asset of [...s.matchAll(/(?:src|href)="(\.\/assets\/[^"]+)"/g)]){
    assert.ok(asset[1].includes('?v='+BUILD),'all local assets have build query: '+asset[1]);
@@ -91,7 +91,7 @@ test('HTML, game marker and asset query versions are identical in both entrypoin
   assert.ok(s.indexOf('assets/diagnostics.js')<s.indexOf('assets/game.js'),'guard loads before game');
  }
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v0.9.9',window.__parryV05)"));
+ assert.ok(game.includes("window.ParryDiagnostics?.registerGame('v1.0.0',window.__parryV05)"));
 });
 test('healthy game reports technical status and correct floor-specific route with no warning',()=>{
  const p=diagnosticPage();
