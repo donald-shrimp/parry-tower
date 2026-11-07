@@ -11,7 +11,7 @@
 .menu-modal>.menu-block{flex-shrink:0}
 .menu-modal>.records{gap:6px;font-size:11px}
 .menu-modal>.records span{padding:5px 8px}
-.menu-modal>p{font-size:12px;line-height:1.6}
+.menu-modal>p{align-self:center;width:100%;font-size:12px;line-height:1.6}
 .menu-modal .menu-actions{display:flex;flex-direction:column;align-items:stretch;gap:var(--menu-row-gap);width:100%}
 .menu-main-row{width:var(--menu-main-width);max-width:100%;align-self:center}
 .menu-secondary{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--menu-gap);width:100%}

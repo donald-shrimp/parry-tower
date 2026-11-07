@@ -2,6 +2,10 @@
 
 ## 現在の状態
 
+工房のPC幅で挑戦終了の結果文が左へ寄る不具合を修正。共通の段間隔指定でpの横auto marginを打ち消し、max-width:470pxの本文だけ左へ寄っていた（1280pxで編集中41px、採用中57px）。menu-layout.cssで本文枠へalign-self:centerとwidth:100%を指定。Chromeの編集中/採用中両プレビューを320/390/960/1280pxで測定し、結果文・見出し・モーダルの中心が一致、横はみ出しなしを確認。関連Node5件、生成一致、diff check成功。証跡はscratchのverify-layout-result-center.cjsとlayout-result-centered.png。
+
+ユーザーの.local-only/layout-editor/project.jsonは保存済み（修正前後SHA256:53ba37dabb6973f9015a7c197f6339107e5e8b98d0b86e8df2b75bbc0e5de8d3）。下記の「実際の編集ファイルは未作成」は工房作成時の記録。この修正では編集データを変更・本編へ採用していない。再読み込みで修正CSSを読み込める。本番未公開。
+
 最新の作業：レイアウト工房をローカル実装済み。ブランチui/menu-layout-studio、作業ツリーは引き続きshop-upgrade-display。サーバー8017を起動済みで、入口は http://127.0.0.1:8017/layout-studio.html 、実プレイ候補は http://127.0.0.1:8017/ 。今回の依頼は準備まで。本番は下記v1.0.2のまま。
 
 タイトル・挑戦終了・一時停止の3画面に共通のmenu-layoutモデル/DOM適用/CSSと採用設定を導入。主操作を上段単独＋ピクセルフォント、補助操作を下段へ配置し、端数も中央寄せ。タイトルは中断データがあればつづきからを主操作へ変更。既存DOMを移動し、イベント・hidden・disabled・敗北後の入力ロックを維持する。工房では同じindex.html/CSSをスクリプトなしsandboxへ読み込み、主操作・書体・ボタン順・画面の並び/装飾表示・スマホ/PC別の寸法を編集し、320/390/520/960/1280pxで比較する。
