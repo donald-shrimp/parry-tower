@@ -89,7 +89,7 @@
   {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
   {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
   {a:'aegis',b:'thorns',name:'🪞 鏡壁の反撃',desc:'ジャスト時に障壁の一部を攻撃に転換'},
-  {a:'ember',b:'execute',name:'☄️ 紅蓮処刑',desc:'瀕死の敵に炎の蓄積を一気に放出'},
+  {a:'ember',b:'execute',name:'☄️ 紅蓮処刑',desc:'敵HP35%以下で成功パリィすると炎上蓄積と同じ値の追撃。炎上は消費しない'},
   {a:'rune',b:'precision',name:'🔮 時空切断',desc:'奥義の発動時に追加の斬撃'},
   {a:'fortitude',b:'aegis',name:'🛡️ 不滅の盾',desc:'障壁破壊でも不屈が発動・反撃後に障壁+5'},
   {a:'heartbeat',b:'focus',name:'🎵 共鳴心眼',desc:'拍動が2連続ジャストで発動'},

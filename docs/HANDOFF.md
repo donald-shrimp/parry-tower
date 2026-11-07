@@ -2,9 +2,11 @@
 
 ## 現在の状態
 
+v1.0.0はPR #41（e99c226）で公開済み。ユーザー承認済みの紅蓮処刑変更をv1.0.1として公開する。敵HP35%以下、炎上蓄積×1の追撃、蓄積は維持。スキル説明と版/生成物を同期し、35%境界・連続発動・小瓶との合算・残りHP6を炎で倒す回帰ケースを追加。全Node527件、画像8件、フォント2件、構文/生成一致/バランス試算が成功。Chromeでも通常PARRY後の残りHP6を炎が削り切ることを確認。証跡はscratchのv101-node.log、verify-v101-burn.cjs。低fpsで継続ダメージが遅くなる別件は今回の対象外。
+
 [段階的リファクタリング](./REFACTOR_PLAN.md)の段階0〜5Cを実装・検証し、ユーザーの公開指示に従い [v1.0.0](./V100.md) として統合する。主担当が計画・実装・差分確認を行った。
 
-- ブランチ：refactor/run-state
+- ブランチ：fix/crimson-execution（v1.0.1）
 - 作業ツリー：E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display
 - プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html) / [工房](http://127.0.0.1:8015/art-studio.html)
 - 配信先：[本編](https://donald-shrimp.github.io/parry-tower/) / [Dev](https://donald-shrimp.github.io/parry-tower/dev.html)。前版は db87a1c（PR #40、v0.9.9）。公開結果は [main の CI と Pages](https://github.com/donald-shrimp/parry-tower/actions?query=branch%3Amain) を参照。
