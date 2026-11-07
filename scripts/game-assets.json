@@ -1,5 +1,5 @@
 {
-  "build": "v1.0.3",
+  "build": "v1.0.4",
   "pages": [
     "index.html",
     "dev.html"

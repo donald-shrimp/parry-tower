@@ -29,12 +29,10 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 
 /* v0.5.3: zone hint, encounter bestiary and the existing safe practice mode */
 .zone-label{font-size:10px;letter-spacing:.02em;margin-left:12px;font-weight:650;text-transform:none}
-.codex-modal{display:flex;flex-direction:column;overflow:hidden}
-.codex-modal>.upgrade-top,.codex-modal>.upgrade-tabs,.codex-status{flex-shrink:0}
 .codex-status,.codex-toolbar{display:flex;align-items:center;gap:8px}
 .codex-status{justify-content:space-between;flex-wrap:wrap}
 .codex-toolbar select{max-width:100%;background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:9px;padding:7px 8px;font:inherit}
-.codex-modal .codex-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:3px}
+.codex-modal .codex-list{padding:3px}
 .codex-card{flex-shrink:0}
 .codex-card .upgrade-main{align-items:flex-start;overflow-wrap:anywhere}
 .codex-card .upgrade-main>div{min-width:0}
