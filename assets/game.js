@@ -886,7 +886,7 @@ function takeEventSkill(id){
  if(game.mode!=='routeSkill'||!game.routeSkillSet.includes(id)||!SK[id]||lvl(id)>=skillCap(id))return;
  game.routeSkillSet=[];gainSkillLevel(id);sound(800,.18,'triangle',.05,130);
  if(game.currentRoom==='merchant'){
-  renderBuild();setMode('room');showRoomResult(SK[id].name+'がLv.'+lvl(id)+'になった！',true);return;
+  renderBuild();setMode('room');showRoomResult(SK[id].name+' Lv.'+lvl(id),true);return;
  }
  finishNoncombatRoom();
 }
@@ -937,7 +937,7 @@ function roomAction(action){
   else if(item.id==='barrier'){
    const prev=game.shield;relicShield(20);
    showRoomResult('結界の護符で障壁+'+Math.round(game.shield-prev)+'。',true);
-  }else if(item.id==='skill'){game.roomLocked=true;eventSkillOffer('秘伝の巻物 — スキルをひとつ選べ');}
+  }else if(item.id==='skill'){game.roomLocked=true;eventSkillOffer('秘伝の巻物');}
   else if(item.id==='relic'){
    game.roomLocked=true;game.relicReturn='room';showRelicRewards('special');
   }
@@ -975,7 +975,7 @@ function roomAction(action){
   if(opt==='sacrifice'){
    if(!EV.canSacrifice(game.hp,game.maxHp)||!availableSkills().length)return;
    game.hp-=EV.altarCost(game.maxHp);game.roomLocked=true;syncHUD();
-   eventSkillOffer('血の祭壇 — スキルをひとつ選べ');
+   eventSkillOffer('血の祭壇');
   }else if(opt==='ward'){const old=game.shield;relicShield(12);showRoomResult('祭壇が障壁+'+Math.round(game.shield-old)+'を授けた。');}
  }else if(event.id==='mirror'){
   if(opt==='coins'){const gained=awardTowerCoins(12);showRoomResult('鏡を背にし、塔貨'+gained+'枚を手に入れた。');}
@@ -1005,7 +1005,7 @@ function roomAction(action){
  }else if(event.id==='sanctuary'){
   if(opt==='resonate'){
    if(!availableSkills().length)return;
-   game.roomLocked=true;eventSkillOffer('共鳴の聖堂 — スキルをひとつ選べ',resonancePool());
+   game.roomLocked=true;eventSkillOffer('共鳴の聖堂',resonancePool());
   }else if(opt==='train'){
    if(!merchantTargets('training').length)return;
    game.roomStage='target:sanctuary_train';renderRoom();
@@ -1649,7 +1649,7 @@ function finishRelicReward(acquired=false){
   game.roomLocked=false;game.roomStage=null;setMode('room');renderRoom();return;
  }
  if(returned==='room'&&game.currentRoom==='merchant'){
-  setMode('room');showRoomResult(acquired?'遺物箱から遺物を手に入れた！':'遺物箱の遺物を見送った。',true);return;
+  setMode('room');showRoomResult(acquired?'遺物を獲得':'見送った',true);return;
  }
  if(returned==='mirror'||returned==='room'){finishNoncombatRoom();return;}
  showRewards();

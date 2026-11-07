@@ -52,7 +52,7 @@
     ?`${type} · 遭遇 ${seenBase.encounters}回 · 討伐 ${winsBase}回 · 初遭遇 ${firstF}F`
     :`${type} · 通常 遭遇${seenBase?.encounters||0}/討伐${winsBase} · 精鋭 遭遇${seenElite?.encounters||0}/討伐${winsElite} · 初遭遇 ${firstF}F`;
    const btns=g.m.rare
-    ?`<div class="codex-practice-row"><button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 稽古場で練習</button></div>`
+    ?`<div class="codex-practice-row"><button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 稽古</button></div>`
     :`<div class="codex-practice-row">${seenBase?`<button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 通常で稽古</button>`:'<button class="codex-practice" disabled>未遭遇 (通常)</button>'}${seenElite?`<button class="codex-practice elite-btn" data-practice="${g.elite.bookKey}">⚔ 精鋭で稽古</button>`:'<button class="codex-practice elite-btn" disabled>未遭遇 (精鋭)</button>'}</div>`;
    return '<div class="codex-card codex-monster '+rank+'"><div class="codex-symbol">'+(g.m.rare?'✦':g.m.boss?'♛':seenElite?'◆':'⚔')+'</div><strong>'+g.m.name+'</strong><small>'+stats+'</small><p>'+g.m.desc+'</p>'+btns+'</div>';
   }).join('')||'<div class="empty">該当する敵はまだいません。</div>';
