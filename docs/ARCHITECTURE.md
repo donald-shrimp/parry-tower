@@ -53,7 +53,9 @@ SEの波形準備は譜面の原点を決める前に行う。乱数消費はゲ
 
 ## 入口と検証
 
-スクリプト順序は両HTMLとCIの静的検査に明記されている。曲定義を `music.js` より前、`music.js` と `audio-session.js` を `game.js` より前に読む。診断の必須アセットも同期する。入口一覧の自動生成は後続工程。
+本編/DevのJS/CSS、依存順、診断対象は `scripts/game-assets.json` が正本。`node scripts/build-game-entries.js` が両HTMLのマーカー内とdiagnosticsの定義を生成する。CIの `--check` は生成一致、ファイル存在、依存順、Dev専用scriptの分離、管理領域外の余分なscriptを検査する。ゲームは生成済みのdeferタグを直接読み、実行時loaderは使わない。
+
+URLは `?v=版&r=内容SHA-256の先頭12桁`。Windows/CIの改行差を正規化して計算する。JS/CSSを変更したら再生成し、生成物もコミットする。順序やmoduleを追加する際はmanifestを変更する。HTML/game登録の版とmanifestの版が違う場合も検査を失敗させる。工房・比較ページは独立した入口を維持する。
 
 基本検証は `node --test tests/*.test.js`。画像・フォントはAGENTSとCIに従う。タイミング・保存・戦闘順序の代表テストは [工程書の対応表](./REFACTOR_PLAN.md#維持する既存検証の対応表) に記載。音色は譜面ハッシュとノード予約値、操作は実ブラウザーも使って確認する。ヘッドレス実行は実機スピーカー/Bluetoothの聴感と遅延の代わりにはならない。
 

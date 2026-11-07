@@ -3,7 +3,9 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const BUILD='v0.9.9';
+const manifest=require('../scripts/game-assets.json');
+const BUILD=manifest.build;
+const assets=[...manifest.styles,...manifest.scripts];
 const source=fs.readFileSync('assets/diagnostics.js','utf8');
 
 function diagnosticPage(page='index.html',options={}){
@@ -48,12 +50,8 @@ function diagnosticPage(page='index.html',options={}){
   document,location:{pathname:'/parry-tower/'+(page==='dev.html'?'dev.html':''),reload(){reloads++}},
   console:logger,addEventListener(k,cb){listeners[k]=cb}
  };
- const modules={
-  ParryAudioClock:{},ParryAudioSession:{},ParryRunState:{},ParryCombatMath:{},ParryCombatHealth:{},ParrySkills:{},ParryShopView:{},ParryCodexView:{},ParrySaveStore:{},
-  ParryEncounters:{},ParryEnemyMotions:{},ParryProgression:{},ParryRelics:{},ParryRewardsView:{},ParryRoomView:{},ParryCharacterRenderer:{},
-  ParryRoutes:{branchKind(floor){return floor%10===4?'first':floor%10===8?'second':null}},
-  ParryEvents:{},ParryStageMusic:{},ParryFinalBossMusic:{},ParryMusic:{},ParryPlayerSettings:{},ParryRunCheckpoint:{}
- };
+ const modules=Object.fromEntries(assets.filter(asset=>asset.module).map(asset=>[asset.module.global,{}]));
+ modules.ParryRoutes={branchKind(floor){return floor%10===4?'first':floor%10===8?'second':null}};
  for(const [key,value] of Object.entries(modules))if(!options.missingModule||options.missingModule!==key)win[key]=value;
  const ctx={window:win,module:{exports:{}},console:logger,localStorage:{
   getItem(){throw Error('diagnostics MUST NOT read player saves')},
@@ -81,8 +79,7 @@ function diagnosticPage(page='index.html',options={}){
  };
 }
 test('HTML, game marker and asset query versions are identical in both entrypoints',()=>{
- const required=['style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js','run-state.js','combat-math.js','combat-health.js','skills.js','shop-view.js','codex-view.js','save-store.js',
-  'relics.js','rewards-view.js','room-view.js','routes.js','events.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','audio-session.js','character-renderer.js','game.js'];
+ const required=assets.filter(asset=>asset.diagnose).map(asset=>asset.file);
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
   assert.match(s,/<meta name="parry-build" content="v0\.9\.9">/);
@@ -164,7 +161,7 @@ test('missing module, stale URL and script load failure each trigger a warning',
  }
  const stale=diagnosticPage('index.html',{assetEntries:[]});
  const staleAssets=stale.api.status().staleAssets;
- assert.equal(staleAssets.length,27);
+ assert.equal(staleAssets.length,assets.filter(asset=>asset.diagnose).length);
  assert.ok(staleAssets.includes('music.js'));
  assert.equal(stale.api.status().status,'mismatch');
  const failed=diagnosticPage('index.html',{failedAsset:'./assets/game.js?v='+BUILD});

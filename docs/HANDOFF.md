@@ -1,68 +1,40 @@
 # 継続状態（2026-11-07）
 
-## 現在の目的と範囲
+## 現在の状態
 
-[段階的リファクタリング](./REFACTOR_PLAN.md)をローカルで継続中、未公開。以後はユーザーの最新指定により主担当が計画・実装・検証・差分確認を一貫して行う。サブエージェントの起動は不要。
+[段階的リファクタリング](./REFACTOR_PLAN.md)の段階0〜5Cまでローカルで実装・検証済み、未公開。主担当が計画・実装・差分確認を行った。ユーザーの指定によりサブエージェントの起動は不要。
 
-音声基盤、2A（新規ラン生成）、2B（復元準備）、2C（保存IO）、3A（戦闘数式/スキル定義）、4A（ショップ/図鑑表示）、3B（回復/障壁/被ダメージ）、3C（反撃の段階整理）が完了。`save-store.js` に本編のlocalStorage read/write/removeを集約。保存の正規化とCP codecは既存モジュール、警告UIと画面進行はgameが担当する。Devは書込禁止、稽古は中断を保存しない。自動保存失敗は旧中断を除去し、手動中断失敗は旧中断を保持してポーズに留まる既存の違いを維持した。複数キー保存は原子的ではなく、課金/報酬の書込順も従来どおり。
+- ブランチ：refactor/run-state
+- 作業ツリー：E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display
+- プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html) / [工房](http://127.0.0.1:8015/art-studio.html)
+- 公開中：db87a1c（PR #40、能力強化のゲージ幅統一）、v0.9.9。今回の変更はpush/公開していない。
 
-`combat-math.js` は必要な値を受け取る純粋な計算。`skills.js` が25スキル・11相乗効果と説明を所有し、describe(id,level,{baseAtk,bladeLevel,baseHp})で現在の表示値を受ける。全表示呼出を移行し、旧descのゲーム状態クロージャーを除去した。戦闘効果の適用・撃破・乱数消費の順序は変更していない。
+## 完了した範囲
 
-`shop-view.js` / `codex-view.js` は明示的な表示入力からHTML/文字列/先読みスキンIDのviewを返す。入力状態を変更・保持せず、DOM/保存/進行の操作はgame側。購入/装備/封印/稽古の再検証と既存リスナーの配置を維持した。CSS/デザインは変更なし。
+| 範囲 | 現在の境界 |
+| --- | --- |
+| 音声 | musicが本編/Dev共通の選曲・音色窓口、audio-sessionがContext/バス/先読み/停止を所有 |
+| 状態・保存 | run-stateが新規/復元準備、save-storeが全storage IO。codec/正規化は既存モジュール |
+| 戦闘 | combat-math/skillsの計算・説明、combat-healthの同期HP/障壁更新。反撃はgame内の名前付き段階 |
+| 表示 | shop/codex/rewards/room-viewが表示だけを生成。操作再判定/支払/抽選/保存はgame側 |
+| 描画 | character-rendererが描画先の選択。原画・ポーズ・座標変換・読込取消を維持 |
+| 操作 | game内のcreateGameControllerに開始/復元/稽古/停止/設定/タイトルと私有の遷移状態を集約。Devも同じ開始/終了を使用 |
+| 配信 | scripts/game-assets.jsonを正本に、build-game-entries.jsがHTMLと診断定義を生成。版＋内容hashでキャッシュ更新 |
 
-`combat-health.js` はHP/障壁と関連フラグの同期更新を担当。スキル/遺物の数値を呼出側が渡し、文字・パーティクル・復活/死亡・氷鏡・HUDのcallbackを従来の位置で呼ぶ。生存/進行を最後にまとめて適用しない。必要な状態フィールドはREFACTOR_EXECUTIONの3B表を参照。
+段階5Bまでの主要commit：da243b8（保存）、20b55df（数式/スキル）、a740057（shop/codex）、661a1f9（health）、61ae6ef（反撃）、ff170ec（報酬）、5bfb729（部屋）、01643b6（設定）、297620b（描画）、276c666（controller）。5CはこのHANDOFFを含むmanifestコミット。
 
-3Cはgameの組み立て層で名前付き同期段階へ整理。strikeResultは接触表示と結果別の入口、成功時は準備→基本反撃→遺物/雷/残響→炎/鏡壁→共鳴波/王/奥義→回復/フィードバックの順。各打撃後に即mode検査する。巨大な演出/状態依存オブジェクトを作る抽出は避け、controllerの物理分離は5Bで扱う。
+## 検証
 
-- ブランチ：`refactor/run-state`（音声基盤と計画を含む）
-- 作業ツリー：`E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display`
-- プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html)
-- 公開中の実装：`db87a1c`（PR #40、能力強化のゲージ幅統一）。
+全Node525件（39.9秒）、JS59本の構文、生成一致、diff check、耐久36比較とfixtures、バランス試算が成功。画像8件・フォント2件も成功。アート生成物はCRLF/LF差を除いて正本と一致。
 
-## 完了したこと
+各段階で旧版の状態/保存位置/乱数/音声予約/画面/描画を比較した。Chromeでは3幅のメニュー操作、312枚の描画ピクセル一致、本編中断→再開、Dev無保存、工房等8入口、file://起動を確認。詳細とscratch証跡は[比較記録](./REFACTOR_VERIFICATION_2026-11-07.md)。
 
-- `af790f5`：共通ハーネスを `tests/helpers/game-harness.js` へ抽出。耐久試算がテスト本体の文字列を切り出す依存を解消。ゲームへの検証コード差し込みはハーネスへ隔離し、後続で段階的に置き換える。
-- `965e34e`：`assets/music.js` に曲選択と音色・再生窓口を抽出。本編とDevの11曲・共通アレンジ・第二楽章の太鼓を同じ経路から再生。終王の既存楽器生成はアダプターとして保持。
-- `assets/audio-session.js`：Context、BGM/SE/Devバス、拍と先読み、停止/フェード/未来の接触音予約取消を集約。閉鎖Context復旧で全バスを作り直し、resume拒否を処理。SEのみでゲーム時計を差し替えない。
-- 重要な既存テストの対応表を REFACTOR_PLAN に追加。
+## 次の一手・注意
 
-## 検証済み
+1. ユーザーの実機試遊を受ける。スピーカー/Bluetoothの聴感・入力遅延はヘッドレス検証だけでは確定できない。
+2. 公開指示を受けたらmainとの差分/競合を確認し、統合候補で規定チェック→CI→Pages→配信内容確認を行う。今回は未承認の公開を進めない。
+3. 今後JS/CSSを変更したら node scripts/build-game-entries.js で再生成し、--checkと全Nodeを実行する。生成領域を直接編集しない。
 
-- 5B：全Node522件（39.7秒）成功。基準297620bと252遷移時点の公開状態/DOM/保存/音声予約が一致。新規/チュートリアル/再開/新規確認の取消と確定/一時停止/設定/Dev4スキン・テンポ・商人・曲試聴と練習を比較。Chrome3幅の本編/Devで設定・音量・較正取消・pause復帰・Dev無保存も成功。構文/diff check成功。scratchのverify-controller.cjs、verify-controller-browser.cjs、controller-node.logが証跡。恒久テスト追加なし。
+進行/演出の組み立て、legacy Canvas描画、通常SE/較正音のレシピはgame内に残る。多数のgetter/setterを渡すだけの物理分離を避けた。検証の任意状態fixture/音声観測の差込はtests/helpersに限定して残す。本番へテスト専用書換えAPIを追加しない。これらのさらなる分離は、その領域を変更する独立作業で扱う。
 
-- 5A：全Node522件（39.0秒）、画像8件・フォント2件成功。基準01643b6とChrome390/1280pxの312 Canvas出力がピクセル一致（採用/legacy/8試作方式、6種の敵、通常/ヒヨコ/ふんどし、予備動作/接触/JUST/被弾/入力待ち）。ブラウザーエラーなし。読込失敗と離脱/別遭遇後の遅延完了は既存Nodeで成功。工房JSONとart-defaultsは改行CRLFを正規化すると完全一致、データ変更なし。構文/Pages/diff check成功。旧画面のソース文字列検査は公開描画APIの実呼出へ移行。scratchのverify-character-browser.cjs、character-renderer-node.log、character-renderer-chick.pngが証跡。
-
-- 4B-3：全Node520件（40.3秒）成功。基準5bfb729と15mode×Dev/保存失敗/死亡入力禁止/中断有無の240条件で表示・戻り先・pause・中断読取位置と条件が一致。Chrome320/390/1280pxの本編/Devで文字/寸法、音量更新、Dev無保存、戦闘から設定→一時停止→再開、較正開始→取消を確認。構文/Pages/diff check成功。scratchのverify-settings-view.cjs、verify-settings-browser.cjs、settings-view-node.logが証跡。恒久テスト追加なし。
-
-- 4B-2：全Node520件（39.2秒）成功。基準ff170ecと864条件を2回ずつ描画し、全表示/状態/保存位置が一致。Chrome320/390/1280pxで13種の分岐・部屋・イベント画面、購入・強化/限界突破/研磨の選択→戻る→確定、休息後の進行を比較。文字/寸法/HTML一致、エラー/ページ横はみ出しなし。寸法比較はhoverの1px移動とCSSアニメーションを両版で無効化。390pxの強化/祭器を目視確認。構文/Pages/diff check成功。scratchのverify-room-view.cjs、verify-room-browser.cjs、room-view-node.logが証跡。
-
-- 4B-1：全Node519件（40.2秒）成功。基準61ae6efと200条件で全表示値/全状態/保存呼出位置が一致。Chromeの320/390/1280pxで報酬/遺物/イベントスキルの文字と座標/寸法が一致。引き直し1回、4択、取得、所持満杯の遺物選択→戻る→交換、イベントスキル取得後9Fへ進行、ページ横はみ出し/ブラウザーエラーなしを確認。390pxの3画面を目視確認。構文/Pages/diff check成功。scratchのverify-rewards-view.cjs、verify-rewards-browser.cjs、rewards-view-node.logが証跡。
-
-- 3C：全Node518件（40.2秒）成功。基準661a1f9と通常/稽古/ふんどし/80F、JUST/PARRY/GUARD/MISS、スキル・遺物あり/なし、敵HP6水準の192条件を実ゲームハーネスで比較。7,826 callback前後の全状態、乱数消費数、最終パーティクル/文字が一致。耐久36比較とfixturesも一致。Chromeで通常PARRYの6コンボ追撃と奥義チャージ消費、その次のガード被弾を確認。構文/diff check成功。scratchのverify-strike-order.cjs、strike-order-parity.log、strike-order-node.log、strike-order-survival.json、verify-strike-browser.cjsが証跡。恒久テストの追加なし。
-
-- 3B（11/07）：全Node518件（39.6秒）成功。基準a740057と16,384条件で全状態と文字/パーティクル/音声/死亡/氷鏡/HUD各callback時点の状態・呼出順が一致。耐久36比較とfixturesも一致。Chromeで実際に被弾してHP減少後の中断→reload→再開、初撃4拍、Devヒヨコ稽古の保存無変更とエラーなしを確認。構文/Pages/diff check成功。scratchのverify-combat-health.cjs、combat-health-node.log、combat-health-survival.json、verify-health-browser.cjsが証跡。
-
-- 4A：全Node515件（39.5秒）成功。基準20b55dfとショップ全タブ/旧タブ名/金額/育成段階/スキン/図鑑全フィルター等256条件で表示と先読みIDが一致し、入力非変更も確認。Chromeで320/390/1280pxの文字・全カードとゲージの座標/寸法が旧版と完全一致。繰り返しタブ切替後の購入が一回だけ課金、装備/購入後表示/フィルター/稽古/戻る/保存無変更を実操作で確認。スクリーンショットも目視確認。構文/Pages/diff check成功。文字列の所在に依存するui-copyテストをrender結果の検査へ更新。scratchのverify-menu-views.cjs、verify-menu-browser.cjs、menu-views-node.log、menu-{shop,codex}-{320,390,1280}.pngが証跡。
-
-- 3A：全Node513件（39.0秒）成功。基準da243b8と全スキル説明15,872件、計算60,000件が完全一致。ショップ/図鑑/ビルド/相乗効果/報酬の22 DOM比較、耐久36比較とfixturesも一致。Chromeで育成済みタイトルのショップ/図鑑HP表示とラン内剛剣補正後の落雷表示、診断正常を確認。構文/Pages参照/diff check、balance-simulation成功。旧スキル文字列をgame.jsから探すテスト1件をカタログ検査へ移行。scratchのverify-combat-math.cjs、verify-skill-ui.cjs、verify-skill-browser.cjs、combat-math-node.logが証跡。
-
-- 2C：全Node509件（39.4秒）、復元336条件の状態/外部呼出順比較、耐久36比較とfixturesが成功。Chromeで中断→reload→再開のHP/障壁/敵HPと初撃4拍、Devヒヨコ稽古で保存無変更、ブラウザー/アセットエラーなしを確認。保存失敗・storage取得拒否・JSON不正・削除失敗をstore単体で検証。構文/Pages参照/diff check成功。証跡はscratchのsave-store-node.log、save-store-survival.json、verify-save-browser.cjs。
-
-- 2B：全Node505件（38.4秒）成功。基準f21b9bfに対し、全7保存モード・4スキン・効果ON/OFF・死神契約有無・旧/現行/独自HP値の336条件で全復元状態とUI/時計呼出順が一致。耐久36比較とfixtures、JS構文、Pages参照、diff check成功。Chromeで中断→reload→再開時のHP/障壁/敵HPと初撃4拍を確認。証跡はscratchのverify-restore-parity.cjs、restore-node.log、restore-survival.json。
-
-- 2A：敵生成前の全103項目を11条件で `3a16cc5` と照合し一致。耐久36比較とfixturesも一致。全Node503件（39.8秒）、バランス試算、CI相当のPages静的検査、変更JS構文とdiff check成功。Chromeで本編の開始とDevのヒヨコ稽古を確認。比較用ログは物理repoの `.local-only/scratch/`。
-
-- ハーネス抽出後：全Node496件成功、テスト登録と本体を保持。耐久試算36比較とfixtureを含むJSONが基準と完全一致。
-- 楽曲抽出後：全Node497件成功（38.725秒）。静的Pages参照、構文、diff check成功。耐久試算も一致。
-- 親の独立比較：基準 `1984c35` と83音楽条件、413,868件の音声ノード生成・接続・パラメーター・開始/終了予約が一致。
-- Chrome実行：本編開始・一時停止/再開、全11曲試聴、5F守護者の通常/ヒヨコ、80F精鋭終王のヒヨコ練習。音声時計の進行、攻撃の進行、音声/ブラウザー/アセットエラーなしを確認。
-- 最終候補：全Node501件（38.692秒）、画像8件、フォント2件成功。耐久結果一致、構文/Pages参照成功。先読み640条件を抽出前と独立比較し、発音時刻と次ステップが一致。Chromeでは上記に加え、本編のContext強制終了→安全停止→再作成と、Dev効果音バスの再作成を確認。
-- 実機スピーカーでの聴感と入力遅延は未検証。
-
-## 残る範囲と次の一手
-
-5Bまで完了。game内部のcreateGameControllerが開始/中断復元/稽古/設定/一時停止/タイトルと私有の遷移状態を所有する。createDevControllerはDevでだけ生成し、開始/終了は共通controller経由。スキル上限をskills.capへ移し、検証ハーネスの上限/merchantTargetsアクセスをソース差込から除去した。戦闘途中の任意状態を作る残りの差込はtests/helpers内のみ。次は5C配信manifest。公開指示を受けたら統合候補の全チェック・配信検証を行う。
-
-途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
-
-以前の公開証跡と作業記録は [HANDOFF履歴](./HANDOFF_HISTORY_2026-11-06.md) に保存。履歴中の「最新」「次」は当時の状態であり、現在の作業指示ではない。
+原画・保存済みポーズ・無関係なユーザーファイルは保持。途中の比較スクリプト/ログは物理checkoutの .local-only/scratch（Git対象外）。過去の公開記録は[HANDOFF履歴](./HANDOFF_HISTORY_2026-11-06.md)。構成は[ARCHITECTURE](./ARCHITECTURE.md)、アート参照は[ART_DEPENDENCIES](./ART_DEPENDENCIES.md)を参照。

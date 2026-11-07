@@ -18,7 +18,7 @@ test('credits are reachable from both entrypoints', () => {
   const html = read(file);
   assert.match(html, /<footer class="site-footer">/);
   assert.match(html, /href="\.\/credits\.html"/);
-  assert.ok(html.includes('./assets/style.css?v='+build+'&font=8'));
+  assert.ok(html.includes('./assets/style.css?v='+build+'&r='));
   assert.doesNotMatch(html, /class="brandmark"/);
   assert.match(html, /class="title-logo">パリィ<span class="title-no">の<\/span>塔<\/h2>/);
   assert.doesNotMatch(html, /id="titleCover"[^]*?<div class="modal"><div class="modal-symbol">⚔️/);

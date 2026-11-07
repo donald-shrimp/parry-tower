@@ -66,16 +66,19 @@
 ```text
 index.html                 ゲーム画面のDOM
 assets/style.css           UI・レスポンシブCSS
-assets/game.js             ゲーム、描画、音楽とパリィ判定
+assets/game.js             進行・操作の組み立て、パリィ判定と描画
 assets/encounters.js       階層ごとの出現ルール、レア・精鋭、遭遇図鑑のデータ定義
 assets/progression.js      恒久強化の費用・保存形式・初期スキル装備の検証
 tests/                    出現ルール・恒久強化・ゲーム画面の状態遷移を検証するテスト
 .nojekyll                  GitHub Pages静的配信設定
 .github/workflows/check.yml  構文と静的ファイルのCI
 docs/ARCHITECTURE.md       同期方式と改修時の注意
+scripts/game-assets.json   本編・Devのアセットと読み込み順の正本
 ```
 
-`assets/game.js` はv0.5をベースに、v0.5.2でパリィ成功時の青白い閃光・衝撃波・音楽的な効果音・敵の反動を追加したものです。パリィ判定（ジャスト±11ms／通常±31ms）、BGM同期、入力タイミングは維持しています。過去のv0.1〜v0.5はGitタグで保存しています。
+音声、状態生成・復元、保存、戦闘計算、メニュー表示、立ち絵の描画入口は独立したモジュールに分けています。各モジュールの担当は [構成と保守上の注意](docs/ARCHITECTURE.md) を参照してください。過去のv0.1〜v0.5はGitタグで保存しています。
+
+ゲームを遊ぶためのビルドは不要です。開発でJS/CSSを変更したら `node scripts/build-game-entries.js` を実行すると、本編・Devの読み込みタグと診断一覧、内容に応じたキャッシュ更新URLを再生成できます。追加するファイルと依存順は `scripts/game-assets.json` に記入します。`node scripts/build-game-entries.js --check` で生成漏れを検査できます。
 
 ```bash
 # ローカルWebサーバーで確認する場合（Python 3）

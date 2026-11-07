@@ -1,0 +1,343 @@
+{
+  "build": "v0.9.9",
+  "pages": [
+    "index.html",
+    "dev.html"
+  ],
+  "styles": [
+    {
+      "file": "style.css",
+      "diagnose": true
+    },
+    {
+      "file": "dev-tools.css",
+      "pages": [
+        "dev.html"
+      ]
+    }
+  ],
+  "scripts": [
+    {
+      "file": "diagnostics.js",
+      "diagnose": true
+    },
+    {
+      "file": "encounters.js",
+      "diagnose": true,
+      "module": {
+        "name": "encounters",
+        "global": "ParryEncounters"
+      }
+    },
+    {
+      "file": "enemy-motions.js",
+      "diagnose": true,
+      "module": {
+        "name": "motions",
+        "global": "ParryEnemyMotions"
+      }
+    },
+    {
+      "file": "progression.js",
+      "diagnose": true,
+      "module": {
+        "name": "progression",
+        "global": "ParryProgression"
+      }
+    },
+    {
+      "file": "combat-math.js",
+      "diagnose": true,
+      "after": [
+        "progression.js"
+      ],
+      "module": {
+        "name": "combatMath",
+        "global": "ParryCombatMath"
+      }
+    },
+    {
+      "file": "combat-health.js",
+      "diagnose": true,
+      "after": [
+        "combat-math.js"
+      ],
+      "module": {
+        "name": "combatHealth",
+        "global": "ParryCombatHealth"
+      }
+    },
+    {
+      "file": "skills.js",
+      "diagnose": true,
+      "after": [
+        "combat-math.js"
+      ],
+      "module": {
+        "name": "skills",
+        "global": "ParrySkills"
+      }
+    },
+    {
+      "file": "shop-view.js",
+      "diagnose": true,
+      "after": [
+        "skills.js",
+        "progression.js"
+      ],
+      "module": {
+        "name": "shopView",
+        "global": "ParryShopView"
+      }
+    },
+    {
+      "file": "codex-view.js",
+      "diagnose": true,
+      "after": [
+        "skills.js",
+        "encounters.js"
+      ],
+      "module": {
+        "name": "codexView",
+        "global": "ParryCodexView"
+      }
+    },
+    {
+      "file": "run-state.js",
+      "diagnose": true,
+      "after": [
+        "progression.js"
+      ],
+      "module": {
+        "name": "runState",
+        "global": "ParryRunState"
+      }
+    },
+    {
+      "file": "relics.js",
+      "diagnose": true,
+      "module": {
+        "name": "relics",
+        "global": "ParryRelics"
+      }
+    },
+    {
+      "file": "rewards-view.js",
+      "diagnose": true,
+      "after": [
+        "skills.js",
+        "relics.js"
+      ],
+      "module": {
+        "name": "rewardsView",
+        "global": "ParryRewardsView"
+      }
+    },
+    {
+      "file": "room-view.js",
+      "diagnose": true,
+      "module": {
+        "name": "roomView",
+        "global": "ParryRoomView"
+      }
+    },
+    {
+      "file": "routes.js",
+      "diagnose": true,
+      "module": {
+        "name": "routes",
+        "global": "ParryRoutes"
+      }
+    },
+    {
+      "file": "events.js",
+      "diagnose": true,
+      "module": {
+        "name": "events",
+        "global": "ParryEvents"
+      }
+    },
+    {
+      "file": "character-art.js",
+      "after": [
+        "enemy-motions.js"
+      ]
+    },
+    {
+      "file": "character-svg.js"
+    },
+    {
+      "file": "character-flat.js"
+    },
+    {
+      "file": "character-trace.js"
+    },
+    {
+      "file": "character-ready.js"
+    },
+    {
+      "file": "character-knight.js"
+    },
+    {
+      "file": "combat-art.js",
+      "after": [
+        "character-art.js",
+        "character-ready.js",
+        "character-knight.js"
+      ]
+    },
+    {
+      "file": "combat-sfx.js",
+      "diagnose": true
+    },
+    {
+      "file": "character-art-defaults.js"
+    },
+    {
+      "file": "character-edit.js",
+      "after": [
+        "character-art-defaults.js"
+      ]
+    },
+    {
+      "file": "palette-candidates.js"
+    },
+    {
+      "file": "character-style.js",
+      "after": [
+        "palette-candidates.js"
+      ]
+    },
+    {
+      "file": "character-hero-puppet.js",
+      "after": [
+        "character-edit.js",
+        "character-style.js"
+      ]
+    },
+    {
+      "file": "character-enemy-data.js"
+    },
+    {
+      "file": "character-enemy-puppet.js",
+      "after": [
+        "character-enemy-data.js",
+        "character-edit.js",
+        "character-style.js",
+        "combat-art.js"
+      ]
+    },
+    {
+      "file": "character-knight-puppet.js",
+      "after": [
+        "character-hero-puppet.js",
+        "character-enemy-puppet.js",
+        "combat-art.js"
+      ]
+    },
+    {
+      "file": "character-rig.js"
+    },
+    {
+      "file": "stage-music.js",
+      "diagnose": true,
+      "module": {
+        "name": "stageMusic",
+        "global": "ParryStageMusic"
+      }
+    },
+    {
+      "file": "final-boss-music.js",
+      "diagnose": true,
+      "module": {
+        "name": "finalBossMusic",
+        "global": "ParryFinalBossMusic"
+      }
+    },
+    {
+      "file": "music.js",
+      "diagnose": true,
+      "after": [
+        "encounters.js",
+        "stage-music.js",
+        "final-boss-music.js"
+      ],
+      "module": {
+        "name": "music",
+        "global": "ParryMusic"
+      }
+    },
+    {
+      "file": "audio-clock.js",
+      "diagnose": true,
+      "module": {
+        "name": "clock",
+        "global": "ParryAudioClock"
+      }
+    },
+    {
+      "file": "audio-session.js",
+      "diagnose": true,
+      "module": {
+        "name": "audioSession",
+        "global": "ParryAudioSession"
+      }
+    },
+    {
+      "file": "player-settings.js",
+      "diagnose": true,
+      "module": {
+        "name": "settings",
+        "global": "ParryPlayerSettings"
+      }
+    },
+    {
+      "file": "run-checkpoint.js",
+      "diagnose": true,
+      "module": {
+        "name": "checkpoint",
+        "global": "ParryRunCheckpoint"
+      }
+    },
+    {
+      "file": "save-store.js",
+      "diagnose": true,
+      "module": {
+        "name": "saveStore",
+        "global": "ParrySaveStore"
+      }
+    },
+    {
+      "file": "character-renderer.js",
+      "diagnose": true,
+      "after": [
+        "character-art.js",
+        "character-svg.js",
+        "character-flat.js",
+        "character-trace.js",
+        "character-ready.js",
+        "character-knight.js",
+        "combat-art.js",
+        "character-rig.js",
+        "character-knight-puppet.js"
+      ],
+      "module": {
+        "name": "characterRenderer",
+        "global": "ParryCharacterRenderer"
+      }
+    },
+    {
+      "file": "game.js",
+      "diagnose": true
+    },
+    {
+      "file": "dev-tools.js",
+      "pages": [
+        "dev.html"
+      ],
+      "after": [
+        "game.js"
+      ]
+    }
+  ]
+}
