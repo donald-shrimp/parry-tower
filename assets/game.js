@@ -14,27 +14,18 @@ function presentContact(){
 }
 const MUSIC=window.ParryMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
-// Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
-const CHARACTER_ART=window.ParryCharacterArt;
-const CHARACTER_SVG=window.ParryCharacterSvg;
-const CHARACTER_FLAT=window.ParryHeroFlat;
-const CHARACTER_TRACE=window.ParryHeroTrace;
-const CHARACTER_READY=window.ParryHeroReady;
-const CHARACTER_KNIGHT=window.ParryKnightTrace;
-const COMBAT_ART=window.ParryCombatArt;
-const KNIGHT_PUPPET=window.ParryKnightPuppet;
-const ILLUSTRATED_ENABLED=!/(?:^|[?&])art=/.test(window.location?.search||'')||/(?:^|[?&])art=illustrated(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_RIG=window.ParryCharacterRig;
-const CHARACTER_RIG_ENABLED=/(?:^|[?&])art=rework(?:&|$)/.test(window.location?.search||'');
-const COMBAT_ART_ENABLED=/(?:^|[?&])art=impact(?:&|$)/.test(window.location?.search||'');
+// Adopted artwork and explicit comparison modes share one draw dispatcher.
+const artModes=window.ParryCharacterRenderer.modes(window.location?.search||'');
+const COMBAT_ART=window.ParryCombatArt,KNIGHT_PUPPET=window.ParryKnightPuppet,CHARACTER_RIG=window.ParryCharacterRig;
+const ILLUSTRATED_ENABLED=artModes.illustrated,COMBAT_ART_ENABLED=artModes.impact,CHARACTER_RIG_ENABLED=artModes.rework;
 if(COMBAT_ART_ENABLED)document.documentElement.dataset.parryArt='impact';
 if(CHARACTER_RIG_ENABLED)document.documentElement.dataset.parryArt='rework';
-const CHARACTER_KNIGHT_ENABLED=/(?:^|[?&])art=knight-trace(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_READY_ENABLED=/(?:^|[?&])art=ready(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_TRACE_ENABLED=/(?:^|[?&])art=trace(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_FLAT_ENABLED=/(?:^|[?&])art=flat(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_SVG_ENABLED=/(?:^|[?&])art=svg(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_ART_ENABLED=/(?:^|[?&])art=prototype(?:&|$)/.test(window.location?.search||'');
+const characterRenderer=window.ParryCharacterRenderer.create({
+ modes:artModes,illustrated:KNIGHT_PUPPET,rig:CHARACTER_RIG,impact:COMBAT_ART,
+ ready:window.ParryHeroReady,trace:window.ParryHeroTrace,flat:window.ParryHeroFlat,
+ svg:window.ParryCharacterSvg,prototype:window.ParryCharacterArt,knightTrace:window.ParryKnightTrace,
+ enemyPuppet:window.ParryEnemyPuppet
+});
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
 const PR=window.ParryProgression;if(!PR)throw Error('Missing assets/progression.js');
 const RunState=window.ParryRunState;if(!RunState)throw Error('Missing assets/run-state.js');
@@ -1952,21 +1943,15 @@ function hero(now){
   const pulse=(.8+.2*Math.sin(now/180)).toFixed(2);
   ctx.filter=`drop-shadow(0 0 4px rgba(255,190,70,${pulse})) drop-shadow(0 0 10px rgba(235,105,15,${pulse}))`;
  }
- let drawn=false;
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
-   counterWave:!ultActive,
-   attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,
-   pose:poseInput}))drawn=true;
- else if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,pose:poseInput}))drawn=true;
- else if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,pose:poseInput}))drawn=true;
+ let drawn=characterRenderer.heroWorld(ctx,{illustrated:useIllustratedArt()&&!game.artFallback,legacy:legacyVisualEnabled()},
+  {width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
+   counterWave:!ultActive,attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,
+   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,pose:poseInput});
  if(!drawn){
   ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
   ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
-  if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  drawn=characterRenderer.heroLocal(ctx,{legacy:legacyVisualEnabled()},
+   {now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt});
   if(!drawn){
    fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
    fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
@@ -2035,22 +2020,10 @@ function enemy(now){
  const presentedKind=splitContact()?(['just','parry'].includes(shownResult)?shownResult:'contact'):(awaitingInput?'':game.lastStrikeKind);
  const d=attackAt-now;
  const isHeavy=game.mode==='combat'&&(e.boss||e.elite)&&!opening&&(span/(score.beat*1000))>=2.99;
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.readyFor(e)){
-  const enemyData={e,m,now,width:w,height:h,attackAt,attackSpan:span,lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind};
-  const sampleFn=window.ParryEnemyPuppet?.supports?.(e)?window.ParryEnemyPuppet.sample:KNIGHT_PUPPET.sample;
-  const sampled=isHeavy&&sampleFn?sampleFn(enemyData):null;
-  if(sampled)drawSampledHeavyAura(sampled,e,now,false);
-  if(KNIGHT_PUPPET.drawEnemy(ctx,enemyData)){
-   if(sampled)drawSampledHeavyAura(sampled,e,now,true);
-   return;
-  }
- }
- if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
- if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
+ if(characterRenderer.enemyWorld(ctx,
+  {illustrated:useIllustratedArt()&&!game.artFallback,legacy:legacyVisualEnabled(),heavy:isHeavy},
+  {e,m,now,width:w,height:h,attackAt,attackSpan:span,lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind},
+  drawSampledHeavyAura))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
  const prepare=m.cuePrepare??Math.min(m.prepare,Math.max(m.swing+120,span-130));
@@ -2101,10 +2074,8 @@ function enemy(now){
   ctx.filter='hue-rotate('+degrees+'deg) saturate('+saturation+'%)';
  }
  // Visual-only enemy identities; attack tip uses the original contact coordinate.
- if(!legacyVisualEnabled()&&CHARACTER_KNIGHT_ENABLED&&CHARACTER_KNIGHT?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
-  // Traced knight art only: original timing, position, parry contact and saved state unchanged.
- }else if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
-  // Optional art-layer pilot; the attack clock and contact point are unchanged.
+ if(characterRenderer.enemyLocal(ctx,{legacy:legacyVisualEnabled()},{e,m,now,charge,action,p,recoil,rec,impact})){
+  // Optional local-coordinate artwork; gameplay timing and transforms stay external.
  }else if(VARIANT_MOTIONS?.draw(e.sprite||e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
   // Dedicated silhouette drawn without changing the Web Audio clock or hitboxes.
  }else if(e.kind==='slime'){

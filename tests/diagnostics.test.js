@@ -50,7 +50,7 @@ function diagnosticPage(page='index.html',options={}){
  };
  const modules={
   ParryAudioClock:{},ParryAudioSession:{},ParryRunState:{},ParryCombatMath:{},ParryCombatHealth:{},ParrySkills:{},ParryShopView:{},ParryCodexView:{},ParrySaveStore:{},
-  ParryEncounters:{},ParryEnemyMotions:{},ParryProgression:{},ParryRelics:{},ParryRewardsView:{},ParryRoomView:{},
+  ParryEncounters:{},ParryEnemyMotions:{},ParryProgression:{},ParryRelics:{},ParryRewardsView:{},ParryRoomView:{},ParryCharacterRenderer:{},
   ParryRoutes:{branchKind(floor){return floor%10===4?'first':floor%10===8?'second':null}},
   ParryEvents:{},ParryStageMusic:{},ParryFinalBossMusic:{},ParryMusic:{},ParryPlayerSettings:{},ParryRunCheckpoint:{}
  };
@@ -82,7 +82,7 @@ function diagnosticPage(page='index.html',options={}){
 }
 test('HTML, game marker and asset query versions are identical in both entrypoints',()=>{
  const required=['style.css','diagnostics.js','encounters.js','enemy-motions.js','progression.js','run-state.js','combat-math.js','combat-health.js','skills.js','shop-view.js','codex-view.js','save-store.js',
-  'relics.js','rewards-view.js','room-view.js','routes.js','events.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','audio-session.js','game.js'];
+  'relics.js','rewards-view.js','room-view.js','routes.js','events.js','combat-sfx.js','stage-music.js','final-boss-music.js','music.js','audio-session.js','character-renderer.js','game.js'];
  for(const file of ['index.html','dev.html']){
   const s=fs.readFileSync(file,'utf8');
   assert.match(s,/<meta name="parry-build" content="v0\.9\.9">/);
@@ -164,7 +164,7 @@ test('missing module, stale URL and script load failure each trigger a warning',
  }
  const stale=diagnosticPage('index.html',{assetEntries:[]});
  const staleAssets=stale.api.status().staleAssets;
- assert.equal(staleAssets.length,26);
+ assert.equal(staleAssets.length,27);
  assert.ok(staleAssets.includes('music.js'));
  assert.equal(stale.api.status().status,'mismatch');
  const failed=diagnosticPage('index.html',{failedAsset:'./assets/game.js?v='+BUILD});

@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -63,9 +64,9 @@ test('hero and enemy animation supports impact, wind-up, and recoil keyframes',(
 });
 test('prototype is opt-in on both HTML entrypoints and optional when module is absent',()=>{
  const game=fs.readFileSync('assets/game.js','utf8');
- assert.match(game,/art=prototype/);
- assert.match(game,/CHARACTER_ART_ENABLED&&CHARACTER_ART\?\.drawHero/);
- assert.match(game,/CHARACTER_ART_ENABLED&&CHARACTER_ART\?\.drawEnemy/);
+
+ assertPilotSelected('prototype','hero');
+ assertPilotSelected('prototype','enemy');
  assert.match(game,/else if\(VARIANT_MOTIONS\?\.draw/);
  for(const name of ['index.html','dev.html']){
   const html=fs.readFileSync(name,'utf8');
@@ -96,9 +97,9 @@ test('SVG hero has articulated files and an explicit reference manifest',()=>{
  }
 });
 test('SVG hero is opt-in; the original and Canvas pilots remain untouched',()=>{
- const src=fs.readFileSync('assets/game.js','utf8');
- assert.match(src,/art=svg/);
- assert.match(src,/CHARACTER_SVG_ENABLED&&CHARACTER_SVG\?\.drawHero/);
+
+
+ assertPilotSelected('svg','hero');
  for(const p of ['index.html','dev.html']){
   const html=fs.readFileSync(p,'utf8');
   assert.ok(html.indexOf('assets/character-svg.js')>html.indexOf('assets/character-art.js'));

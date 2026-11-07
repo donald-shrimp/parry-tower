@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -269,9 +270,9 @@ test('preview and opt-in game share real renderers, locally available assets, an
  assert.match(preview,/art\.drawHero\(ctx/);
  assert.match(preview,/prefers-reduced-motion/);
  assert.doesNotMatch(preview,/localStorage|AudioContext|fetch\(/);
- const game=fs.readFileSync('assets/game.js','utf8');
- assert.match(game,/COMBAT_ART_ENABLED&&COMBAT_ART\?\.drawEnemy/);
- assert.match(game,/COMBAT_ART_ENABLED&&COMBAT_ART\?\.drawHero/);
+
+ assertPilotSelected('impact','enemy');
+ assertPilotSelected('impact','hero');
 });
 
 

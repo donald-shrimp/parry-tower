@@ -126,6 +126,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   counterSlash(ctx,data){const out=art.counterSlash(ctx,data);if(out)bonusArtEvents.push({kind:'slashTint',tint:data.tint?.id||null});return out;},
   comboAura(ctx,data){const out=art.comboAura(ctx,data);if(out)bonusArtEvents.push({kind:'comboGlow',tier:out.tier,combo:data.combo});return out;}};}
  if(artGate)window.ParryKnightPuppet=artGate;
+ vm.runInNewContext(readProjectFile('assets/character-renderer.js'),context,{filename:'character-renderer.js'});
  // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
  const source=readProjectFile('assets/game.js');
  assert.match(source,/\}\)\(\);\s*$/);

@@ -12,6 +12,7 @@ Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localSto
 | --- | --- |
 | `assets/game.js` | ラン状態、進行、戦闘の効果適用、画面・描画・入力、音声への要求。反撃は名前付き同期段階に整理済み。画面/描画/controllerは今後も段階的な抽出対象 |
 | `assets/encounters.js` / `enemy-motions.js` | 敵・階層・譜面・モーション定義 |
+| `assets/character-renderer.js` | 採用/legacy/比較用描画先の選択。world/local座標と重攻撃オーラの前後順を維持。時刻/姿勢/必要値を受け取り、戦闘状態・読込待ち・時計を所有しない |
 | `assets/shop-view.js` / `codex-view.js` | 読取専用の表示入力からHTMLと表示値を生成。DOM反映/スキン先読み/操作リスナー/購入と稽古資格の再検証はgame側 |
 | `assets/rewards-view.js` | 報酬/遺物/イベントスキル/所持遺物の表示。抽選済み候補と現在の説明値を読み取るだけで、取得/引き直し/交換/保存はgame側 |
 | `assets/room-view.js` | 分岐/休息/商人/イベントの表示。資格・強化対象・補正済み報酬額はgameが解決し、viewは文言とHTMLを生成する |
@@ -55,3 +56,5 @@ SEの波形準備は譜面の原点を決める前に行う。乱数消費はゲ
 基本検証は `node --test tests/*.test.js`。画像・フォントはAGENTSとCIに従う。タイミング・保存・戦闘順序の代表テストは [工程書の対応表](./REFACTOR_PLAN.md#維持する既存検証の対応表) に記載。音色は譜面ハッシュとノード予約値、操作は実ブラウザーも使って確認する。ヘッドレス実行は実機スピーカー/Bluetoothの聴感と遅延の代わりにはならない。
 
 原画・工房の保存ポーズ・生成アートの扱いは [LOCAL_FILES](./LOCAL_FILES.md) と既存生成スクリプトに従う。
+
+本編/工房/比較ページのアート依存と正本→生成物の関係は [ART_DEPENDENCIES](./ART_DEPENDENCIES.md) を参照。画像読込の取消はgameのrun/encounter/mode検査を維持している。
