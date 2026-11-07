@@ -178,7 +178,7 @@ $('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.va
 function playMusicStep(ac,step,at){
  if(!audioEnabled)return;
  MUSIC?.playStep(ac,{
-  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,
+  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,latter:score.latter,
   movement:game.enemy?.phase||1,startStep:score.musicStartStep,countIn:game.mode==='phase'&&game.phaseStage==='countin',
   arrangement:devMusicAudition||['combat','phase'].includes(game?.mode)
  });
@@ -194,8 +194,10 @@ function startScore(enemy){
  attackPresentation.cues.clear();attackPresentation.contact=null;
  const beat=60/encounterBpm(enemy),boss=!!enemy.boss;
  const selected=DEV_MODE&&devMusicTheme!=='auto'?MUSIC?.get(devMusicTheme):MUSIC?.forEncounter(game.floor||1,enemy);
+ const musicFloor=devMusicAudition&&boss?selected?.to||1:game.floor||1;
+ const latter=!!MUSIC?.latterForEncounter(musicFloor,enemy,selected);
  const startStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
- if(!audio.startScore({beat,id:selected?.id||'crypt',boss,startStep}))return;
+ if(!audio.startScore({beat,id:selected?.id||'crypt',boss,latter,startStep}))return;
  audioClock.reset();
  $('trackLabel').textContent=(selected&&!selected.original?selected.name:boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';
  scheduleScore();
@@ -2611,7 +2613,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   musicState(){
    const beats=score.active&&audio.context?Math.max(0,(audio.context.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
    const bars=MUSIC?.get(score.music)?.bars||8;
-   return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
+   return {active:score.active,audition:devMusicAudition,id:score.music,latter:score.latter,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
   getSfxVolume:audio.getDevSfxVolume,
   setSfxVolume:audio.setDevSfxVolume,
