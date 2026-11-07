@@ -1,8 +1,12 @@
-# 現在の作業（2026-11-08・v1.0.6公開）
+# 現在の状態（2026-11-08・v1.0.6公開済み）
 
-ユーザーから本番公開までの指示あり。ローカルmainの後半BGM採用（aa4f801）と6階目切替（4bcc765）をv1.0.6として公開する。元のアレンジブランチはマージせず、譜面と既存音声への最小接続だけ。5階目は通常曲＋既存ボステンポ、6階目から後半曲、10階目は後半曲＋ボステンポ。65/70階の星界の監視者と75/80階の終王3曲を維持。
+v1.0.6を本番公開済み。PR #47、main統合 `2f6301586002c9810f6fa56e90a5e9207caab2c2`、タグv1.0.6。各エリアの5階目は通常譜面＋既存のボステンポ、6階目から後半アレンジ、10階目は後半アレンジ＋ボステンポ。星界の監視者（65/70階・周回）、75階、80階の両楽章は従来どおり。元のアレンジブランチはマージせず譜面だけを採用。BPM計算・音声クロック・判定・保存形式は維持。
 
-採用済み仕様は [STAGE_MUSIC_ADOPTION](./STAGE_MUSIC_ADOPTION.md)、リリース説明は [V106](./V106.md)。作業ツリーadopt-stage-scoresのrelease/v1.0.6ブランチを8018で確認できる。元ブランチの8008モック・未コミット試聴修正は保持。版番号・生成参照を更新済み。公開候補の全Node537件、画像8件、フォント2件、JS構文/生成一致、バランス試算、diff check成功。固定v1.0.5を期待していた既存テストは配信manifestのbuild参照へ修正した。Chrome390pxで18条件の譜面/ボステンポ/連続再生、本編/Dev診断、中断復帰/4拍、80FヒヨコDev保存分離、10ツール、file://起動を確認。証跡は物理checkoutのscratch内のv106-node.log、v106-balance.log、v106-local-music.log、v106-local-entries.log。次はPR/main統合、CI/Pages、ライブ確認。
+公開候補は全Node537件、画像8件、フォント2件、JS構文/生成一致、バランス試算、diff check成功。旧版固定の検査は配信manifestのbuild参照へ修正。PR CI（42392249247）、main CI（42392422042）、Pages（42392421195）はすべて成功。本番の両HTML、48 JS/CSS、フォント、工房/エディタ、リンク集は統合コミットとバイト一致。実Chromeで18条件の5/6/10階目・周回・保護対象の譜面とBPM、連続再生、pause/resumeを確認。本編/Dev診断、中断復帰と4拍、80FヒヨコDev保存分離、10ツール、file://起動も成功。
+
+証跡は物理checkoutの `.local-only/scratch/` 内の `v106-node.log`、`v106-balance.log`、`v106-live-assets.log`、`v106-live-entries.log`、`v106-live-music.log` と `verify-v106-*.cjs`。公開URLは https://donald-shrimp.github.io/parry-tower/?v=v1.0.6 。公開作業の残りなし。この記録更新は配信後の文書変更で、v1.0.6の配信対象ツリーは上記統合コミット。
+
+本体mainの作業ツリーは `.local-only/worktrees/main`。確認サーバー8018はadopt-stage-scoresのrelease/v1.0.6作業ツリー。元ブランチの8008モックと未コミット試聴修正は保持。仕様は [STAGE_MUSIC_ADOPTION](./STAGE_MUSIC_ADOPTION.md)、利用者向け変更内容は [V106](./V106.md)。
 
 以下は採用時までの記録（「未公開」「別指示」は当時の状態）。
 
