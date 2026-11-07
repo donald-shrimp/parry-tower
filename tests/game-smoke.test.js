@@ -1,250 +1,10 @@
 'use strict';
-const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {makeHarness}=require('./helpers/game-harness.js');
 const P=require('../assets/encounters.js');
 const PR=require('../assets/progression.js');
 const RUN_KEY='parryTowerRun_v1',SETTINGS_KEY='parryTowerSettings_v1';
 
-function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy=cantor%3Anormal',artGate=null,failRunSave=false){
- let clock=10000,animation=null,randomOverride=null;const clickers=new Map(),storage=new Map(Object.entries(seed));
- const audioEvents=[],metalEvents=[],contactEvents=[],tailEvents=[],blackouts=[],artDrawCounts={hero:0,enemy:0};let lastHeroPose=null,lastHeroSkin=null,lastEnemySample=null;const bonusArtEvents=[];
- const math=Object.create(Math);math.random=()=>randomOverride===null?Math.random():randomOverride;
- const html=fs.readFileSync(devMode?'dev.html':'index.html','utf8');
- const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
- const required=['codexCover','practiceBtn','practiceEnemy','codexList','zoneLabel','gameCanvas','upgradeCover','upgradeList','upgradeTabs','combatBuffs','relicCover','relicOfferCards','relicReplaceList','relicList','relicCount','routeCover','routeCards','roomCover','roomActions','routeSkillCover','routeSkillCards','towerCoinsLabel'];
- for(const id of required)assert.ok(ids.includes(id),id+' is missing in index.html');
- const el=new Map();
- function node(id){
-  const n={
-   id,hidden:false,dataset:{},style:{},innerHTML:'',textContent:'',value:id==='practiceEnemy'?'knight':id==='codexFilter'?'all':id==='devFloor'?'11':'',disabled:false,listeners:{},children:[],
-   append(...children){this.children.push(...children)},appendChild(child){this.children.push(child)},
-   setAttribute(k,v){this[k]=v},
-   addEventListener(k,cb){this.listeners[k]=cb;},
-   click(){this.listeners.click?.()},scrollIntoView(){},focus(){},
-   getBoundingClientRect(){return {width:800,height:500}},
-   querySelectorAll(selector){
-    if(selector==='[data-practice]'){
-     return [...this.innerHTML.matchAll(/data-practice="([^"]+)"/g)].map(m=>{
-      const key=m[1],b={dataset:{practice:key},addEventListener(type,cb){clickers.set(key,cb)}};return b;
-     });
-    }
-    return [];
-   }
-  };
-  el.set(id,n);return n;
- }
- for(const id of ids)node(id);
- const noop=()=>{};
- const ctx=new Proxy({globalAlpha:1},{
-  get(target,k){
-   if(k==='fillRect')return (...args)=>{if(String(target.fillStyle).startsWith('rgba(3,6,18,'))blackouts.push({color:target.fillStyle,args});};
-   if(k==='createLinearGradient'||k==='createRadialGradient')return ()=>({addColorStop:noop});
-   if(k==='measureText')return ()=>({width:36});
-   return target[k]??noop;
-  },set(target,k,v){target[k]=v;return true;}
- });
- el.get('gameCanvas').getContext=()=>ctx;
- const para=()=>({value:0,setValueAtTime:noop,exponentialRampToValueAtTime:noop,linearRampToValueAtTime:noop,cancelScheduledValues:noop,setTargetAtTime:noop});
- class Audio{
-  constructor(){this.state='running';this.sampleRate=44100;this.destination={}}
-  get currentTime(){return clock/1000}
-  getOutputTimestamp(){return {performanceTime:clock,contextTime:clock/1000}}
-  resume(){return Promise.resolve()}
-  createGain(){const gain=para();gain.setTargetAtTime=value=>{gain.value=value};return {gain,connect:noop}}
-  createOscillator(){
-   const osc={frequency:null,initialFrequency:null,type:'sine',connect:noop,
-    start(time){audioEvents.push({time,frequency:osc.initialFrequency,type:osc.type})},stop:noop};
-   osc.frequency=para();
-   osc.frequency.setValueAtTime=(hz)=>{osc.initialFrequency=hz};
-   return osc;
-  }
-  createBuffer(channels,length){return {getChannelData:()=>new Float32Array(length)}}
-  createBufferSource(){return {connect:noop,start:noop,stop:noop}}
-  createBiquadFilter(){return {frequency:para(),Q:para(),connect:noop}}
- }
- const windowListeners={},documentListeners={};
- const window={
-  ParryAudioClock:require('../assets/audio-clock.js'),
-  ParryPlayerSettings:require('../assets/player-settings.js'),ParryRunCheckpoint:require('../assets/run-checkpoint.js'),ParryEncounters:P,ParryEnemyMotions:require('../assets/enemy-motions.js'),ParryProgression:require('../assets/progression.js'),ParryRelics:require('../assets/relics.js'),ParryRoutes:require('../assets/routes.js'),ParryEvents:require('../assets/events.js'),AudioContext:Audio,devicePixelRatio:1,addEventListener:(type,listener)=>{windowListeners[type]=listener}
- };
- window.ParryStageMusic=require('../assets/stage-music');
- window.ParryFinalBossMusic=require('../assets/final-boss-music');
- const document={
-  documentElement:{dataset:{parryDev:devMode?'true':'false'}},
-  createElement(tag){if(tag==='canvas')return {getContext:()=>ctx};return {tag,children:[],value:'',label:'',textContent:'',appendChild(x){this.children.push(x)}}},
-  getElementById(id){if(!el.has(id))throw new Error('Unknown DOM id: '+id);return el.get(id)},
-  addEventListener:(type,listener)=>{documentListeners[type]=listener},querySelectorAll:()=>[],hidden:false
- };
- const context={
-  window,document,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(failRunSave&&k==='parryTowerRun_v1')throw new Error('quota');storage.set(k,v)},removeItem:k=>storage.delete(k)},
-  navigator:{vibrate:noop},performance:{now:()=>clock},
-  requestAnimationFrame:cb=>{animation=cb},setTimeout:()=>0,clearTimeout:noop,
-  ResizeObserver:undefined,console,Math:math
- };
- vm.runInNewContext(fs.readFileSync('assets/combat-sfx.js','utf8'),context);
- const metal=window.ParryCombatSfx;window.ParryCombatSfx={...metal,play(ac,kind,when,destination){metalEvents.push({kind,when:when??ac.currentTime,destination});return metal.play(ac,kind,when,destination);}};
- window.ParryCombatSfx.playContact=(ac,when,destination)=>{const e={when,destination,cancelled:false};contactEvents.push(e);const h=metal.playContact(ac,when,destination),cancel=h.cancel;h.cancel=()=>{e.cancelled=true;cancel();};return h;};
- window.ParryCombatSfx.playTail=(ac,kind,contactAt,destination)=>{tailEvents.push({kind,contactAt,resultAt:ac.currentTime,destination});return metal.playTail(ac,kind,contactAt,destination);};
- if(artMode){
-  context.URL=URL;
-  window.location={search:artMode==='adopted'?'':'?art='+(artMode==='missing'?'impact':artMode==='missing-illustrated'?'illustrated':artMode)};window.document=document;window.URL=URL;window.localStorage=context.localStorage;
-  // Synchronous raster stand-ins exercise the real compositors in this VM.
-  window.Image=class {set src(_){this.onload?.();}};
-  if(['impact','illustrated','adopted'].includes(artMode))for(const name of [...(artMode==='adopted'?['palette-candidates','character-style']:[]),'character-art','character-ready','character-knight','combat-art',...(['illustrated','adopted'].includes(artMode)?['character-edit','character-hero-puppet','character-enemy-data','character-enemy-puppet','character-knight-puppet']:[])]){
-   document.currentScript={src:'http://localhost/assets/'+name+'.js'};
-   vm.runInNewContext(fs.readFileSync('assets/'+name+'.js','utf8'),context,{filename:name+'.js'});
-  }
-  document.currentScript=null;
-  if(['illustrated','adopted'].includes(artMode)){
-   const original=window.ParryKnightPuppet;
-   window.ParryKnightPuppet={...original,drawHero(...args){lastHeroPose={...args[1].pose};lastHeroSkin=args[1].skin;const ok=original.drawHero(...args);if(ok)artDrawCounts.hero++;return ok;},
-    drawEnemy(...args){const ok=original.drawEnemy(...args);if(ok){artDrawCounts.enemy++;
-     const sampler=window.ParryEnemyPuppet?.supports(args[1].e)?window.ParryEnemyPuppet:original;
-     lastEnemySample=sampler.sample(args[1]);
-    }return ok;}};
-  }
- }
- if(window.ParryCombatArt){const art=window.ParryCombatArt;window.ParryCombatArt={...art,
-  counterSlash(ctx,data){const out=art.counterSlash(ctx,data);if(out)bonusArtEvents.push({kind:'slashTint',tint:data.tint?.id||null});return out;},
-  comboAura(ctx,data){const out=art.comboAura(ctx,data);if(out)bonusArtEvents.push({kind:'comboGlow',tier:out.tier,combo:data.combo});return out;}};}
- if(artGate)window.ParryKnightPuppet=artGate;
- // Test-only instrumentation lives in the VM, not in the shipped game or its public debug API.
- const source=fs.readFileSync('assets/game.js','utf8');
- assert.match(source,/\}\)\(\);\s*$/);
- const debugSource=source.replace(/\}\)\(\);\s*$/, `const hitLog=[];
-  // Test-only recording of what is actually drawn in the canvas at each phase.
-  const phaseDrawLabels=[];
-  const hudDrawLabels=[];
-  const originalTextDraw=textDraw;
-  textDraw=function(...args){
-   if(game.enemy?.finalBoss&&['phase','combat'].includes(game.mode))
-    phaseDrawLabels.push({mode:game.mode,label:String(args[0]),y:args[2]});
-   if(game.mode==='combat'&&(String(args[0]).includes(' COMBO')||String(args[0]).startsWith('FLOOR ')))
-    hudDrawLabels.push({label:String(args[0]),y:args[2],size:args[3]});
-   return originalTextDraw(...args);
-  };
-  const rawDamageEnemy=damageEnemy;
-  damageEnemy=function(n,color,label){
-   const before=game.enemy?.hp||0;
-   const outcome=rawDamageEnemy(n,color,label);
-   hitLog.push({label:label||'反撃',dealt:Math.max(0,before-(game.enemy?.hp||0))});
-   return outcome;
-  };
-  window.__parryBloodTest={
-   presentation:()=>({contact:attackPresentation.contact?{...attackPresentation.contact}:null,clash:clashFX?{...clashFX}:null}),
-   fallbackSfx:legacy=>{if(legacy){delete window.ParryCombatSfx.playContact;delete window.ParryCombatSfx.playTail;}else window.ParryCombatSfx=null;},
-   musicTheme:()=>score.music,
-   musicBus:()=>score.bus,audioContext:()=>audioContext,
-   mixGains:()=>({bgm:score.bus?.gain.value,steel:devSfxBus?.gain.value}),
-   phaseDrawLabels:()=>phaseDrawLabels.map(x=>({...x})),
-   clearPhaseDrawLabels:()=>{phaseDrawLabels.length=0},
-   hudDrawLabels:()=>hudDrawLabels.map(x=>({...x})),
-   clearHudDrawLabels:()=>{hudDrawLabels.length=0},
-   hits:()=>hitLog.map(h=>({...h})),
-   resetHits:()=>{hitLog.length=0},
-   rewardPool:()=>choosePool().map(skill=>skill.id),
-   incoming:n=>applyDamage(n,'TEST'),
-   setShield:ward=>{game.shield=ward},
-   setRunBonus:(id,value)=>{game.bonuses[id]=value},
-   recoverOutside:amount=>heal(amount),
-   bonus:id=>runBonus(id),
-   bulwarkUsed:()=>!!game.relicBulwarkUsed,
-   setFrostWard:flag=>{game.frostWard=flag},
-   setFrostCount:value=>{game.frostCount=value},
-   setFortitudeReady:flag=>{game.fortitudeReady=flag},
-   setOverchargeCount:value=>{game.overchargeCount=value},
-   setJustStreak:value=>{game.justStreak=value},
-   setBloodlustPending:value=>{game.bloodlustPending=value},
-   jumpFloor:floor=>{stopScore();game.floor=floor;game.routeTrial=false;enterFloor(performance.now());return game.mode},
-   setEvent:id=>{if(game.currentRoom!=='event'||!EV.BY_ID[id])return false;game.eventId=id;game.roomStage=null;game.roomLocked=false;renderRoom();return true},
-   setTowerCoins:coins=>{game.towerCoins=coins;syncHUD()},
-   getRouteOptions:()=>RT.options(game.floor).map(r=>r.id),
-   getEventActions:()=>EV.BY_ID[game.eventId]?.actions.map(x=>x.id)||[],
-   setEventStage:stage=>{game.roomStage=stage;renderRoom()},
-
-   grantRelic:id=>{
-    if(!RR.BY_ID[id]||game.relics.includes(id)||game.relics.length>=RR.MAX_HELD)return false;
-    const mode=game.mode,offer=game.relicOffer;game.mode='relic';game.relicOffer=[id];
-    const result=grantRelic(id);game.mode=mode;game.relicOffer=offer;return result;
-   },
-   setRelicCounter:(id,count)=>{game.relicCounters[id]=count},
-   setRelicFlag:(id,value)=>{game[id]=value},
-   setRawMaxHp:value=>{game.rawMaxHp=value;adjustRelicMaxHp()},
-   forceRelicAward:kind=>{game.relicRewardKind=kind},
-   awardPreview:kind=>showRelicRewards(kind),
-   finishRelic:()=>finishRelicReward(),
-   relicInfo:()=>({burn:game.enemy?.burn,held:[...game.relics],discarded:[...game.relicDiscarded],
-    rustyUsed:game.relicRustyUsed,stardustUsed:game.relicStardustUsed,stopUsed:game.relicStopUsed,
-    pactReady:game.relicPactReady,bellDue:game.relicBellDue,maskReady:game.relicMaskReady,
-    gearReady:game.relicGearReady,justStreak:game.relicJustStreak,
-    counters:{...game.relicCounters},boltDue:game.relicBoltDue,emperorDue:game.relicEmperorDue}),
-
-  preferences:()=>({...preferences,sfxGain:playerSfxBus?.gain.value}),
-  checkpoint:()=>{checkpoint();return readCheckpoint()},
-  tutorialInfo:()=>({active:game.tutorial,step:game.tutorialStep,finishing:game.tutorialFinishing}),
-  calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
-  timingInfo:()=>({windup:!motionFor(game.enemy).noWindup,windupLead:motionFor(game.enemy).cuePrepare,recovery:motionFor(game.enemy).recovery,parryWindow:getParryWindow(),target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
-  skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:s.desc})),
-  skillCap,merchantTargets,
-  setBreaks:(id,n)=>{game.skillBreaks[id]=n},
-  bloodHealAmount,
-  setSkill:(id,level)=>{game.lv[id]=level},
-  gainSkill:id=>gainSkillLevel(id),
-  setHp:hp=>{game.hp=hp},
-  setMaxHp:hp=>{game.maxHp=hp},
-  setEnemyHp:hp=>{game.enemy.hp=hp;game.enemy.maxHp=Math.max(game.enemy.maxHp,hp)},
-  setCombo:combo=>{game.combo=combo},
-  setCharge:charge=>{game.charge=charge},
-  setBurn:burn=>{game.enemy.burn=burn},
-  setEnemyAttack:attack=>{game.enemy.atk=attack},
-  setBaseAttack:attack=>{game.baseAtk=attack},
-  info:()=>({enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,baseAtk:game.baseAtk,combo:game.combo,charge:game.charge,
-   guards:game.guards,charge:game.charge,parryDamageActive:!!game.parryDamageActive,justStreak:game.justStreak,overchargeCount:game.overchargeCount})
- };})();`);
- vm.runInNewContext(debugSource,context,{filename:'game.js'});
- if(devMode)vm.runInNewContext(fs.readFileSync('assets/dev-tools.js','utf8'),{
-  window,document,location:{search:devSearch},URLSearchParams,console
- },{filename:'dev-tools.js'});
- return {
-  el,clickers,storage,artMode:()=>document.documentElement.dataset.parryArt,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
-  artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
-  readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
-  illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),
-  bonusArtEvents:()=>bonusArtEvents.map(e=>({...e})),
-  artDrawCounts:()=>({...artDrawCounts}),
-  metalEvents:()=>metalEvents.map(e=>({...e})),heroPose:()=>lastHeroPose,heroSkin:()=>lastHeroSkin,enemySample:()=>lastEnemySample,
-  contactEvents:()=>contactEvents.map(e=>({...e})),tailEvents:()=>tailEvents.map(e=>({...e})),
-  audioEvents:()=>audioEvents.map(x=>({...x})),clearAudioEvents:()=>{audioEvents.length=0},
-  blackouts:()=>blackouts.map(x=>({...x})),clearBlackouts:()=>{blackouts.length=0},
-  press(id){const e=el.get(id);assert.ok(e?.listeners.click,id+' click handler missing');e.listeners.click()},
-   upgradeTab(id){el.get('upgradeTabs').listeners.click({target:{closest:()=>({dataset:{tab:id}})}})},
-   upgradeBuy(action,key){el.get('upgradeList').listeners.click({target:{closest:()=>({dataset:{action,key:String(key)}})}})},
-   upgradeEquip(slot,id){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-equip]'?{dataset:{equip:String(slot)},value:id||''}:null}})},
-   upgradeOption(id,value){el.get('upgradeList').listeners.change({target:{closest:selector=>selector==='[data-extra-option]'?{dataset:{extraOption:id},value}:null}})},
-   relicSelect(id){el.get('relicOfferCards').listeners.click({target:{closest:()=>({dataset:{relic:id}})}})},
-   relicReplace(id){el.get('relicReplaceList').listeners.click({target:{closest:()=>({dataset:{replace:id}})}})},
-   routeSelect(id){el.get('routeCards').listeners.click({target:{closest:()=>({dataset:{route:id}})}})},
-   roomChoose(id){el.get('roomActions').listeners.click({target:{closest:()=>({dataset:{roomAction:id}})}})},
-   routeSkillSelect(id){el.get('routeSkillCards').listeners.click({target:{closest:()=>({dataset:{routeSkill:id}})}})},
-
-
-  resize(width,height){
-   el.get('gameCanvas').getBoundingClientRect=()=>({width,height});
-   windowListeners.resize();
-  },
-  parry(){this.hold();this.release()},
-  hold(pointerId=1){el.get('gameCanvas').listeners.pointerdown({preventDefault:noop,pointerId})},
-  release(pointerId=1){documentListeners.pointerup({pointerId})},
-  cancel(pointerId=1){documentListeners.pointercancel({pointerId})},
-  keyDown(code='Space'){documentListeners.keydown({code,repeat:false,preventDefault:noop})},
-  keyUp(code='Space'){documentListeners.keyup({code,preventDefault:noop})},
-  blur(){windowListeners.blur()},
-  hide(){document.hidden=true;documentListeners.visibilitychange();document.hidden=false},
-  random(value){randomOverride=value},
-  frame(at){clock=at;assert.ok(animation);animation(clock)},
-  clock(at){clock=at},
-  get now(){return clock}
- };
-}
 function settleCurrentAttack(g){
  const timing=g.bloodTest().timingInfo();g.frame(Math.max(g.state().attackAt,timing.target+timing.parryWindow)+1);
 }
@@ -307,7 +67,7 @@ test('survival: Wardcraft amplifies every combat source and supports both limit 
  d.setSkill('fortitude',1);d.setFortitudeReady(true);d.setShield(0);resolveBloodParry(g,20);assert.equal(g.state().shield,8);
  for(const [id,prepare,expected]of [
   ['broken_gear',d=>d.setRelicFlag('relicGearReady',true),8],
-  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),12],
+  ['serene_crystal',d=>d.setRelicFlag('relicJustStreak',2),30],
   ['royal_banner',d=>d.setCombo(9),15]
  ]){const x=survivalHarness([id],{wardcraft:3});prepare(x.d);resolveBloodParry(x.g);assert.equal(x.g.state().shield,expected,id);}
  d.setSkill('aegis',1);d.setSkill('wardcraft',4);d.setBreaks('wardcraft',1);d.setShield(0);resolveBloodParry(g);assert.equal(g.state().shield,10);
@@ -332,15 +92,46 @@ test('survival: Unbroken Sigil protects spill once, preserves exact blocks, and 
 });
 
 test('survival: inheritance is purchased, fixed at run start, and replenishes only new combat floors',()=>{
- const seed={parryTowerPrototype_v1:JSON.stringify({coins:500}),parryTowerPermanent_v1:JSON.stringify({wardInheritance:2})};
+ const seed={parryTowerPrototype_v1:JSON.stringify({coins:800}),parryTowerPermanent_v1:JSON.stringify({wardInheritance:3})};
  const g=makeHarness(seed);g.press('upgradeOpenBtn');g.upgradeTab('base');assert.match(g.el.get('upgradeList').innerHTML,/守護の継承/);
- g.upgradeBuy('extra','wardInheritance');assert.equal(g.state().permanent.wardInheritance,3);assert.equal(g.state().souls,280);
- g.press('upgradeCloseBtn');g.press('startBtn');const d=g.bloodTest();assert.equal(g.state().shield,7);assert.equal(d.bonus('wardInheritance'),10);
+ g.upgradeBuy('extra','wardInheritance');g.upgradeBuy('extra','wardInheritance');
+ assert.equal(g.state().permanent.wardInheritance,5);assert.equal(g.state().souls,240);
+ g.press('upgradeCloseBtn');g.press('startBtn');const d=g.bloodTest();assert.equal(g.state().shield,13);assert.equal(d.bonus('wardInheritance'),20);
  d.setShield(0);g.press('pauseBtn');g.press('resumeBtn');assert.equal(g.state().shield,0);
- d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().shield,0,'reload does not replenish');
- d.jumpFloor(4);assert.equal(g.state().shield,0,'route is not combat');g.routeSelect('rest');g.roomChoose('rest:heal');g.roomChoose('continue');assert.equal(g.state().shield,7);
+ d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().shield,0,'reload does not replenish');assert.equal(re.bloodTest().bonus('wardInheritance'),20);
+ d.jumpFloor(4);assert.equal(g.state().shield,0,'route is not combat');g.routeSelect('rest');g.roomChoose('rest:heal');g.roomChoose('continue');assert.equal(g.state().shield,13);
  d.setShield(151);d.jumpFloor(6);assert.equal(g.state().shield,151,'minimum, not additive');
  const boss=makeHarness({parryTowerPermanent_v1:JSON.stringify({wardInheritance:3,bossWard:6})});boss.press('startBtn');boss.bloodTest().setShield(0);boss.bloodTest().jumpFloor(5);assert.equal(boss.state().shield,55,'boss barrier not multiplied');
+});
+
+test('ward vessel increases the replenishment ceiling, preserves existing shields and is fixed per run',()=>{
+ const seed={'parryTowerPrototype_v1':JSON.stringify({coins:500})};
+ const g=makeHarness(seed);g.press('startBtn');
+ const d=g.bloodTest();d.setShield(151);
+ g.press('pauseBtn');g.press('suspendBtn');
+ const oldRun=JSON.parse(g.storage.get(RUN_KEY));delete oldRun.game.bonuses.wardCapacity;
+ g.storage.set(RUN_KEY,JSON.stringify(oldRun));
+ g.press('upgradeOpenBtn');g.upgradeTab('base');
+ assert.match(g.el.get('upgradeList').innerHTML,/障壁の器/);
+ for(let i=0;i<4;i++)g.upgradeBuy('extra','wardCapacity');
+ assert.equal(g.state().permanent.wardCapacity,3);
+ assert.equal(g.state().souls,150);
+ g.press('upgradeCloseBtn');g.press('continueBtn');
+ assert.equal(d.bonus('wardCapacity'),0);
+ d.setSkill('aegis',1);resolveBloodParry(g,0);
+ assert.equal(g.state().shield,151,'replenishment cannot truncate an over-cap shield');
+
+ const fresh=makeHarness({parryTowerPermanent_v1:g.storage.get('parryTowerPermanent_v1')});
+ fresh.press('startBtn');const f=fresh.bloodTest();
+ assert.equal(f.bonus('wardCapacity'),60);
+ assert.equal(fresh.state().shield,0,'capacity does not grant any starting shield');
+ f.setSkill('aegis',1);f.setSkill('wardcraft',3);f.setShield(265);
+ resolveBloodParry(fresh,0);
+ assert.equal(fresh.state().shield,270,'(100 + 60 + 20) × 1.5 caps replenishment at 270');
+ assert.match(fresh.el.get('combatBuffs').textContent,/障壁の補充上限 270/);
+ f.checkpoint();const resumed=reloadHarness(fresh);resumed.press('continueBtn');
+ assert.equal(resumed.bloodTest().bonus('wardCapacity'),60);
+ assert.equal(resumed.state().shield,270);
 });
 
 test('survival: checkpoint keeps consumed sigil and new skills, migrates legacy bonuses, and rejects malformed values',()=>{
@@ -402,18 +193,39 @@ test('survival: sigil stays consumed through the final second movement',()=>{
  assert.equal(g.state().mode,'combat');assert.equal(d.bulwarkUsed(),true);assert.equal(g.state().shield,before,'phase count-in does not replenish inheritance');
 });
 
-test('bestiary UI has no obsolete arena actions and practice buttons stay within card layouts',()=>{
- const html=fs.readFileSync('index.html','utf8');
- const js=fs.readFileSync('assets/game.js','utf8');
- const css=fs.readFileSync('assets/style.css','utf8');
- assert.match(html,/魔物図鑑・稽古場/);
- assert.doesNotMatch(html,/闘技場|arenaResultCover|id="codexBtn"/);
- assert.doesNotMatch(js,/闘技場|data-arena|arenaResult|finishArena|startArena/);
- assert.match(js,/data-practice/);
- assert.match(css,/\.codex-list\{[^}]*grid-auto-rows:max-content/);
- assert.match(css,/\.codex-card\{[^}]*height:auto/);
- assert.match(css,/\.codex-practice\{[^}]*width:100%/);
- assert.match(css,/\.codex-practice\{[^}]*min-height:38px/);
+test('codex shares the shop layout and resets the whole dialog when opening or changing lists',()=>{
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  const codex=html.slice(html.indexOf('id="codexCover"'),html.indexOf('id="upgradeCover"'));
+  assert.ok(codex.length>0,'the codex and shop should live in the same arena');
+  assert.match(codex,/class="modal upgrade-modal codex-modal" role="dialog" aria-modal="true"/);
+  assert.match(codex,/class="upgrade-top"><h2 id="codexTitle">図鑑・稽古場/);
+  assert.match(codex,/class="upgrade-tabs" id="codexTabs"/);
+  assert.match(codex,/class="upgrade-list codex-list" id="codexList"/);
+  const options=[...codex.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)].map(match=>[match[1],match[2]]);
+  assert.deepEqual(options,[['all','すべて'],['discovered','発見済み'],['nonboss','ボス以外'],['boss','ボス']]);
+ }
+ const g=makeHarness(),modal={scrollTop:150};g.el.get('codexList').parentElement=modal;g.press('practiceBtn');
+ assert.equal(modal.scrollTop,0,'opening starts at the heading');
+ const tabs=g.el.get('codexTabs').querySelectorAll('[data-codex-tab]');
+ assert.equal(g.el.get('codexToolbar').hidden,false);
+ assert.equal(tabs[0].className,'upgrade-tab active');
+ assert.equal(tabs[1].className,'upgrade-tab');
+ g.el.get('codexList').scrollTop=150;
+ modal.scrollTop=150;
+ g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[1]}});
+ assert.equal(g.el.get('codexToolbar').hidden,true,'skill codex should not show the monster filter label');
+ assert.equal(tabs[0].className,'upgrade-tab');
+ assert.equal(tabs[1].className,'upgrade-tab active');
+ assert.equal(tabs[1].attributes['aria-pressed'],'true');
+ assert.equal(g.el.get('codexList').scrollTop,0,'switching tabs should start from the first entry');
+ assert.equal(modal.scrollTop,0,'the shared dialog is the scroll container');
+ assert.match(g.el.get('codexSummary').textContent,/解放/);
+ g.el.get('codexTabs').listeners.click({target:{closest:()=>tabs[0]}});
+ assert.equal(g.el.get('codexToolbar').hidden,false);
+ assert.equal(tabs[0].className,'upgrade-tab active');
+ modal.scrollTop=150;g.el.get('codexFilter').value='discovered';g.el.get('codexFilter').listeners.change();
+ assert.equal(modal.scrollTop,0,'filter changes also start at the heading');
 });
 test('a cold start warms title assets and waits for artwork before drawing or starting the combat clock',async()=>{
  let loaded=false,finish,warmups=0,draws=0;
@@ -580,8 +392,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v0\.9\.9"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v0\.9\.9&tempo=1&beat-contact=1&cue=1&layout=2&music=1"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.5&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.5&r=[a-f0-9]{12}"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -974,6 +786,27 @@ test('soul gains and once-per-run revive apply while preserving combat timing',(
  g.press('upgradeCloseBtn');
  assert.equal(g.state().mode,'gameover');
 });
+test('result badges show skin and run count while title retains saved personal bests',()=>{
+ const g=makeHarness({parryTowerPermanent_v1:JSON.stringify({skinRecords:{normal:{bestFloor:55,bestCombo:900,runs:149}}})});
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>149回<\/b>/);
+ g.press('startBtn');g.bloodTest().incoming(99999);assert.equal(g.state().mode,'gameover');
+ const checkResult=()=>{
+  assert.match(g.el.get('deathRecords').innerHTML,/いつもの主人公/);
+  assert.doesNotMatch(g.el.get('deathRecords').innerHTML,/最高到達|最高コンボ/);
+  assert.match(g.el.get('deathRecords').innerHTML,/挑戦 <b>150回<\/b>/);
+  assert.match(g.el.get('deathSummary').innerHTML,/1F[\s\S]*ジャストパリィ[\s\S]*最大コンボ[\s\S]*魂の欠片/);
+ };
+ checkResult();g.frame(g.now+700);g.press('deathUpgradeBtn');g.press('upgradeCloseBtn');checkResult();
+ g.press('homeBtn');assert.equal(g.state().mode,'title');
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>150回<\/b>/);
+ const record=JSON.parse(g.storage.get('parryTowerPermanent_v1')).skinRecords.normal;
+ assert.deepEqual(record,{bestFloor:55,bestCombo:900,runs:150});
+});
+
 test('practice and developer page do not write permanent progression',()=>{
  const raw=JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:3,bossWard:3});
  const meta=JSON.stringify({coins:450,life:1,runs:3});
@@ -1072,6 +905,38 @@ test('a fatal parry heals only from enemy remaining HP, before switching to vict
  assert.equal(chain.state().mode,'victory','thunder can deliver the final blow');
  assert.equal(chain.state().hp,18,'count full 45 HP lost across the normal strike and killing thunder');
 });
+test('Crimson Execution includes 35%, preserves the shared burn pool and repeats with new accumulation',()=>{
+ for(const [hp,trigger]of [[35026,false],[35025,true],[30000,true]]){
+  const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+  d.setEnemyHp(100000);d.setEnemyHp(hp);d.setSkill('ember',1);d.setSkill('execute',1);d.setBurn(100);
+  d.survivalAnalysis.strike('parry');
+  assert.equal(d.relicInfo().burn,107);
+  assert.deepEqual(Array.from(d.hits().filter(hit=>hit.label==='紅蓮'),hit=>hit.dealt),trigger?[107]:[]);
+  if(trigger){
+   d.survivalAnalysis.strike('parry');
+   assert.equal(d.relicInfo().burn,114);
+   assert.equal(d.hits().filter(hit=>hit.label==='紅蓮').at(-1).dealt,114);
+  }
+ }
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setEnemyHp(100000);d.setEnemyHp(30000);d.setSkill('ember',1);d.setSkill('execute',1);
+ d.grantRelic('ember_vial');d.setBurn(100);d.survivalAnalysis.strike('parry');
+ assert.equal(d.relicInfo().burn,110);
+ assert.equal(d.hits().filter(hit=>hit.label==='紅蓮').at(-1).dealt,110);
+});
+
+test('burn finishes the last 6 HP after Crimson Execution for both successful parry results',()=>{
+ for(const [kind,basic]of [['parry',31],['just',50]]){
+  const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+  d.setEnemyHp(100000);d.setEnemyHp(basic+107+6);d.setEnemyAttack(0);
+  d.setSkill('ember',1);d.setSkill('execute',1);d.setBurn(100);
+  d.survivalAnalysis.strike(kind);
+  assert.equal(g.state().enemyHp,6);assert.equal(d.relicInfo().burn,107);
+  g.frame(g.now+55);assert.ok(g.state().enemyHp<6&&g.state().enemyHp>0);
+  g.frame(g.now+55);assert.equal(g.state().enemyHp,0);assert.equal(g.state().mode,'victory');
+ }
+});
+
 test('guard reflection and burn damage do not grant blood healing; successful parry does',()=>{
  const g=makeHarness();g.press('startBtn');
  const d=g.bloodTest();
@@ -1123,12 +988,13 @@ test('blood lifesteal is disabled in immortal practice mode',()=>{
 
 
 test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in both entrypoints',()=>{
- const script=fs.readFileSync('assets/game.js','utf8');
+ const catalog=require('../assets/skills.js');
+ const names=[...catalog.SKILLS,...catalog.SYNERGIES].map(item=>item.name);
  for(const name of ['不屈','拍動','過充電','血の渇望','氷結','王の一撃',
-  '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(script.includes(name),name);
+  '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v0\.9\.9/);
+  assert.match(html,/v1\.0\.5/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1147,7 +1013,7 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
   'parryTowerPermanent_v1':JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null]})};
  const g=makeHarness(seed);
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
- assert.match(g.el.get('upgradeList').innerHTML,/運命の封印/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 0\/4/);
  g.upgradeBuy('seal','thorns');
  assert.deepEqual(Array.from(g.state().permanent.sealedSkills),[],'cannot select without a purchased slot');
  g.upgradeBuy('extra','sealSlots');
@@ -1170,6 +1036,8 @@ test('Fate Seal purchasing, free selection, removing and reopening retain both c
  g.press('upgradeCloseBtn');
  g.press('upgradeOpenBtn');g.upgradeTab('seal');
  assert.match(g.el.get('upgradeList').innerHTML,/封印中/);
+ assert.match(g.el.get('upgradeList').innerHTML,/封印枠 2\/4/);
+ assert.match(g.el.get('upgradeList').innerHTML,/使用 2枠/);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')).sealedSkills,['overcharge','thorns']);
  g.press('upgradeCloseBtn');g.press('startBtn');
  assert.deepEqual(Array.from(g.state().sealedSkillIds),['overcharge','thorns']);
@@ -1221,18 +1089,25 @@ test('Fortitude boosts the next parry after HP damage, consumed once; Immortal S
  resolveBloodParry(withWard,20);
  assert.equal(withWard.state().shield,5,'next successful parry restores five ward');
 });
-test('Heartbeat charges once at three consecutive JUSTs, or twice with Focus synergy',()=>{
+test('Heartbeat deals 45 at level one and adds one charge after three JUSTs, or two with Focus',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
- d.setSkill('heartbeat',1);d.setEnemyHp(10000);
+ d.setSkill('heartbeat',1);d.setBaseAttack(25);d.setEnemyHp(10000);
+ resolveBloodParry(g,0);
  resolveBloodParry(g,20);assert.equal(g.state().justStreak,0,'normal parry does not count as JUST');
- resolveBloodParry(g,0);resolveBloodParry(g,0);resolveBloodParry(g,0);
- assert.equal(d.hits().filter(x=>x.label==='拍動').length,1);
+ d.setCharge(0);
+ resolveBloodParry(g,0);resolveBloodParry(g,0);
+ assert.equal(g.state().charge,4);assert.equal(d.hits().some(x=>x.label==='拍動'),false);
+ resolveBloodParry(g,0);
+ assert.equal(d.hits().find(x=>x.label==='拍動').dealt,45);
+ assert.ok(d.hits().some(x=>x.label==='奥義'),'the third JUST reaches seven only with Heartbeat');
+ assert.equal(g.state().charge,0);
  assert.equal(g.state().justStreak,0);
  assert.equal(g.el.get('combatBuffs').hidden,false,'live ability counters shown');
  const synergized=makeHarness();synergized.press('startBtn');const y=synergized.bloodTest();
- y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setEnemyHp(10000);
+ y.setSkill('heartbeat',1);y.setSkill('focus',1);y.setBaseAttack(25);y.setEnemyHp(10000);
  resolveBloodParry(synergized,0);resolveBloodParry(synergized,0);
- assert.equal(y.hits().filter(x=>x.label==='拍動').length,1,'Focus synergy shortens JUST chain to two');
+ assert.equal(y.hits().find(x=>x.label==='拍動').dealt,45,'Focus shortens the chain without changing damage');
+ assert.equal(synergized.state().charge,5);
 });
 test('Overcharge works without thunder on every third parry; Thunder synergy fires extra lightning',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
@@ -1284,19 +1159,26 @@ test('Ice ward mitigates the next incoming hit and Ice Mirror reflects mitigated
  assert.ok(m.info().enemyHp<before,'ice mirror damages the enemy');
  assert.equal(m.hits().filter(x=>x.label==='氷鏡').length,1);
 });
-test('King Strike procs at ten combos, or simultaneously with Pulse at eight via synergy',()=>{
+test('Pulse procs at six combos and King Strike at eight, or both at six via synergy',()=>{
  const basic=makeHarness();basic.press('startBtn');const b=basic.bloodTest();
- b.setSkill('king',1);b.setEnemyHp(10000);b.setCombo(9);
- resolveBloodParry(basic);
- assert.equal(b.hits().filter(x=>x.label==='王の一撃').length,1);
+ b.setSkill('pulse',1);b.setBaseAttack(25);b.setEnemyHp(10000);b.setCombo(5);
+ resolveBloodParry(basic,20);
+ assert.equal(b.hits().find(hit=>hit.label==='共鳴波').dealt,47);
+ b.setSkill('pulse',0);b.setSkill('king',1);b.setCharge(6);b.resetHits();
+ resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,7);assert.equal(b.hits().find(hit=>hit.label==='奥義').dealt,49);
+ assert.equal(b.hits().some(hit=>hit.label==='王の一撃'),false);
+ assert.match(basic.el.get('combatBuffs').textContent,/王の一撃 あと1/);
+ b.resetHits();resolveBloodParry(basic,20);
+ assert.equal(basic.state().combo,8);assert.equal(b.hits().find(hit=>hit.label==='王の一撃').dealt,82);
  const both=makeHarness();both.press('startBtn');const x=both.bloodTest();
  x.setSkill('king',1);x.setSkill('pulse',1);x.setSkill('blood',1);
- x.setEnemyHp(10000);x.setCombo(7);x.setHp(10);x.setMaxHp(500);
+ x.setBaseAttack(25);x.setEnemyHp(10000);x.setCombo(5);x.setHp(10);x.setMaxHp(500);
  const before=x.info().enemyHp;
  resolveBloodParry(both);
- const hits=x.hits().map(hit=>hit.label);
- assert.ok(hits.includes('王の一撃'),'King synergy triggers at combo eight');
- assert.ok(hits.includes('共鳴波'),'Pulse still fires at combo eight');
+ assert.equal(both.state().combo,6);
+ assert.equal(x.hits().find(hit=>hit.label==='王の一撃').dealt,80);
+ assert.equal(x.hits().find(hit=>hit.label==='共鳴波').dealt,47);
  const total=before-x.info().enemyHp;
  assert.equal(both.state().hp,10+Math.min(Math.max(2,Math.round(total*.08)),125),'bonus hits included in one lifesteal transaction');
 });
@@ -1325,8 +1207,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v0\.9\.9"/);
-  assert.match(html,/v0\.9\.9/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.5(?:&[^"]+)?"/);
+  assert.match(html,/v1\.0\.5/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1458,7 +1340,7 @@ test('rare relic: serene crystal reacts to three consecutive JUSTs and ignores n
  resolveBloodParry(g,20);
  assert.equal(g.state().shield,0,'normal parry breaks JUST streak');
  for(let i=0;i<3;i++)resolveBloodParry(g,0);
- assert.equal(g.state().shield,8);
+ assert.equal(g.state().shield,20);
  assert.equal(d.relicInfo().justStreak,0);
 });
 test('rare relic: emperor conduit creates autonomous lightning only when lightning skills are absent',()=>{
@@ -1644,8 +1526,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v0.9.9"'),asset);
-  assert.match(html,/v0\.9\.9/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.5&r='),asset);
+  assert.match(html,/v1\.0\.5/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
@@ -1747,7 +1629,7 @@ test('normal, elite/rare, boss victories grant distinct tower coins and no perma
   assert.equal(g.state().souls,0===g.state().souls?0:g.state().souls);
  }
 });
-test('merchant requires run coins, limits purchases to one per visit and keeps soul currency separate',()=>{
+test('merchant requires run coins and keeps soul currency separate',()=>{
  const {g,d}=makeCrossroads();
  d.setTowerCoins(18);
  const rerolls=g.state().rerolls;
@@ -1762,7 +1644,7 @@ test('merchant requires run coins, limits purchases to one per visit and keeps s
  assert.equal(g.state().souls,soul);
  assert.equal(g.state().roomStage,'result');
  g.roomChoose('buy:barrier');
- assert.equal(g.state().towerCoins,6,'cannot purchase a second time');
+ assert.equal(g.state().towerCoins,6,'the remaining 6 tower coins cannot buy a 16-coin barrier');
  g.roomChoose('continue');
  assert.equal(g.state().floor,5);
 });
@@ -2455,14 +2337,14 @@ test('combo HUD and floor entry title have non-overlapping, stable lanes on desk
  }
 });
 
-test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then stop at cap',()=>{
+test('legacy 5/5 purchases continue through the expanded tiers, then stop at cap',()=>{
  const prev={coins:10000,life:5,attack:5,ward:5,bestFloor:60,runs:25};
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify(prev)});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  let html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/生命の祝福[^]*?Lv.5\/12/);
+ assert.match(html,/生命の祝福[^]*?Lv.5\/17/);
  assert.match(html,/剣の研鑽[^]*?Lv.5\/8/);
- assert.match(html,/守護の祈り[^]*?Lv.5\/12/);
+ assert.match(html,/守護の祈り[^]*?Lv.5\/14/);
  assert.match(html,/現在：最大HP \+50 → Lv.6：\+60/);
  assert.match(html,/現在：基礎反撃ダメージ \+15 → Lv.6：\+17/);
  assert.match(html,/現在：初期障壁 \+40 → Lv.6：\+48/);
@@ -2471,35 +2353,41 @@ test('legacy 5/5 purchases continue seamlessly through v0.9.3 new tiers, then st
  g.upgradeBuy('legacy','attack');
  g.upgradeBuy('legacy','ward');
  assert.equal(g.state().souls,9650,'first extra HP/attack/ward tiers cost 100+150+100');
- for(let i=0;i<6;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
+ for(let i=0;i<8;i++){g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','ward')}
  for(let i=0;i<2;i++)g.upgradeBuy('legacy','attack');
- const expected=10000-((1740-230)*2)-(875-230);
+ assert.match(g.el.get('upgradeList').innerHTML,/現在：最大HP \+140 → Lv.15：\+150/);
+ for(let i=0;i<3;i++)g.upgradeBuy('legacy','life');
+ const expected=10000-(3580-230)-(2320-230)-(875-230);
  assert.equal(g.state().souls,expected);
  const saved=JSON.parse(g.storage.get('parryTowerPrototype_v1'));
- assert.deepEqual([saved.life,saved.attack,saved.ward],[12,8,12]);
+ assert.deepEqual([saved.life,saved.attack,saved.ward],[17,8,14]);
  assert.equal(saved.bestFloor,60);
  assert.equal(saved.runs,25);
  assert.deepEqual(JSON.parse(g.storage.get('parryTowerPermanent_v1')),{...PR.defaults(),skinRecords:{normal:{bestFloor:60,bestCombo:0,runs:25}}},
   'legacy upgrades preserve equipment and migrate only the pre-skin normal record');
  html=g.el.get('upgradeList').innerHTML;
- assert.match(html,/Lv.12\/12/);
+ assert.match(html,/生命の祝福[^]*?Lv.17\/17/);
+ assert.match(html,/守護の祈り[^]*?Lv.14\/14/);
  assert.match(html,/Lv.8\/8/);
- assert.match(html,/最大強化/);
+ assert.doesNotMatch(html,/最大強化/);
  assert.equal((html.match(/>MAX<\/button>/g)||[]).length,3);
- assert.equal((html.match(/aria-valuenow="12"/g)||[]).length,2);
+ assert.equal((html.match(/aria-valuenow="17"/g)||[]).length,1);
+ assert.equal((html.match(/aria-valuenow="14"/g)||[]).length,1);
  assert.equal((html.match(/aria-valuenow="8"/g)||[]).length,1);
  g.upgradeBuy('legacy','life');g.upgradeBuy('legacy','attack');g.upgradeBuy('legacy','ward');
  g.upgradeBuy('legacy','invalid');
  assert.equal(g.state().souls,expected,'a maxed or unknown upgrade cannot spend currency');
- g.press('upgradeCloseBtn');g.press('startBtn');
- assert.equal(g.state().maxHp,185,'12 HP levels give +120 HP');
- assert.equal(g.state().shield,96,'12 ward levels give +96 initial shield');
- assert.equal(g.state().souls,expected);
- const d=g.bloodTest();
+ const re=reloadHarness(g);re.press('startBtn');
+ assert.equal(re.state().maxHp,235,'17 HP levels give +170 HP');
+ assert.equal(re.state().shield,112,'14 ward levels give +112 initial shield');
+ assert.equal(re.state().souls,expected);
+ const d=re.bloodTest();
+ assert.equal(d.gainSkill('heal'),true);
+ assert.equal(re.state().maxHp,254,'Life Vessel adds 8% of 235 HP, rounded up');
  assert.equal(d.info().baseAtk,46,'five original +3 and three new +2 levels give 25+21 attack');
  d.setEnemyHp(100000);d.setCombo(0);
- resolveBloodParry(g,20);
- assert.ok(g.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
+ resolveBloodParry(re,20);
+ assert.ok(re.state().enemyHp<100000,'new attack tiers preserve normal parry damage');
 });
 test('new base tiers stay affordable only at exact price and maintain old first five prices',()=>{
  const seed={'parryTowerPrototype_v1':JSON.stringify({coins:99,life:5})};
@@ -2524,8 +2412,8 @@ test('old meta values survive load, excess levels are capped, and dev edits stay
  assert.equal(dev.state().souls,640,'level 12 costs 360 shards');
  const invalid=makeHarness({'parryTowerPrototype_v1':JSON.stringify({life:999,ward:999,attack:999,coins:10})});
  invalid.press('startBtn');
- assert.equal(invalid.state().maxHp,185);
- assert.equal(invalid.state().shield,96);
+ assert.equal(invalid.state().maxHp,235);
+ assert.equal(invalid.state().shield,112);
 });
 
 function loseRun(g){
@@ -2533,43 +2421,50 @@ function loseRun(g){
  for(let i=0;i<12&&g.state().mode==='combat';i++)settleCurrentAttack(g);
  assert.equal(g.state().mode,'gameover','player must eventually die without parries');
 }
-test('v0.9.3 phase 2 shop expands only recovery, boss shield and soul gain, leaving older prices intact',()=>{
+test('shop offers the new recovery and boss barrier tiers while preserving older prices',()=>{
  const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:2200}),
   'parryTowerPermanent_v1':JSON.stringify({regen:3,bossWard:3,soulGain:3})});
  g.press('upgradeOpenBtn');g.upgradeTab('base');
  const before=g.el.get('upgradeList').innerHTML;
- for(const [name,max] of [['再生力',5],['守護の備え',6],['魂の共鳴',5]]){
+ assert.match(before,/現在：階層クリア時 HP 15%回復 → Lv.4：18%回復/);
+ assert.match(before,/現在：ボス戦開始時 障壁 \+15 → Lv.4：\+25/);
+ assert.match(before,/現在：障壁の補充上限 \+0 → Lv.1：\+20（スキル補正前）/);
+ assert.match(before,/現在：新しい戦闘階の障壁補修 最大HP0%まで → Lv.1：最大HP5%まで（通常上限内）/);
+ assert.match(before,/現在：未取得 → Lv.1：戦利品が4択になる/);
+ assert.equal((before.match(/role="progressbar"/g)||[]).length,9,'all multi-tier upgrades show progress');
+ assert.match(before,/aria-label="再生力 強化進捗" aria-valuemin="0" aria-valuemax="7" aria-valuenow="3"/);
+ for(const [name,max] of [['再生力',7],['守護の備え',7],['魂の共鳴',5]]){
   assert.match(before,new RegExp(name+'[^]*?Lv.3/'+max));
  }
- for(const [id,n] of [['regen',2],['bossWard',3],['soulGain',2]])
+ for(const [id,n] of [['regen',4],['bossWard',4],['soulGain',2]])
   for(let i=0;i<n;i++)g.upgradeBuy('extra',id);
- assert.equal(g.state().souls,2200-(80+140+90+155+235+150+225));
- assert.equal(g.state().permanent.regen,5);
- assert.equal(g.state().permanent.bossWard,6);
+ assert.equal(g.state().souls,2200-(80+140+180+260+90+155+235+260+150+225));
+ assert.equal(g.state().permanent.regen,7);
+ assert.equal(g.state().permanent.bossWard,7);
  assert.equal(g.state().permanent.soulGain,5);
  const saved=JSON.parse(g.storage.get('parryTowerPermanent_v1'));
- assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[5,6,5]);
+ assert.deepEqual([saved.regen,saved.bossWard,saved.soulGain],[7,7,5]);
  const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/階層クリア時 HP 20%回復/);
- assert.match(after,/ボス戦開始時 障壁 \+55/);
+ assert.match(after,/現在：階層クリア時 HP 26%回復<\/div>/);
+ assert.match(after,/ボス戦開始時 障壁 \+75/);
  assert.match(after,/獲得する魂の欠片 \+25%/);
  const coins=g.state().souls;
  for(const id of ['regen','bossWard','soulGain'])g.upgradeBuy('extra',id);
  assert.equal(g.state().souls,coins,'MAX upgrades never spend souls');
  const dev=makeHarness({'parryTowerPermanent_v1':JSON.stringify(saved)},true);
  assert.equal(dev.dev().launch(5,'guardian:normal'),true);
- assert.equal(dev.state().shield,55,'boss receives new +55 ward');
+ assert.equal(dev.state().shield,75,'boss receives new +75 ward');
 });
-test('fifth regeneration tier heals 20% after clearing a floor',()=>{
- const seed={'parryTowerPermanent_v1':JSON.stringify({regen:5})};
+test('seventh regeneration tier heals 26% after clearing a floor',()=>{
+ const seed={'parryTowerPermanent_v1':JSON.stringify({regen:7})};
  const g=makeHarness(seed);g.press('startBtn');
  const d=g.bloodTest();
  settleCurrentAttack(g);
  assert.equal(g.state().hp,51);
- d.setEnemyHp(1);
+ d.setHp(40);d.setEnemyHp(1);
  resolveBloodParry(g,20);
  assert.equal(g.state().mode,'victory');
- assert.equal(g.state().hp,64,'65 max HP regains ceil(65*.20)=13 on floor clear');
+ assert.equal(g.state().hp,57,'65 max HP regains ceil(65*.26)=17 on floor clear');
 });
 test('rescue payments at 3, 8, and 15 defeated attempts are one-time and use saved run count',()=>{
  const cases=[
@@ -2613,23 +2508,6 @@ test('rescue grants are separate from soul gain and developer mode never persist
  loseRun(dev);
  assert.equal(dev.storage.get('parryTowerPrototype_v1'),prev,'developer never writes rescue reward');
 });
-
-test('base upgrade panel advertises run milestones and updates claimed states after defeat',()=>{
- const g=makeHarness({'parryTowerPrototype_v1':JSON.stringify({coins:0,runs:2})});
- g.press('upgradeOpenBtn');g.upgradeTab('base');
- const early=g.el.get('upgradeList').innerHTML;
- assert.match(early,/累計挑戦応援（現在 2回）/);
- assert.match(early,/○ 未受取 3回：\+20 ✧/);
- assert.match(early,/○ 未受取 8回：\+35 ✧/);
- assert.match(early,/○ 未受取 15回：\+60 ✧/);
- g.press('upgradeCloseBtn');loseRun(g);
- g.frame(g.now+500);g.press('deathUpgradeBtn');g.upgradeTab('base');
- const after=g.el.get('upgradeList').innerHTML;
- assert.match(after,/累計挑戦応援（現在 3回）/);
- assert.match(after,/✓ 受取済 3回：\+20 ✧/);
- assert.match(after,/○ 未受取 8回：\+35 ✧/);
-});
-
 
 test('production music follows every zone boundary and repeats with the existing tower map',()=>{
  const g=makeHarness();g.random(.5);g.press('startBtn');
@@ -2675,7 +2553,8 @@ test('bonus tab requires exactly 1000 fragments, unlocks once and persists free 
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0);assert.equal(g.state().permanent.unlockedExtras[0],'legacyVisual');
  assert.equal(g.state().permanent.enabledExtras.length,0,'purchase starts OFF');
  g.upgradeBuy('bonus-buy','legacyVisual');assert.equal(g.state().souls,0,'no repeat charge');
- assert.match(g.el.get('upgradeList').innerHTML,/購入済み · OFF/);
+ assert.doesNotMatch(g.el.get('upgradeList').innerHTML,/購入済み · OFF|未購入/);
+ assert.match(g.el.get('upgradeList').innerHTML,/OFF → ON/);
  g.upgradeBuy('bonus-toggle','legacyVisual');assert.equal(g.artMode(),'legacy');assert.equal(g.state().souls,0);
  assert.match(g.el.get('upgradeList').innerHTML,/aria-pressed="true"/);
  let saved=JSON.parse(g.storage.get(perm));assert.deepEqual(saved.enabledExtras,['legacyVisual']);
@@ -2978,7 +2857,7 @@ test('polished relics apply their improved damage, recovery, shields and guard r
  x=polishedFight('ember_vial');resolveBloodParry(x.g,20);assert.equal(x.d.relicInfo().burn,5);
  x=polishedFight('pilgrim_bell');x.d.setHp(10);for(let n=0;n<4;n++)resolveBloodParry(x.g,20);assert.equal(x.g.state().hp,16);
  x=polishedFight('broken_gear');x.d.setCharge(6);resolveBloodParry(x.g,0);resolveBloodParry(x.g,20);assert.equal(x.g.state().shield,8);
- x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,12);
+ x=polishedFight('serene_crystal');for(let n=0;n<3;n++)resolveBloodParry(x.g,0);assert.equal(x.g.state().shield,30);
  x=polishedFight('emperor_conduit');for(let n=0;n<5;n++)resolveBloodParry(x.g,20);assert.equal(x.d.hits().find(h=>h.label==='雷帝').dealt,42);
  x.d.setSkill('thunder',1);x.d.resetHits();resolveBloodParry(x.g,20);assert.ok(x.d.hits().find(h=>h.label==='⚡').dealt>=31);
  x=polishedFight('silver_mirror');x.d.setEnemyAttack(50);resolveBloodParry(x.g,-40);assert.equal(x.g.state().hp,54);
@@ -3307,6 +3186,39 @@ test('local checkpoint restores combat on a fresh clock without new encounter ro
  assert.equal(re.state().attackBeat,4);assert.ok(re.state().attackAt>re.now);assert.equal(re.state().scoreActive,true);
 });
 
+test('life vessel starts with the larger HP bonus and rounds the total before skin and relic multipliers',()=>{
+ const g=makeHarness({
+  parryTowerPrototype_v1:JSON.stringify({life:14}),
+  parryTowerPermanent_v1:JSON.stringify({slots:1,unlockedSkills:['heal'],equipped:['heal'],unlockedSkins:['chick'],equippedSkin:'chick'})
+ });
+ const d=g.bloodTest(),skill=d.skillCatalog().find(s=>s.id==='heal');
+ assert.match(skill.desc(3),/最大HP \+50/);
+ g.press('startBtn');assert.equal(g.state().runSkills.heal,1);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[333,333]);
+ d.setHp(100);assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[357,136]);
+ assert.equal(d.gainSkill('heal'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[383,174]);
+ assert.equal(d.grantRelic('reaper_pact'),true);
+ assert.deepEqual([g.state().maxHp,g.state().hp],[306,174]);
+});
+
+test('life vessel updates an old checkpoint maximum with its frozen blessing and preserves current HP',()=>{
+ const g=makeHarness({parryTowerPrototype_v1:JSON.stringify({life:13})});
+ g.press('startBtn');const d=g.bloodTest();
+ for(let i=0;i<3;i++)assert.equal(d.gainSkill('heal'),true);
+ d.setHp(100);const old=d.checkpoint();
+ Object.assign(old.game,{rawMaxHp:240,maxHp:240});
+ const re=makeHarness({[RUN_KEY]:JSON.stringify(old),parryTowerPrototype_v1:JSON.stringify({life:17})});
+ re.press('continueBtn');
+ assert.equal(re.state().mode,'combat');
+ assert.deepEqual([re.state().maxHp,re.state().hp],[242,100]);
+ const migrated=re.bloodTest().checkpoint();
+ assert.deepEqual([migrated.game.rawMaxHp,migrated.game.lifeBonus],[242,130]);
+ const again=reloadHarness(re);again.press('continueBtn');
+ assert.deepEqual([again.state().maxHp,again.state().hp],[242,100]);
+});
+
 test('saved rewards, paid merchant selections and refinement resume without rerolls, refunds or another payment',()=>{
  const g=makeHarness();g.press('startBtn');const d=g.bloodTest();d.jumpFloor(14);d.setTowerCoins(150);d.setSkill('blade',20);g.routeSelect('merchant');
  buyTarget(g,'breakthrough','blade');const re=reloadHarness(g);re.press('continueBtn');assert.equal(re.state().roomStage,'result');assert.equal(re.state().towerCoins,90);assert.equal(re.state().runSkills.blade,21);
@@ -3362,6 +3274,11 @@ test('route, mirror exchange and polished relic checkpoints keep their exact sel
 
 test('storage failure keeps combat playable, surfaces the failed save and removes any stale checkpoint',()=>{
  const g=makeHarness({},false,'','',null,true);g.press('startBtn');assert.equal(g.state().mode,'combat');assert.equal(g.el.get('saveWarning').hidden,false);assert.equal(g.storage.has(RUN_KEY),false);
+ g.press('pauseBtn');
+ g.storage.set(RUN_KEY,'previous checkpoint');
+ g.press('suspendBtn');
+ assert.equal(g.state().mode,'pause','manual save failure must keep the current run paused');
+ assert.equal(g.storage.get(RUN_KEY),'previous checkpoint','manual failure preserves the previous save');
 });
 test('resuming an illustrated challenge retains its chosen art after legacy visual is selected in the shop',()=>{
  const g=makeHarness();g.press('startBtn');const saved=Object.fromEntries(g.storage);
@@ -3762,10 +3679,15 @@ test('production keeps fighting with legacy or unavailable combat SFX instead of
 });
 
 test('v0.9.9: merchant allows multiple distinct purchases per visit, and sanctuary/forge/scales events work',()=>{
- const {g,d}=makeCrossroads();d.setTowerCoins(60);g.routeSelect('merchant');
- g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,48);assert.equal(g.state().roomStage,'result');
- g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,32);assert.equal(g.state().shield,20);
- g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,32,'cannot buy same item twice in one visit');
+ const {g,d}=makeCrossroads();d.setTowerCoins(120);g.routeSelect('merchant');
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,108);assert.equal(g.state().roomStage,'result');
+ g.roomChoose('buy:barrier');assert.equal(g.state().towerCoins,92);assert.equal(g.state().shield,20);
+ g.roomChoose('buy:reroll');assert.equal(g.state().towerCoins,92,'cannot buy same item twice in one visit');
+ g.roomChoose('buy:skill');assert.equal(g.state().mode,'routeSkill');
+ g.routeSkillSelect(g.state().routeSkillSet[0]);assert.equal(g.state().mode,'room');
+ g.roomChoose('buy:relic');assert.equal(g.state().mode,'relic');
+ g.relicSelect(g.state().relicOffer[0]);assert.equal(g.state().mode,'room');
+ assert.equal(g.state().relics.length,1);assert.equal(g.state().towerCoins,24);
  g.roomChoose('continue');assert.equal(g.state().mode,'combat');
  const s1=makeCrossroads(8);s1.d.gainSkill('blade');s1.g.random(.6);s1.g.routeSelect('event');
  assert.equal(s1.g.state().eventId,'sanctuary');s1.g.roomChoose('event:train');s1.g.roomChoose('target:blade');
@@ -3799,18 +3721,7 @@ test('v0.9.9: first boss defeat grants guaranteed bonus souls, and 2+ JUST parri
  assert.equal(g.state().souls,beforeSouls+6,'first boss kill grants +6 guaranteed bonus souls');
 });
 
-test('v0.9.9: death screen omits the removed miss timing explanation',()=>{
- const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
- d.setSkill('blade',1);d.setSkill('fury',0);d.setEnemyHp(1);resolveBloodParry(g,0);
- g.frame(g.now+950);assert.equal(g.state().mode,'reward');
- g.press('healBtn');
- d.setHp(1);d.setShield(0);const c=g.state().attackAt;g.clock(c-120);g.parry();g.frame(c+100);
- assert.equal(g.state().mode,'gameover');
- assert.doesNotMatch(g.el.get('deathSummary').innerHTML,/最終被弾/);
-});
-
-
-test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purchases, chest fallback gives 25 coins + 1 reroll, and 80F phase 1 HP floor holds at 50%',()=>{
+test('ultimate waits below 7 charge and fires immediately when a parry reaches the cap',()=>{
  const g=makeHarness();g.random(.99);g.press('startBtn');const d=g.bloodTest();
  d.setSkill('rune',1);d.setCharge(4);d.setEnemyHp(10000);
  resolveBloodParry(g,0);
@@ -3820,36 +3731,6 @@ test('v0.9.9 QA fixes: ultimate requires charge 7, merchant allows multiple purc
  assert.equal(d.hits().some(h=>h.label.includes('奥義')),true,'charge 6 + 2 -> 7 fires ultimate immediately in v0.9.8 spec');
  assert.equal(g.state().charge,0,'ultimate resets charge to 0');
 
- const m=makeCrossroads();
- m.d.setTowerCoins(100);m.g.routeSelect('merchant');
- m.g.roomChoose('buy:skill');
- assert.equal(m.g.state().mode,'routeSkill');
- m.g.routeSkillSelect(m.g.state().routeSkillSet[0]);
- assert.equal(m.g.state().mode,'room');
- m.g.roomChoose('buy:relic');
- assert.equal(m.g.state().mode,'relic');
- m.g.relicSelect(m.g.state().relicOffer[0]);
- assert.equal(m.g.state().mode,'room');
- assert.equal(m.g.state().relics.length,1);
- m.g.roomChoose('continue');
- assert.equal(m.g.state().mode,'combat');
-
- const c=makeCrossroads(8);
- const RR=require('../assets/relics.js');
- c.d.setRelicFlag('relicDiscarded',RR.RELICS.filter(r=>r.rarity!=='legendary').map(r=>r.id));
- c.g.random(0);c.g.routeSelect('event');c.d.setEvent('chest');
- const beforeCoins=c.g.state().towerCoins,beforeRerolls=c.g.state().rerolls;
- c.g.roomChoose('event:open');
- assert.equal(c.g.state().towerCoins,beforeCoins+25);
- assert.equal(c.g.state().rerolls,beforeRerolls+1);
-
- const b=makeHarness();b.random(.99);b.press('startBtn');const bd=b.bloodTest();
- bd.jumpFloor(80);
- const half=Math.floor(b.state().enemyMaxHp*0.5);
- bd.setBaseAttack(99999);
- resolveBloodParry(b,0);
- assert.equal(b.state().enemyHp,half,'80F boss phase 1 clamps HP at 50%');
- assert.equal(b.state().mode,'phase','80F boss transitions to phase 2');
 });
 // Added regressions for the director/mock review fixes.
 test('review fixes: phase 1 protects the boundary against every hit in one counter, then phase 2 can be defeated',()=>{
@@ -3877,8 +3758,8 @@ test('review fixes: rune uses permanent attack scaling and exactly one blade mul
    d.setBaseAttack(baseAtk);d.setSkill('blade',blade);d.setSkill('rune',rune);d.setSkill('precision',1);d.setCharge(7);
    resolveBloodParry(g,20);assert.equal(g.state().lastStrikeKind,'parry');assert.equal(g.state().charge,0);
    const ult=d.hits().find(h=>h.label==='奥義').dealt;damage.push(ult);
-   const expected=Math.round((baseAtk*1.5+rune*45*(baseAtk/25))*(1+blade*.25)*1.012);
-   assert.equal(ult,expected);
+   const expected=(baseAtk*1.8+rune*45*(baseAtk/25))*(1+blade*.25)*1.012;
+   assert.equal(ult,Math.round(expected));
    if(rune)assert.equal(d.hits().find(h=>h.label==='時空切断').dealt,Math.round(expected*.65));
   }
   assert.ok(Math.abs((damage[1]-damage[0])-45*(baseAtk/25)*(1+blade*.25)*1.012)<=1);
@@ -3922,6 +3803,7 @@ test('review fixes: golden intuition scales every event coin reward, display and
   g.routeSelect('event');d.setEvent(event);g.random(0);const expected=Math.round(raw*(1+bonus/100));
   assert.match(g.el.get('roomActions').innerHTML,new RegExp('塔貨\\+'+expected));
   const before=g.state();g.roomChoose('event:'+action);assert.equal(g.state().towerCoins,before.towerCoins+expected);assert.equal(g.state().towerCoinsEarned,before.towerCoinsEarned+expected);
+  if(event==='chest'&&action==='open')assert.equal(g.state().rerolls,before.rerolls+1,'chest fallback also grants one reroll');
   assert.match(g.el.get('roomDescription').textContent,new RegExp('塔貨\\+?'+expected));
   d.checkpoint();const re=reloadHarness(g);re.press('continueBtn');re.roomChoose('event:'+action);
   assert.equal(re.state().towerCoins,g.state().towerCoins);assert.equal(re.state().towerCoinsEarned,g.state().towerCoinsEarned);

@@ -6,7 +6,9 @@ const FLOORS=[10,20,40,60,80],TRIALS=240,MAX_ATTACKS=2400;
 const PROFILES=[
  {id:'none',name:'無強化',stats:{life:0,attack:0,ward:0},perm:{regen:0,bossWard:0,soulGain:0}},
  {id:'middle',name:'中程度',stats:{life:6,attack:5,ward:6},perm:{regen:3,bossWard:3,soulGain:3}},
- {id:'max',name:'最大強化',stats:{life:12,attack:8,ward:12},perm:{regen:5,bossWard:6,soulGain:5}}
+ {id:'max',name:'最大強化',
+  stats:Object.fromEntries(PR.BASE_UPGRADES.map(def=>[def.id,def.max])),
+  perm:Object.fromEntries(PR.UPGRADES.map(def=>[def.id,def.values.length]))}
 ];
 const STYLES=[
  {id:'defensive',name:'ガード多用',just:.10,parry:.45,guard:.40,miss:.05},
@@ -31,9 +33,13 @@ function foeAt(floor){
 function gear(p,floor,mode='bossOnly',includeSkills=true){
  const s=includeSkills?SKILLS[floor]:{};
  if(!s)throw Error('No skill path');
- const hp=65+PR.baseValue(p.stats,'life')+15*(s.heal||0);
+ const baseHp=65+PR.baseValue(p.stats,'life');
+ const hp=baseHp+PR.lifeVesselBonus(baseHp,s.heal||0);
+ const shieldCap=100+PR.value(p.perm,'wardCapacity')+20*(s.aegis||0);
+ const bossShield=(mode==='full'?PR.baseValue(p.stats,'ward'):0)+PR.value(p.perm,'bossWard');
+ const inheritedShield=Math.min(shieldCap,ceil(hp*PR.value(p.perm,'wardInheritance')/100));
  return {skills:s,hp,attack:25+PR.baseValue(p.stats,'attack'),
-  shield:(mode==='full'?PR.baseValue(p.stats,'ward'):0)+PR.value(p.perm,'bossWard'),
+  shield:Math.max(bossShield,inheritedShield),shieldCap,
   regen:ceil(hp*PR.value(p.perm,'regen')/100),
   soulMultiplier:1+PR.value(p.perm,'soulGain')/100};
 }
@@ -90,8 +96,8 @@ function simulate(profile,floor,style,seed=1,options={}){
     if(enemy>0&&lev('thunder'))dealt+=deal((10+12*lev('thunder'))*(1+lev('echo')*.24));
    }
    if(enemy>0&&just&&lev('aegis'))
-    shield=Math.min(100+20*lev('aegis'),shield+3+3*lev('aegis'));
-   if(enemy>0&&charge>=7){charge=0;dealt+=deal((eq.attack*1.5+lev('rune')*45)*mult);}
+    shield+=Math.max(0,Math.min(eq.shieldCap-shield,3+3*lev('aegis')));
+   if(enemy>0&&charge>=7){charge=0;dealt+=deal((eq.attack*1.8+lev('rune')*45*(eq.attack/25))*mult);}
    if(lev('blood')&&dealt>0){
     const bonus=lev('fury')?combo:0;
     const recovered=Math.min(Math.max(2,Math.round(dealt*(6+2*lev('blood')+bonus)/100)),ceil(eq.hp*(25+bonus)/100));

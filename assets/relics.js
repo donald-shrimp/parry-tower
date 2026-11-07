@@ -12,7 +12,7 @@
   {id:'ember_vial',power:Object.freeze([3, 5]),polishedDesc:'成功パリィごとに炎上蓄積 +5',icon:'☄️',name:'余燼の小瓶',rarity:'common',desc:'成功パリィごとに炎上蓄積 +3',affinity:'灼熱・処刑人'},
   {id:'pilgrim_bell',power:Object.freeze([4, 6]),polishedDesc:'成功パリィ4回ごとにHP6回復',icon:'💗',name:'巡礼者の鐘',rarity:'common',desc:'成功パリィ4回ごとにHP4回復',affinity:'吸血・血の渇望'},
   {id:'broken_gear',power:Object.freeze([5, 8]),polishedDesc:'奥義発動後、次の成功パリィで障壁+8',icon:'⚙️',name:'欠けた歯車',rarity:'common',desc:'奥義発動後、次の成功パリィで障壁+5',affinity:'拍動・奥義紋'},
-  {id:'serene_crystal',power:Object.freeze([8, 12]),polishedDesc:'3連続ジャストで障壁+12',icon:'🎵',name:'静謐の水晶',rarity:'rare',desc:'3連続ジャストで障壁+8',affinity:'拍動・心眼'},
+  {id:'serene_crystal',power:Object.freeze([20, 30]),polishedDesc:'3連続ジャストで障壁+30',icon:'🎵',name:'静謐の水晶',rarity:'rare',desc:'3連続ジャストで障壁+20',affinity:'拍動・心眼'},
   {id:'emperor_conduit',power:Object.freeze([0.25, 0.4]),polishedDesc:'雷撃ダメージ+40%。雷撃スキルがなければ5パリィごとに雷撃30',secondary:Object.freeze([20,30]),icon:'⚡',name:'雷帝の導線',rarity:'rare',desc:'雷撃ダメージ+25%。雷撃スキルがなければ5パリィごとに雷撃20',affinity:'落雷・過充電・残響'},
   {id:'silver_mirror',power:Object.freeze([0.2, 0.3]),polishedDesc:'ガード時のHP被ダメージ-30%（最大12軽減）',secondary:Object.freeze([8,12]),icon:'🪞',name:'蒼銀の鏡',rarity:'rare',desc:'ガード時のHP被ダメージ-20%（最大8軽減）',affinity:'反射・氷結'},
   {id:'royal_banner',power:Object.freeze([10, 15]),polishedDesc:'10コンボごとの到達時に障壁+15',icon:'🚩',name:'王の戦旗',rarity:'rare',desc:'10コンボごとの到達時に障壁+10',affinity:'狂戦士・王の一撃'},

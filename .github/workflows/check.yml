@@ -1,7 +1,9 @@
 name: Static checks
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -43,27 +45,4 @@ jobs:
           node --check scripts/balance-simulation.js
           node scripts/balance-simulation.js
       - name: Check Pages entry and asset links
-        shell: python
-        run: |
-          from pathlib import Path
-          html = Path('index.html').read_text(encoding='utf-8')
-          build = 'v0.9.9'
-          paths = [
-              'style.css', 'diagnostics.js', 'encounters.js', 'enemy-motions.js',
-              'progression.js', 'relics.js', 'routes.js', 'events.js', 'character-art.js', 'character-svg.js', 'character-flat.js', 'character-trace.js', 'character-ready.js', 'character-knight.js', 'combat-art.js', 'combat-sfx.js', 'stage-music.js', 'final-boss-music.js', 'audio-clock.js', 'player-settings.js', 'run-checkpoint.js', 'character-art-defaults.js', 'character-edit.js', 'palette-candidates.js', 'character-style.js', 'character-hero-puppet.js', 'character-enemy-data.js', 'character-enemy-puppet.js', 'character-knight-puppet.js', 'game.js'
-          ]
-          for page in ['index.html', 'dev.html']:
-              text = Path(page).read_text(encoding='utf-8')
-              assert f'<meta name="parry-build" content="{build}">' in text
-              for asset in paths:
-                  assert f'./assets/{asset}?v={build}' in text, (page, asset)
-                  assert Path('assets', asset).is_file()
-              assert text.index('assets/diagnostics.js') < text.index('assets/game.js')
-          assert 'dev.html' not in html
-          dev = Path('dev.html').read_text(encoding='utf-8')
-          assert 'data-parry-dev="true"' in dev
-          assert f'./assets/dev-tools.js?v={build}' in dev
-          assert f'./assets/dev-tools.css?v={build}' in dev
-          assert Path('assets/dev-tools.js').is_file()
-          assert Path('assets/dev-tools.css').is_file()
-          print('Static Pages layout OK')
+        run: node scripts/build-game-entries.js --check

@@ -29,27 +29,34 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 
 /* v0.5.3: zone hint, encounter bestiary and the existing safe practice mode */
 .zone-label{font-size:10px;letter-spacing:.02em;margin-left:12px;font-weight:650;text-transform:none}
-.codex-modal{width:min(100%,750px);display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden}
-.codex-modal *{box-sizing:border-box}
-.codex-modal h2{margin:2px 0 1px}
-.codex-modal p{margin:4px 0 8px}
-.codex-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-bottom:7px;font-size:12px;color:#bbcce5}
-.codex-toolbar select{background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:8px;padding:7px 9px}
-.codex-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:10px;overflow-y:auto;min-height:0;max-height:clamp(220px,52vh,430px);padding:4px 5px 8px;text-align:left;scrollbar-gutter:stable}
-.codex-card{background:linear-gradient(140deg,#1e3146,#13233a);border:1px solid #44607b;border-radius:11px;padding:12px;display:flex;flex-direction:column;align-items:stretch;gap:7px;min-height:0;min-width:0;height:auto;overflow:visible}
-.codex-card .codex-symbol{width:35px;height:35px;border-radius:8px;background:#2c4762;display:grid;place-items:center;font-size:20px;color:#fff0b3}
-.codex-card strong{font-size:14px;color:#f4f4ff;overflow-wrap:anywhere}
-.codex-card small{font-size:10px;color:#a1b8ce;line-height:1.5;overflow-wrap:anywhere}
-.codex-card p{font-size:11px;line-height:1.5;color:#ced9e8;margin:0;flex:0 0 auto;max-width:none;overflow-wrap:anywhere}
-.codex-card.rare{border-color:#ddae5c;background:linear-gradient(140deg,#403321,#21283c)}
-.codex-card.elite{border-color:#b26377}
-.codex-card.boss{border-color:#a398ed}
-.codex-card.locked{opacity:.52;align-items:center;justify-content:center;text-align:center;border-style:dashed;background:#111b2b}
-.codex-card.locked .codex-symbol{color:#8190a7;background:#243044}
-.codex-practice{display:block;box-sizing:border-box;position:relative;flex:0 0 auto;align-self:stretch;width:100%;max-width:100%;min-height:38px;border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-weight:850;padding:9px 10px;font-size:12px;line-height:1.35;margin:6px 0 0;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
-.codex-practice:hover{background:#654765}
-@media(max-width:760px){.zone-label{display:block;margin:3px 0 0;font-size:9px}.codex-list{max-height:clamp(195px,46svh,370px)}}
-@media(max-width:420px){.codex-list{grid-template-columns:1fr;scrollbar-gutter:auto}.codex-modal p{font-size:11px}.codex-toolbar{flex-wrap:wrap}.codex-practice{font-size:12px}}
+.codex-status,.codex-toolbar{display:flex;align-items:center;gap:8px}
+.codex-status{justify-content:space-between;flex-wrap:wrap}
+.codex-toolbar select{max-width:100%;background:#23334f;color:#f7faff;border:1px solid #637d9c;border-radius:9px;padding:7px 8px;font:inherit}
+.codex-modal .codex-list{padding:3px}
+.codex-card{flex-shrink:0}
+.codex-card .upgrade-main{align-items:flex-start;overflow-wrap:anywhere}
+.codex-card .upgrade-main>div{min-width:0}
+.codex-monster{background:linear-gradient(140deg,#1e3146,#13233a);border:1px solid #44607b;border-radius:11px;padding:12px;display:flex;flex-direction:column;gap:7px;min-width:0;overflow-wrap:anywhere}
+.codex-monster .codex-symbol{width:35px;height:35px;border-radius:8px;background:#2c4762;display:grid;place-items:center;font-size:20px;color:#fff0b3}
+.codex-monster strong{font-size:14px;color:#f4f4ff}
+.codex-monster small{font-size:10px;color:#a1b8ce;line-height:1.5}
+.codex-modal .codex-monster p{font-size:11px;line-height:1.5;color:#ced9e8;margin:0;max-width:none}
+.codex-monster.rare{border-color:#ddae5c;background:linear-gradient(140deg,#403321,#21283c)}
+.codex-monster.elite{border-color:#b26377}
+.codex-monster.boss{border-color:#a398ed}
+.codex-monster.locked{opacity:.52;align-items:center;text-align:center;border-style:dashed;background:#111b2b}
+.codex-monster.locked .codex-symbol{color:#8190a7;background:#243044}
+.codex-practice-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:4px}
+.codex-practice{min-height:38px;border:1px solid #d6ad68;background:#4b3850;color:#ffe6a8;border-radius:8px;font-size:11px;font-weight:850;line-height:1.35;padding:8px 6px;text-align:center;overflow-wrap:anywhere}
+.codex-practice:only-child{grid-column:1/-1}
+.codex-practice:hover:not(:disabled){background:#654765}
+.codex-practice.elite-btn{border-color:#e58ca3;background:#4d283b;color:#ffd4df}
+.codex-practice.elite-btn:hover:not(:disabled){background:#66354e}
+@media(max-width:520px){
+ .codex-modal .upgrade-tabs{justify-content:center}
+ .codex-modal .upgrade-tab{flex:0 1 auto;min-height:36px;padding:8px 12px;font-size:11px}
+}
+@media(max-width:760px){.zone-label{display:block;margin:3px 0 0;font-size:9px}}
 
 
 /* v0.5.6: a separate, compact, touch-friendly permanent progression overlay. */
@@ -149,8 +156,14 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .route-symbol{flex-shrink:0;width:46px;height:46px;border-radius:11px;background:#33405e;display:grid;place-items:center;font-size:25px}
 .route-card-body{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
 .route-card-body b{font-size:15px;color:#ffe0a4}
+.route-card-heading{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
+.route-badge{display:inline-flex;align-items:center;flex-shrink:0;border:1px solid currentColor;border-radius:5px;
+ padding:1px 7px;font-size:10px;line-height:1.5;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.route-badge--rest{color:#a3e6c0;background:#1c4038}
+.route-badge--event{color:#dfc3ff;background:#3c2d59}
+.route-badge--trial{color:#ffb9c0;background:#512d39}
+.route-badge--merchant{color:#ffe0a4;background:#4b3c27}
 .route-card-body small,.room-choice small{font-size:11px;line-height:1.5;color:#bdd0e8}
-.route-warning{color:#a6b0c8;font-size:10px;line-height:1.4}
 .route-card>span:last-child,.room-choice>span:last-child{margin-left:auto;font-size:24px;color:#f1d8a8}
 .room-choice{min-height:63px}
 .room-choice>span:first-child{flex:1;display:flex;flex-direction:column;gap:5px}
@@ -164,7 +177,6 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .route-symbol{width:39px;height:39px;font-size:22px}
  .route-card-body b{font-size:13px}
  .route-card-body small,.room-choice small{font-size:10px}
- .route-warning{font-size:9px}
  .room-choice{min-height:61px;padding:9px}
 }
 @media(prefers-reduced-motion:reduce){.route-card,.room-choice{transition:none}}
@@ -185,11 +197,11 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @media(max-width:540px){.version-warning{padding:10px;font-size:12px;gap:8px}.version-warning p{flex-basis:100%}}
 
 /* Display typography for scene titles, UI headings, big counters and canvas feedback.
-   Reading copy, action labels, item descriptions and help remain system UI. */
+   Reading copy, item descriptions and help remain system UI. Menu button typography is in menu-layout.css. */
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
-     url("./fonts/cp-period-display.woff2?v=8") format("woff2");
+     url("./fonts/cp-period-display.woff2?v=9") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
 .brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{
@@ -250,7 +262,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .floorlabel{font-size:12px}
 }
 
-/* v0.9.3: readable, accessible tier progression on the three base upgrades. */
+.upgrade-tier .upgrade-main>div{flex:1;min-width:0;overflow-wrap:anywhere}
 .upgrade-progress{display:flex;gap:3px;width:min(100%,260px);margin-top:8px}
 .upgrade-progress span{height:7px;flex:1 1 0;border-radius:3px;background:#344357;min-width:0}
 .upgrade-progress span.filled{background:#78baa2}
@@ -275,11 +287,6 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .save-warning{font-size:12px;color:#ffdfad;border:1px solid #947d52;background:#392c24;padding:10px;border-radius:9px}
 .synergy-ready-badge{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:6px;background:linear-gradient(135deg,#4f3b69,#2e2444);border:1px solid #f4c772;color:#ffe6a6;font-size:10px;font-weight:850;letter-spacing:.04em}
 .levelup-diff{display:block;margin-top:5px;padding-top:4px;border-top:1px dashed #ffffff24;color:#a8e6cf;font-size:10px;line-height:1.45}
-.codex-tabs{display:flex;justify-content:center;gap:6px;margin:2px 0 6px}
-.codex-practice-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
-.codex-practice-row .codex-practice{margin-top:0;padding:8px 6px;font-size:11px}
-.codex-practice.elite-btn{border-color:#e58ca3;background:#4d283b;color:#ffd4df}
-.codex-practice.elite-btn:hover{background:#66354e}
 .codex-synergy-hint{display:block;margin-top:4px;padding:5px 7px;border-radius:7px;background:#1a2942;border:1px solid #486388;color:#f5dca4;font-size:10px;line-height:1.45}
 .quick-equip-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between;background:#101d30;border:1px solid #3b4e67;border-radius:9px;padding:8px 10px;font-size:11px;color:#c9d8ef}
 .quick-equip-actions{display:flex;gap:5px;flex-shrink:0;align-items:center}

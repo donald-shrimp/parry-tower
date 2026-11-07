@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -6,11 +7,10 @@ const vm=require('node:vm');
 const src=fs.readFileSync('assets/character-trace.js','utf8');
 
 test('traced hero stays opt-in and leaves all previous art modes intact',()=>{
- const game=fs.readFileSync('assets/game.js','utf8');
- assert.match(game,/art=trace/);
- assert.match(game,/CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE\?\.drawHero/);
- for(const opt of ['CHARACTER_FLAT_ENABLED','CHARACTER_SVG_ENABLED','CHARACTER_ART_ENABLED'])
-  assert.ok(game.includes(opt));
+
+
+ assertPilotSelected('trace','hero');
+ for(const mode of ['flat','svg','prototype'])assertPilotSelected(mode);
  for(const file of ['index.html','dev.html']){
   const html=fs.readFileSync(file,'utf8');
   assert.ok(html.indexOf('assets/character-trace.js')>html.indexOf('assets/character-flat.js'));

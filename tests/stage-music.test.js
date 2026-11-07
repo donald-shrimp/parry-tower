@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const music=require('../assets/stage-music'),P=require('../assets/encounters');
+const catalog=require('../assets/music'),royal=require('../assets/final-boss-music');
 test('eight stage scores match the tower zones, retain the original first ten floors and load before the game in both entrypoints',()=>{
  assert.equal(music.themes.length,8);assert.equal(music.bars,8);assert.equal(music.stepsPerBar,8);
  music.themes.forEach((s,i)=>{
@@ -10,7 +11,27 @@ test('eight stage scores match the tower zones, retain the original first ten fl
  assert.equal(music.get('crypt').original,true);assert.deepEqual(music.step('crypt',0,60/112),[]);
  assert.equal(music.get('__proto__'),null);assert.equal(music.get('toString'),null);
  assert.doesNotMatch(fs.readFileSync('index.html','utf8'),/devMusic/);
- for(const page of ['index.html','dev.html']){const html=fs.readFileSync(page,'utf8');assert.ok(html.indexOf('assets/stage-music.js')>=0);assert.ok(html.indexOf('assets/stage-music.js')<html.indexOf('assets/game.js'));}
+ for(const page of ['index.html','dev.html']){
+  const html=fs.readFileSync(page,'utf8');
+  const entry=html.indexOf('assets/music.js');
+  for(const asset of ['encounters','stage-music','final-boss-music']){
+   const dependency=html.indexOf('assets/'+asset+'.js');
+   assert.ok(dependency>=0&&dependency<entry);
+  }
+  assert.ok(entry<html.indexOf('assets/game.js'));
+ }
+});
+test('shared catalog lists both score families and gives the royal encounters priority',()=>{
+ assert.deepEqual(catalog.list(),[...music.themes,...royal.pieces]);
+ for(const theme of music.themes){
+  assert.equal(catalog.get(theme.id),theme);
+  assert.equal(catalog.forEncounter(theme.from+80),theme);
+ }
+ for(const [floor,movement,id] of [[75,1,'king-march'],[80,1,'king-awakening'],[80,2,'king-finale']]){
+  const enemy={...P.encounterForFloor(floor+80),phase:movement};
+  assert.equal(catalog.forEncounter(floor+80,enemy),catalog.get(id));
+ }
+ assert.equal(catalog.get('__proto__'),null);
 });
 test('every candidate loops deterministically on the same beat grid with finite safe voices at all gameplay tempos',()=>{
  const fingerprints=[];

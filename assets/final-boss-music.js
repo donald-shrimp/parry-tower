@@ -138,7 +138,7 @@
   }
   if(event.kind!=='drum')return false;
   if(event.preset==='stomp'){
-   // Same four-layer recipe as game.scoreFinalKick, mixed lower for repeated accents.
+   // Four-layer count-in drum recipe, mixed lower for repeated accents.
    const mix=level/.34;
    for(const [type,start,finish,bend,volume,attack,decay,stop]of [
     ['triangle',220,92,.11,.34,.005,.19,.20],['sine',135,55,.17,.46,.014,.35,.36]

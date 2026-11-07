@@ -17,7 +17,8 @@
   const g=raw.game,ids=new Set(skills.map(s=>s.id)),rids=new Set(relics.map(r=>r.id));
   if(!MODES.includes(g.mode)||g.practice||!Number.isInteger(g.floor)||!number(g.floor,1,9999)||!number(g.maxHp,1,1e7)||!number(g.hp,Number.MIN_VALUE,g.maxHp)||!number(g.shield,0,1e7)||!number(g.baseAtk,1,1e7)||!skins.includes(g.skin)||typeof g.skinEffects!=='boolean')return null;
   if(!g.bonuses||typeof g.bonuses!=='object'||['soulGain','bossWard','regen','revive','choice4'].some(id=>!number(g.bonuses[id],0,1000))||!number(g.lifeBonus,0,10000))return null;
-  if(g.bonuses.wardInheritance!==undefined&&![0,5,8,10].includes(g.bonuses.wardInheritance))return null;
+  if(g.bonuses.wardCapacity!==undefined&&![0,20,40,60].includes(g.bonuses.wardCapacity))return null;
+  if(g.bonuses.wardInheritance!==undefined&&![0,5,8,10,15,20].includes(g.bonuses.wardInheritance))return null;
   if(g.bonuses.coinGain!==undefined&&![0,10,20,30,45].includes(g.bonuses.coinGain))return null;
   if(g.relicBulwarkUsed!==undefined&&typeof g.relicBulwarkUsed!=='boolean')return null;
   if(![null,'rest','merchant','event','trial'].includes(g.currentRoom)||![null,'altar','mirror','traveler','chest','sanctuary','forge','scales'].includes(g.eventId)||![null,'result','mirror','target:training','target:breakthrough','target:polish','target:sanctuary_train','target:forge_polish'].includes(g.roomStage)||typeof g.roomLocked!=='boolean')return null;
@@ -48,8 +49,8 @@
   if(g.mode==='reward'&&raw.choices.some(id=>g.sealedSkillIds.includes(id)||(g.lv[id]||0)>=skills.find(s=>s.id===id).max+(g.skillBreaks[id]||0)))return null;
   if(g.mode==='routeSkill'&&!g.routeSkillSet.length)return null;
   const safe=JSON.parse(JSON.stringify(raw));for(const key of transient)delete safe.game[key];
-  safe.game.bonuses.wardInheritance??=0;safe.game.bonuses.coinGain??=0;safe.game.relicBulwarkUsed??=false;
-  safe.game.merchantBought??=[];safe.game.floorPerfects??=0;safe.game.lastEventId??=null;safe.game.routeSkillTitle=typeof g.routeSkillTitle==='string'&&g.routeSkillTitle.length<=80?g.routeSkillTitle:'スキルをひとつ選べ';
+  safe.game.bonuses.wardCapacity??=0;safe.game.bonuses.wardInheritance??=0;safe.game.bonuses.coinGain??=0;safe.game.relicBulwarkUsed??=false;
+  safe.game.merchantBought??=[];safe.game.floorPerfects??=0;safe.game.lastEventId??=null;safe.game.routeSkillTitle=typeof g.routeSkillTitle==='string'&&g.routeSkillTitle.length<=80?g.routeSkillTitle:'スキル獲得';
   return safe;
  }
  const API=Object.freeze({KEY,MODES,capture,validate});

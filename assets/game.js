@@ -3,12 +3,8 @@ const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getCon
 const DEV_MODE=document.documentElement.dataset.parryDev==='true';
 let devPreviewSkin='normal';
 let beatContact=true,cueBeats=1.5,devTimingTrace={};
-const attackPresentation={opening:true,cues:new Map(),contact:null,sounds:[]};
+const attackPresentation={opening:true,cues:new Map(),contact:null};
 const splitContact=()=>cueBeats>0&&typeof window.ParryCombatSfx?.playContact==='function'&&typeof window.ParryCombatSfx?.playTail==='function';
-function stopFutureContacts(){
- for(const sound of attackPresentation.sounds)if(!sound.ended&&sound.when>(audioContext?.currentTime??0))sound.cancel();
- attackPresentation.sounds=[];
-}
 function presentContact(){
  if(!splitContact())return;
  const key=score.theme+':'+game.attackBeat;
@@ -16,94 +12,59 @@ function presentContact(){
  attackPresentation.contact={key,at:game.attackAt,audioAt:score.origin+game.attackBeat*score.beat,guard:!!game.guardAtImpact,result:null};
  triggerClashFX('contact',game.attackAt,game.enemy.kind);
 }
-const STAGE_MUSIC=window.ParryStageMusic;
-const FINAL_MUSIC=window.ParryFinalBossMusic;
-const musicDefinition=id=>FINAL_MUSIC?.get(id)||STAGE_MUSIC?.get(id);
+const MUSIC=window.ParryMusic;
 const VARIANT_MOTIONS=window.ParryEnemyMotions;
-// Adopted fine pixel art and score-driven cutout motion; explicit art pilots remain available.
-const CHARACTER_ART=window.ParryCharacterArt;
-const CHARACTER_SVG=window.ParryCharacterSvg;
-const CHARACTER_FLAT=window.ParryHeroFlat;
-const CHARACTER_TRACE=window.ParryHeroTrace;
-const CHARACTER_READY=window.ParryHeroReady;
-const CHARACTER_KNIGHT=window.ParryKnightTrace;
-const COMBAT_ART=window.ParryCombatArt;
-const KNIGHT_PUPPET=window.ParryKnightPuppet;
-const ILLUSTRATED_ENABLED=!/(?:^|[?&])art=/.test(window.location?.search||'')||/(?:^|[?&])art=illustrated(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_RIG=window.ParryCharacterRig;
-const CHARACTER_RIG_ENABLED=/(?:^|[?&])art=rework(?:&|$)/.test(window.location?.search||'');
-const COMBAT_ART_ENABLED=/(?:^|[?&])art=impact(?:&|$)/.test(window.location?.search||'');
+// Adopted artwork and explicit comparison modes share one draw dispatcher.
+const artModes=window.ParryCharacterRenderer.modes(window.location?.search||'');
+const COMBAT_ART=window.ParryCombatArt,KNIGHT_PUPPET=window.ParryKnightPuppet,CHARACTER_RIG=window.ParryCharacterRig;
+const ILLUSTRATED_ENABLED=artModes.illustrated,COMBAT_ART_ENABLED=artModes.impact,CHARACTER_RIG_ENABLED=artModes.rework;
 if(COMBAT_ART_ENABLED)document.documentElement.dataset.parryArt='impact';
 if(CHARACTER_RIG_ENABLED)document.documentElement.dataset.parryArt='rework';
-const CHARACTER_KNIGHT_ENABLED=/(?:^|[?&])art=knight-trace(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_READY_ENABLED=/(?:^|[?&])art=ready(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_TRACE_ENABLED=/(?:^|[?&])art=trace(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_FLAT_ENABLED=/(?:^|[?&])art=flat(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_SVG_ENABLED=/(?:^|[?&])art=svg(?:&|$)/.test(window.location?.search||'');
-const CHARACTER_ART_ENABLED=/(?:^|[?&])art=prototype(?:&|$)/.test(window.location?.search||'');
+const characterRenderer=window.ParryCharacterRenderer.create({
+ modes:artModes,illustrated:KNIGHT_PUPPET,rig:CHARACTER_RIG,impact:COMBAT_ART,
+ ready:window.ParryHeroReady,trace:window.ParryHeroTrace,flat:window.ParryHeroFlat,
+ svg:window.ParryCharacterSvg,prototype:window.ParryCharacterArt,knightTrace:window.ParryKnightTrace,
+ enemyPuppet:window.ParryEnemyPuppet
+});
 const P=window.ParryEncounters;if(!P)throw Error('Missing assets/encounters.js');
 const PR=window.ParryProgression;if(!PR)throw Error('Missing assets/progression.js');
+const RunState=window.ParryRunState;if(!RunState)throw Error('Missing assets/run-state.js');
 const RR=window.ParryRelics;if(!RR)throw Error('Missing assets/relics.js');
 const RT=window.ParryRoutes;if(!RT)throw Error('Missing assets/routes.js');
 const EV=window.ParryEvents;if(!EV)throw Error('Missing assets/events.js');
 const PREF=window.ParryPlayerSettings,CP=window.ParryRunCheckpoint;
+const saves=window.ParrySaveStore.create({storage:()=>localStorage,writable:!DEV_MODE});
 const audioClock=window.ParryAudioClock.create();
-let clockPausedPhase=false;
-let preferences=PREF.normalize();try{preferences=PREF.normalize(JSON.parse(localStorage.getItem(PREF.KEY)||'{}'))}catch(e){}
-let pendingCheckpoint=null,saveFailed=false,settingsReturn='title',calibration=null,calibrationNodes=[],pendingNewTutorial=false;
+let preferences=PREF.normalize();try{preferences=PREF.normalize(saves.readJson(PREF.KEY,{}).value)}catch(e){}
+let pendingCheckpoint=null,saveFailed=false,calibration=null,calibrationNodes=[];
 const CALIBRATION_COUNT_IN=4,CALIBRATION_SAMPLES=16;
 const KEY='parryTowerPrototype_v1';const OFFSET_KEY='parryTowerInputOffset_v1';const LEGACY_OFFSET_KEY='parryTowerAudioOffset_v05';const BOOK_KEY='parryTowerBestiary_v1';const PERMANENT_KEY='parryTowerPermanent_v1'; // v0.1と同じ保存領域で恒久育成を引き継ぐ
 const baseMeta={coins:0,bestFloor:0,bestCombo:0,runs:0,life:0,attack:0,ward:0,rescueClaimMask:0};
 let meta={...baseMeta};try{
- const s=JSON.parse(localStorage.getItem(KEY)||'{}');
+ const s=saves.readJson(KEY,{}).value;
  for(const k of Object.keys(baseMeta)){
   if(PR.BASE_UPGRADES.some(def=>def.id===k)){meta[k]=PR.baseLevel(s,k);}
   else if(k==='rescueClaimMask')meta[k]=PR.rescueMask(s[k]);
   else if(typeof s[k]==='number'&&Number.isFinite(s[k]))meta[k]=Math.max(0,Math.floor(s[k]));
  }
 }catch(e){}
-const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;if(DEV_MODE)return;try{localStorage.setItem(KEY,JSON.stringify(meta))}catch(e){}};
-const savePermanent=()=>{if(DEV_MODE)return;try{localStorage.setItem(PERMANENT_KEY,JSON.stringify(permanent))}catch(e){}};
-let book=P.emptyBook();try{book=P.normalizeBook(JSON.parse(localStorage.getItem(BOOK_KEY)||'{}'))}catch(e){}
-const saveBook=()=>{if(DEV_MODE)return;try{localStorage.setItem(BOOK_KEY,JSON.stringify(book))}catch(e){}};
-const SKILLS=[
-{id:'blade',icon:'🗡️',name:'剛剣',rarity:'common',max:20,desc:l=>`基礎反撃・攻撃スキルダメージ +${25*l}%`,hint:'基礎攻撃'},
-{id:'thunder',icon:'⚡',name:'落雷',rarity:'common',max:12,desc:l=>`パリィで雷撃 ${scaleSkillDmg(10+12*l)} ダメージ`,hint:'連鎖の起点'},
-{id:'echo',icon:'🌀',name:'残響',rarity:'rare',max:6,desc:l=>`パリィ後、追撃 ${Math.round(25+l*13)}%`,hint:'雷撃と共鳴'},
-{id:'blood',icon:'🩸',name:'吸血',rarity:'common',max:8,desc:l=>`パリィ与ダメの ${6+l*2}% 回復（最低2・上限HP25%）`,hint:'与ダメージ吸収'},
-{id:'fury',icon:'🔥',name:'狂戦士',rarity:'rare',max:6,desc:l=>`コンボごとの攻撃補正 +${l*2}%`,hint:'吸血と共鳴'},
-{id:'aegis',icon:'🛡️',name:'魔法障壁',rarity:'common',max:10,desc:l=>`ジャストで障壁を ${3+3*l} 獲得`,hint:'反射と共鳴'},
-{id:'wardcraft',icon:'🔰',name:'結界増幅',rarity:'rare',max:3,startCost:90,desc:l=>`戦闘中の障壁獲得量と補充上限 +${wardcraftBonus(l)}%（余剰回復の変換量は除く）`,hint:'障壁ビルド'},
-{id:'thorns',icon:'🪞',name:'反射',rarity:'rare',max:6,desc:l=>`ガード時に攻撃力の ${30+l*18}% を反射`,hint:'障壁と共鳴'},
-{id:'precision',icon:'🎯',name:'一点集中',rarity:'common',max:10,desc:l=>`ジャスト反撃倍率 +${l*35}%`,hint:'奥義と共鳴'},
-{id:'focus',icon:'👁️',name:'心眼',rarity:'common',max:6,desc:l=>`ジャスト判定を ±${11+l*2}ms に拡張`,hint:'操作補助'},
-{id:'stability',icon:'🍀',name:'静かな呼吸',rarity:'common',max:6,desc:l=>`通常パリィを ±${31+l*3}ms に拡張`,hint:'操作補助'},
-{id:'ember',icon:'☄️',name:'灼熱',rarity:'common',max:10,desc:l=>`パリィで炎の継続ダメージ +${scaleSkillDmg(l*7)}`,hint:'処刑と共鳴'},
-{id:'execute',icon:'💀',name:'処刑人',rarity:'rare',max:6,desc:l=>`残HP35%以下の敵への攻撃 +${l*23}%`,hint:'炎と共鳴'},
-{id:'tempo',icon:'⏳',name:'緩慢の呪い',rarity:'rare',max:4,desc:l=>`BGMと敵のBPM −${tempoReduction(l)}`,hint:'テンポ操作'},
-{id:'pulse',icon:'🌟',name:'共鳴波',rarity:'rare',max:6,desc:l=>`${8}コンボごとに衝撃波 +${scaleSkillDmg(l*42)} ダメージ`,hint:'コンボ特化'},
-{id:'rune',icon:'🔮',name:'奥義紋',rarity:'epic',max:6,desc:l=>`奥義の基礎ダメージ +${Math.round(l*45*baseAttackScale())}`,hint:'集中と共鳴'},
-{id:'gamble',icon:'🥀',name:'背水',rarity:'rare',max:6,desc:l=>`自分のHPが半分未満なら攻撃 +${l*30}%`,hint:'危険な火力'},
-{id:'heal',icon:'💗',name:'生命の器',rarity:'common',max:10,desc:l=>`最大HP +${l*15}、取得時にも回復`,hint:'持久戦'},
-{id:'double',icon:'🎲',name:'双撃',rarity:'epic',max:5,desc:l=>`${14+l*9}% の確率で反撃が2倍`,hint:'一撃の爆発力'},
- {id:'fortitude',icon:'🛡️',name:'不屈',rarity:'common',max:4,startCost:20,desc:l=>`HP被弾後、次の反撃 +${15+10*l}%`,hint:'被弾からの反撃'},
- {id:'heartbeat',icon:'🎵',name:'拍動',rarity:'common',max:4,startCost:25,desc:l=>`3連続ジャストで奥義+1・基礎攻撃の ${20+15*l}% 追撃`,hint:'連続ジャスト'},
- {id:'overcharge',icon:'⚡',name:'過充電',rarity:'rare',max:5,startCost:95,desc:l=>`成功パリィ3回ごとに基礎攻撃 ${(0.7+0.4*l).toFixed(1)}倍 の雷撃`,hint:'雷撃ビルド'},
- {id:'bloodlust',icon:'🦇',name:'血の渇望',rarity:'rare',max:4,startCost:110,desc:l=>`パリィ時HP+${2+l}、実回復×${(1+0.5*l).toFixed(1)}を次の反撃に蓄積`,hint:'回復から火力'},
- {id:'frost',icon:'❄️',name:'氷結',rarity:'rare',max:6,startCost:90,desc:l=>`4パリィで氷の加護。次の被攻撃 -${frostReduction(l)}%`,hint:'被ダメージ軽減'},
- {id:'king',icon:'👑',name:'王の一撃',rarity:'epic',max:4,startCost:300,desc:l=>`10コンボごとに基礎攻撃 ${2+l}倍 の追撃`,hint:'コンボ特化'}
-];
-function baseAttackScale(){return (game?.baseAtk||25)/25}
-function skillAtkScale(){return baseAttackScale()*(1+lvl('blade')*.25)}
-function scaleSkillDmg(raw){return Math.max(1,Math.round(raw*skillAtkScale()))}
-function hpSkillScale(){return 1+((game?.lifeBonus||0)+lvl('heal')*15)/100}
-function tempoReduction(level){return Math.min(6,Math.max(0,Math.floor(Number(level)||0)))*2}
-function frostReduction(level){return Math.min(85,15+10*Math.min(6,level)+5*Math.max(0,level-6))}
-function wardcraftBonus(level){return [0,20,35,50,60,70][Math.min(5,Math.max(0,Math.floor(level)))]}
+const save=()=>{$('soulFragmentsLabel').textContent=meta.coins;saves.writeJson(KEY,meta);};
+const savePermanent=()=>{saves.writeJson(PERMANENT_KEY,permanent);};
+let book=P.emptyBook();try{book=P.normalizeBook(saves.readJson(BOOK_KEY,{}).value)}catch(e){}
+const saveBook=()=>{saves.writeJson(BOOK_KEY,book);};
+const CombatMath=window.ParryCombatMath,CombatHealth=window.ParryCombatHealth,SkillCatalog=window.ParrySkills;
+const {SKILLS,SYNERGIES,PULSE_COMBO_STEP,KING_COMBO_STEP}=SkillCatalog;
+const {ULTIMATE_BASE_MULTIPLIER,heartbeatDamagePercent,tempoReduction}=CombatMath;
+function baseAttackScale(){return CombatMath.baseAttackScale(game?.baseAtk);}
+function skillAtkScale(){return CombatMath.skillAtkScale(game?.baseAtk,lvl('blade'));}
+function runBaseHp(){return CombatMath.runBaseHp(game.lifeBonus??PR.baseValue(meta,'life'));}
+function hpSkillScale(){return CombatMath.hpSkillScale(runBaseHp(),lvl('heal'));}
+function skillDescriptionContext(){return {baseAtk:game?.baseAtk,bladeLevel:lvl('blade'),baseHp:runBaseHp()};}
+function describeSkill(id,level){return SkillCatalog.describe(id,level,skillDescriptionContext());}
 let codexTab='monsters';
 const SK=Object.fromEntries(SKILLS.map(s=>[s.id,s]));
 // Keep ownership and equipment in a separate, versioned save; legacy currency and stats remain untouched.
-let permanent=PR.defaults();try{permanent=PR.normalize(JSON.parse(localStorage.getItem(PERMANENT_KEY)||'{}'),SKILLS)}catch(e){}
+let permanent=PR.defaults();try{permanent=PR.normalize(saves.readJson(PERMANENT_KEY,{}).value,SKILLS)}catch(e){}
 if(!permanent.skinRecords.normal)permanent.skinRecords.normal={bestFloor:meta.bestFloor,bestCombo:meta.bestCombo,runs:meta.runs};
 function visualSkin(){return game?.skin||(DEV_MODE?devPreviewSkin:permanent.equippedSkin)||'normal'}
 function runSkinRules(){return PR.skinRules(game?.skinEffects?game.skin:'normal')}
@@ -115,34 +76,12 @@ function syncArtMode(){
  if(useIllustratedArt())KNIGHT_PUPPET?.preloadSources?.();
 }
 let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items';
-const SYNERGIES=[
- {a:'thunder',b:'echo',name:'⚡ 雷鳴残響',desc:'追撃のたびに雷が再落下'},
- {a:'blood',b:'fury',name:'🩸 血の律動',desc:'1コンボごとに吸血率・回復上限 +1%pt（無制限）'},
- {a:'aegis',b:'thorns',name:'🪞 鏡壁の反撃',desc:'ジャスト時に障壁の一部を攻撃に転換'},
- {a:'ember',b:'execute',name:'☄️ 紅蓮処刑',desc:'瀕死の敵に炎の蓄積を一気に放出'},
- {a:'rune',b:'precision',name:'🔮 時空切断',desc:'奥義の発動時に追加の斬撃'},
-  {a:'fortitude',b:'aegis',name:'🛡️ 不滅の盾',desc:'障壁破壊でも不屈が発動・反撃後に障壁+5'},
-  {a:'heartbeat',b:'focus',name:'🎵 共鳴心眼',desc:'拍動が2連続ジャストで発動'},
-  {a:'overcharge',b:'thunder',name:'⚡ 雷霆循環',desc:'過充電時に落雷の基礎ダメージ50%を追加'},
-  {a:'bloodlust',b:'blood',name:'🦇 鮮血連鎖',desc:'回復からの蓄積ダメージ×1.5（上限は維持）'},
-  {a:'frost',b:'thorns',name:'❄️ 氷鏡',desc:'氷結で軽減したダメージの50%を反射'},
-  {a:'king',b:'pulse',name:'👑 王の共鳴',desc:'王の一撃が8コンボごとに発動'}
-];
+
 const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
-let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,audioContext=null,choiceSet=[],cuePlayed=false;
-let devSfxVolume=1,devSfxBus=null,playerSfxBus=null;
+let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,choiceSet=[],cuePlayed=false;
 let devMusicTheme='auto',devMusicAudition=false,devMusicLatter=null;
-function effectDestination(){
- if(!playerSfxBus){playerSfxBus=audioContext.createGain();playerSfxBus.gain.value=audioEnabled?preferences.sfx/100:0;playerSfxBus.connect(audioContext.destination);}
- return playerSfxBus;
-}
-function steelDestination(){
- if(!DEV_MODE)return effectDestination();
- if(!devSfxBus){devSfxBus=audioContext.createGain();devSfxBus.gain.value=devSfxVolume;devSfxBus.connect(effectDestination());}
- return devSfxBus;
-}
-let pausedFrom='combat',pauseAt=0,screenOffset=0;
+
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -162,7 +101,6 @@ function clearGuardInput(){
  heldGuardInputs.clear();
  if(game){game.guardHeld=false;game.guardStartedAt=0;if(wasHeld)game.guardReleasedAt=performance.now();}
 }
-function resetParryInput(){game.guardAtImpact=null;game.parryReadyAt=0;game.guardReleasedAt=-99999;game.parryBlockedAt=-99999;}
 function beginGuardInput(source){
  if(game.mode!=='combat'||heldGuardInputs.has(source))return;
  const wasHeld=heldGuardInputs.size>0;
@@ -217,166 +155,112 @@ const motionFor=(e,opening=attackPresentation.opening)=>{
  return {...m,prepare,swing,recovery,cuePrepare:prepare,noWindup};
 };
 // ---- Music and combat share one Web Audio clock; inputs follow its beats. ----
-const score={active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,boss:false,latter:false,theme:0,music:'crypt',bus:null,noise:null,
- get bpm(){return Math.round(60/this.beat)}};
+const audio=window.ParryAudioSession.create({
+ createContext:()=>new (window.AudioContext||window.webkitAudioContext)(),
+ now:()=>performance.now(),defer:(callback,delay)=>setTimeout(callback,delay),
+ // Warm steel tails before the session establishes its beat origin.
+ prepare:ac=>window.ParryCombatSfx?.prepare?.(ac),playStep:playMusicStep,devMode:DEV_MODE
+});
+const {score,stopScore,scheduleScore,effectDestination,steelDestination}=audio;
+applyAudioPreferences();
 let latencyOffset=0;try{
- const current=localStorage.getItem(OFFSET_KEY),legacy=localStorage.getItem(LEGACY_OFFSET_KEY);
+ const currentResult=saves.readText(OFFSET_KEY);
+ if(!currentResult.ok)throw currentResult.error;
+ const legacyResult=saves.readText(LEGACY_OFFSET_KEY);
+ if(!legacyResult.ok)throw legacyResult.error;
+ const current=currentResult.value,legacy=legacyResult.value;
  if(current!==null&&Number.isFinite(Number(current)))latencyOffset=clamp(Number(current),-180,180);
  else if(legacy!==null&&Number.isFinite(Number(legacy)))latencyOffset=clamp(Number(legacy)-PARRY_STARTUP,-180,180);
  // Preserve saved input centers: presentation changes do not require another offset conversion.
 }catch(e){}
 $('latencySlider').value=latencyOffset;$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';
-$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){} });
-function ensureAudio(){try{if(audioContext?.state==='closed'){audioContext=null;score.bus=null;playerSfxBus=null;}audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state!=='running')audioContext.resume().catch(()=>{});
- // Warm the longer steel tails before startScore establishes its beat origin.
- window.ParryCombatSfx?.prepare?.(audioContext);
- if(!score.bus){score.bus=audioContext.createGain();score.bus.gain.value=.35*preferences.bgm/100;score.bus.connect(audioContext.destination)}if(!score.noise){const ac=audioContext,b=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate),ch=b.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;score.noise=b;}return true}catch(e){return false}}
-function scoreTone(f,d,vol,t,type='triangle',bend=0){if(!audioEnabled||!audioContext||!score.bus)return;const ac=audioContext,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(25,f),t);if(bend)o.frequency.exponentialRampToValueAtTime(Math.max(25,f+bend),t+d*.8);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(score.bus);o.start(t);o.stop(t+d+.015)}
-function scoreNoise(t,d,vol,hpf=1800){if(!audioEnabled||!audioContext||!score.noise)return;const ac=audioContext,src=ac.createBufferSource(),flt=ac.createBiquadFilter(),g=ac.createGain();src.buffer=score.noise;flt.type='highpass';flt.frequency.value=hpf;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+d);src.connect(flt);flt.connect(g);g.connect(score.bus);src.start(t);src.stop(t+d+.01)}
-// Cinematic giant-footstep drums: audible impact on small speakers + deep body + short rumble.
-// Four identical hits, slightly accented first. Every layer is scheduled on the same Web Audio beat.
-function scoreFinalKick(t,accent=false){
- if(!audioEnabled||!audioContext||!score.bus)return;
- const ac=audioContext,level=accent?1.12:1;
- // Mid-bass punch (220→92Hz) gives the "DON!" definition that sub-bass alone lacks.
- const punch=ac.createOscillator(),punchGain=ac.createGain();
- punch.type='triangle';
- punch.frequency.setValueAtTime(220,t);
- punch.frequency.exponentialRampToValueAtTime(92,t+.11);
- punchGain.gain.setValueAtTime(.0001,t);
- punchGain.gain.exponentialRampToValueAtTime(.34*level,t+.005);
- punchGain.gain.exponentialRampToValueAtTime(.0001,t+.19);
- punch.connect(punchGain);punchGain.connect(score.bus);
- punch.start(t);punch.stop(t+.20);
- // Chest-sized boom (135→55Hz) hangs under the sharp stomp without masking the next beat.
- const boom=ac.createOscillator(),boomGain=ac.createGain();
- boom.type='sine';
- boom.frequency.setValueAtTime(135,t);
- boom.frequency.exponentialRampToValueAtTime(55,t+.17);
- boomGain.gain.setValueAtTime(.0001,t);
- boomGain.gain.exponentialRampToValueAtTime(.46*level,t+.014);
- boomGain.gain.exponentialRampToValueAtTime(.0001,t+.35);
- boom.connect(boomGain);boomGain.connect(score.bus);
- boom.start(t);boom.stop(t+.36);
- if(score.noise){
-  // Short midrange crack makes every beat distinguishable on phone speakers.
-  const crack=ac.createBufferSource(),crackFilter=ac.createBiquadFilter(),crackGain=ac.createGain();
-  crack.buffer=score.noise;crackFilter.type='bandpass';crackFilter.frequency.value=950;
-  crackFilter.Q.value=.7;
-  crackGain.gain.setValueAtTime(.0001,t);
-  crackGain.gain.exponentialRampToValueAtTime(.19*level,t+.004);
-  crackGain.gain.exponentialRampToValueAtTime(.0001,t+.07);
-  crack.connect(crackFilter);crackFilter.connect(crackGain);crackGain.connect(score.bus);
-  crack.start(t);crack.stop(t+.08);
-  // A low, brief dust-cloud tail supplies weight like a huge creature landing.
-  const dust=ac.createBufferSource(),dustFilter=ac.createBiquadFilter(),dustGain=ac.createGain();
-  dust.buffer=score.noise;dustFilter.type='lowpass';dustFilter.frequency.value=380;
-  dustGain.gain.setValueAtTime(.0001,t);
-  dustGain.gain.exponentialRampToValueAtTime(.11*level,t+.014);
-  dustGain.gain.exponentialRampToValueAtTime(.0001,t+.24);
-  dust.connect(dustFilter);dustFilter.connect(dustGain);dustGain.connect(score.bus);
-  dust.start(t);dust.stop(t+.25);
- }
-}
-const NOTES=[73.42,82.41,87.31,98,110,116.54,130.81,146.83,164.81,174.61,196,220,233.08,261.63,293.66,329.63,349.23,392,440,466.16,523.25,587.33];
-function playBgmArrangement(n,t){
- if(!devMusicAudition&&!['combat','phase'].includes(game?.mode))return;
- const ix=n%8;
- // Adopted mock 4: offbeat hats and sustained D/A harmony, from the first bar.
- if(ix%2===1)scoreNoise(t,.035,.045,5200);
- if(ix===0){scoreTone(293.66,score.beat*1.8,.032,t,'sine');scoreTone(440,score.beat*1.8,.024,t,'sine');}
-}
-function playMusicStep(n,t){
+$('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.value);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';saves.writeText(OFFSET_KEY,latencyOffset); });
+function playMusicStep(ac,step,at){
  if(!audioEnabled)return;
- if(FINAL_MUSIC?.get(score.music)){
-  // Keep count-in beats silent, but allow lookahead to reserve the first music
-  // downbeat AFTER them. Its score starts at zero without moving combat's clock.
-  if(n<score.musicStartStep)return;
-  for(const event of FINAL_MUSIC.step(score.music,n-score.musicStartStep,score.beat,game.enemy?.phase||1))
-   FINAL_MUSIC.play(audioContext,event,t+event.offset,score.bus,score.noise);
-  playBgmArrangement(n-score.musicStartStep,t);
-  return;
- }
- // Preserve the existing count-in suppression for the eight adopted themes.
- if(game.mode==='phase'&&game.phaseStage==='countin')return;
- if(STAGE_MUSIC&&(score.music!=='crypt'||score.latter)){
-  for(const event of STAGE_MUSIC.step(score.music,n,score.beat,score.boss,score.latter)){
-   const at=t+event.offset;
-   if(event.kind==='noise')scoreNoise(at,event.duration,event.volume,event.cutoff);
-   else if(event.kind==='bell')for(const [ratio,level,decay]of [[1,1,1],[2.76,.20,.55],[5.4,.065,.25]])
-    scoreTone(event.frequency*ratio,event.duration*decay,event.volume*level,at,'sine');
-   else scoreTone(event.frequency,event.duration,event.volume,at,event.type,event.bend);
-  }
-  playBgmArrangement(n,t);
-  return;
- }
- const ix=n%8,bar=Math.floor(n/8),root=score.boss?[0,3,2,5][Math.floor(bar/2)%4]:[0,5,3,2][Math.floor(bar/2)%4];const low=NOTES[root];
- // quarter-note drums, eighth-note hats, and offbeat melodic answers
- if(ix%2===0){const b=(n/2)%4;scoreTone(b===0?140:110,.19,b===0?.26:.13,t,'sine',-90);if(b===1||b===3){scoreNoise(t,.12,score.boss?.26:.17,600);scoreTone(155,.075,.06,t,'triangle',-30)}}
- scoreNoise(t,ix%2?.045:.055,ix%2?.062:.085,3500);
- if(ix===0||ix===4)scoreTone(low,score.beat*(score.boss?.86:1.45),score.boss?.23:.16,t,'sawtooth',-4);
- if((ix===2||ix===6)&&score.boss)scoreTone(low*2,.15,.085,t,'square',-12);
- if(ix===3||ix===7){const melody=score.boss?[1,5,7,4][bar%4]:[3,7,5,9][bar%4];scoreTone(NOTES[Math.min(NOTES.length-1,root+melody)],score.beat*.43,score.boss?.12:.09,t,'triangle',8)}
- if(ix===0&&bar%2===0){scoreTone(low*4,score.beat*3.5,.042,t,'sine');scoreTone(low*6,score.beat*3.5,.025,t,'sine')}
- if(score.boss&&(ix===1||ix===5))scoreTone(low*2,.12,.04,t,'sawtooth',-45);
- playBgmArrangement(n,t);
+ MUSIC?.playStep(ac,{
+  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,latter:score.latter,
+  movement:game.enemy?.phase||1,startStep:score.musicStartStep,countIn:game.mode==='phase'&&game.phaseStage==='countin',
+  arrangement:devMusicAudition||['combat','phase'].includes(game?.mode)
+ });
 }
-function stopScore(){stopFutureContacts();score.active=false;score.nextStep=0;if(score.bus&&audioContext){try{const at=Number.isFinite(audioContext.currentTime)?audioContext.currentTime:0;score.bus.gain.cancelScheduledValues(at);score.bus.gain.setTargetAtTime(0,at,.025);}catch(e){score.bus.disconnect?.();}
- const retired=score.bus;score.bus=null;setTimeout(()=>retired.disconnect?.(),200);
-}}
 function encounterBpm(enemy){
  const base=enemy.boss?136:enemy.kind==='rogue'?124:112;
- if(devMusicAudition)return FINAL_MUSIC?.get(devMusicTheme)?.bpm??base;
+ if(devMusicAudition)return MUSIC?.get(devMusicTheme)?.bpm??base;
  // Freeze once per enemy, including checkpoints written before the rework.
  game.tempoBpmReduction??=tempoReduction(lvl('tempo'));
  return base+(enemy.elite?6:0)+(runSkinRules().randomTempo?game.skinTempoOffset||0:0)-game.tempoBpmReduction;
 }
-function startScore(enemy){attackPresentation.cues.clear();attackPresentation.contact=null;score.beat=60/encounterBpm(enemy);if(!ensureAudio()){score.active=false;return}audioClock.reset();const ac=audioContext;score.active=true;score.boss=!!enemy.boss;score.music=DEV_MODE&&devMusicTheme!=='auto'?devMusicTheme:FINAL_MUSIC?.forEncounter(enemy)?.id||STAGE_MUSIC?.themes[P.ZONES.indexOf(P.zoneForFloor(game.floor||1))]?.id||'crypt';score.latter=!FINAL_MUSIC?.get(score.music)&&(DEV_MODE&&devMusicLatter!==null?devMusicLatter:P.positionInZone(game.floor||1)>=5);score.musicStartStep=FINAL_MUSIC?.get(score.music)&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;score.origin=ac.currentTime+.17;score.visualOriginPerf=performance.now()+170;score.nextStep=0;score.theme++;score.bus.gain.cancelScheduledValues(ac.currentTime);score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,ac.currentTime,.018);const selected=musicDefinition(score.music);const titleText=selected&&!selected.original?(score.latter&&selected.latterName?selected.latterName:selected.name):score.latter&&selected?.latterName?selected.latterName:score.boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE';$('trackLabel').textContent=titleText+' · '+score.bpm+' BPM';scheduleScore()}
-function scheduleScore(){if(!score.active||!audioContext||audioContext.state==='suspended')return;const now=audioContext.currentTime,until=now+.17;let n=0;while(score.origin+score.nextStep*score.beat/2<until&&n++<24){const t=score.origin+score.nextStep*score.beat/2;if(t>=now-.025)playMusicStep(score.nextStep,t>now?t:now+.002);score.nextStep++}}
+function startScore(enemy){
+ attackPresentation.cues.clear();attackPresentation.contact=null;
+ const beat=60/encounterBpm(enemy),boss=!!enemy.boss;
+ const selected=DEV_MODE&&devMusicTheme!=='auto'?MUSIC?.get(devMusicTheme):MUSIC?.forEncounter(game.floor||1,enemy);
+ const latter=selected?.floor==null&&(DEV_MODE&&devMusicLatter!==null?devMusicLatter:P.positionInZone(game.floor||1)>=5);
+ const startStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
+ if(!audio.startScore({beat,id:selected?.id||'crypt',boss,latter,startStep}))return;
+ audioClock.reset();
+ const titleText=selected&&!selected.original?(score.latter&&selected.latterName?selected.latterName:selected.name):score.latter&&selected?.latterName?selected.latterName:boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE';
+ $('trackLabel').textContent=titleText+' · '+score.bpm+' BPM';
+ scheduleScore();
+}
 function readAudioClock(){
- let stamp=null,stampError=false;try{stamp=audioContext.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
- return audioClock.sample({audio:audioContext.currentTime,perf:performance.now(),state:audioContext.state,stamp,stampError,latencyHint:((audioContext.outputLatency||0)+(audioContext.baseLatency||0))*1000});
+ const ac=audio.context;
+ let stamp=null,stampError=false;try{stamp=ac.getOutputTimestamp?.()||null;}catch(e){stampError=true;}
+ return audioClock.sample({audio:ac.currentTime,perf:performance.now(),state:ac.state,stamp,stampError,latencyHint:((ac.outputLatency||0)+(ac.baseLatency||0))*1000});
 }
 function scoreToPerf(t,offset=0){
- if(audioContext){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
+ if(audio.context){const reading=readAudioClock();if(reading.healthy)return t*1000+reading.offset+offset;}
  return score.visualOriginPerf+(t-score.origin)*1000+offset;
 }
 function syncAttackClock(){if(!score.active||!game.enemy)return;game.attackAt=scoreToPerf(score.origin+game.attackBeat*score.beat)+contactDelay();game.telegraphStart=game.attackAt-game.attackSpan}
 function inputTargetAt(){return game.attackAt-contactDelay()+latencyOffset}
 function musicParry(kind){
- if(!audioEnabled||!audioContext)return;
+ const ac=audio.context;
+ if(!audioEnabled||!ac)return;
  if(splitContact()&&attackPresentation.contact){
-  if(window.ParryCombatSfx?.PROFILES[kind])window.ParryCombatSfx.playTail(audioContext,kind,attackPresentation.contact.audioAt,steelDestination());
+  if(window.ParryCombatSfx?.PROFILES[kind])window.ParryCombatSfx.playTail(ac,kind,attackPresentation.contact.audioAt,steelDestination());
   return;
  }
- if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime+.003,steelDestination());return;}
+ if(window.ParryCombatSfx?.PROFILES[kind]){window.ParryCombatSfx.play(ac,kind,ac.currentTime+.003,steelDestination());return;}
  if(!score.bus||!score.noise)return;
- const t=audioContext.currentTime+.003;
+ const tone=(...args)=>MUSIC?.playTone(ac,score.bus,...args);
+ const noise=(...args)=>MUSIC?.playNoise(ac,score.bus,score.noise,...args);
+ const t=ac.currentTime+.003;
  // Musical response to a successful parry. All notes use the BGM's AudioContext clock.
  if(kind==='just'){
-  scoreNoise(t,.085,.12,2900);
-  scoreTone(784,.16,.11,t,'triangle',125);
-  scoreTone(1175,.20,.085,t+.045,'sine',95);
-  scoreTone(1568,.22,.055,t+.092,'sine',-125);
+  noise(t,.085,.12,2900);
+  tone(784,.16,.11,t,'triangle',125);
+  tone(1175,.20,.085,t+.045,'sine',95);
+  tone(1568,.22,.055,t+.092,'sine',-125);
  }else if(kind==='parry'){
-  scoreNoise(t,.058,.085,2400);
-  scoreTone(659,.13,.082,t,'triangle',120);
-  scoreTone(988,.13,.038,t+.034,'sine',-45);
+  noise(t,.058,.085,2400);
+  tone(659,.13,.082,t,'triangle',120);
+  tone(988,.13,.038,t+.034,'sine',-45);
  }else if(kind==='guard'){
-  scoreTone(245,.11,.060,t,'triangle',-60);
+  tone(245,.11,.060,t,'triangle',-60);
  }else{
-  scoreNoise(t,.13,.065,650);
-  scoreTone(128,.16,.065,t,'sawtooth',-65);
+  noise(t,.13,.065,650);
+  tone(128,.16,.065,t,'sawtooth',-65);
  }
 }
 
-function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){if(!audioEnabled)return;try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const t=audioContext.currentTime,o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(effectDestination());o.start(t);o.stop(t+dur+.02)}catch(e){}}
+function sound(freq=500,dur=.13,type='sine',vol=.06,slide=0){
+ if(!audioEnabled)return;
+ try{
+  const ac=audio.ensureContext();
+  if(!ac)return;
+  const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(50,freq+slide),t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(effectDestination());o.start(t);o.stop(t+dur+.02);
+ }catch(e){}
+}
 function chord(){/* The bright chord is scheduled by musicParry on the BGM clock. */}
 // 剣が動き始める音。250ms前の電子音ではなく斬撃に追従する風切り音。
 function sfxSwing(){if(!audioEnabled)return;try{
- audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
- if(audioContext.state==='suspended')audioContext.resume();
- const ac=audioContext,t=ac.currentTime,dur=.17;
+ const ac=audio.ensureContext();
+ if(!ac)return;
+ const t=ac.currentTime,dur=.17;
  const buffer=ac.createBuffer(1,Math.ceil(dur*ac.sampleRate),ac.sampleRate);
  const ch=buffer.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;
  const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=buffer;filter.type='bandpass';filter.Q.value=.7;
@@ -386,6 +270,7 @@ function sfxSwing(){if(!audioEnabled)return;try{
 }catch(e){}}
 function upgradeCount(){return Object.values(game.lv||{}).reduce((a,b)=>a+b,0)}
 function lvl(id){return game.lv?.[id]||0}
+function kingComboStep(){return has('king','pulse')?PULSE_COMBO_STEP:KING_COMBO_STEP}
 function has(a,b){return lvl(a)>0&&lvl(b)>0}
 function getPerfectWindow(){return (11+lvl('focus')*2)*runSkinRules().just}
 function getParryWindow(){return (31+lvl('stability')*3)*runSkinRules().parry}
@@ -413,7 +298,7 @@ function setMode(mode){
  syncDeathInputLock();
  $('settingsBtn').disabled=['loading','phase','confirm'].includes(mode);
  syncTutorial();checkpoint();
- $('runStateLabel').textContent={title:'READY',loading:'LOADING',combat:game.practice?'PRACTICE':'IN BATTLE',phase:'SECOND MOVEMENT',victory:'CLEARED',reward:'LEVEL UP',relic:'RELIC OFFER',route:'CROSSROADS',room:'EVENT ROOM',routeSkill:'SKILL GIFT',gameover:'GAME OVER',pause:'PAUSED',codex:'BESTIARY',upgrade:'UPGRADES'}[mode]||'';
+ $('runStateLabel').textContent={title:'READY',loading:'LOADING',combat:game.practice?'PRACTICE':'IN BATTLE',phase:'SECOND MOVEMENT',victory:'CLEARED',reward:'LEVEL UP',relic:'RELIC OFFER',route:'CROSSROADS',room:'EVENT ROOM',routeSkill:'SKILL GIFT',gameover:'GAME OVER',pause:'PAUSED',codex:'CODEX',upgrade:'UPGRADES'}[mode]||'';
 }
 function syncHUD(){const enemy=game.enemy;$('floorNumber').textContent=game.practice?'--':String(game.floor||1).padStart(2,'0');
  $('floorBadge').textContent=game.practice?'⚔ PRACTICE':enemy?.rare?'✦ RARE':enemy?.boss?(enemy.elite?'✦ ELITE BOSS':'✦ BOSS'):enemy?.elite?'◆ ELITE':'';
@@ -425,17 +310,17 @@ function renderCombatBuffs(){
  if(lvl('heartbeat'))parts.push('🎵 ジャスト '+(game.justStreak||0)+'/'+(has('heartbeat','focus')?2:3));
  if(lvl('overcharge'))parts.push('⚡ 過充電 '+(game.overchargeCount||0)+'/3');
  if(lvl('frost'))parts.push(game.frostWard?'❄ 氷の加護 準備':'❄ 氷結 '+(game.frostCount||0)+'/4');
- if(lvl('king')){const step=has('king','pulse')?8:10;parts.push('👑 王の一撃 あと'+(step-(game.combo||0)%step));}
+ if(lvl('king')){const step=kingComboStep();parts.push('👑 王の一撃 あと'+(step-(game.combo||0)%step));}
  if(lvl('bloodlust')&&game.bloodlustPending>0)parts.push('🦇 渇望 +'+Math.round(game.bloodlustPending));
  if(hasRelic('unbroken_sigil'))parts.push(game.relicBulwarkUsed?'🔰 紋章 使用済':'🔰 紋章 準備');
- if(lvl('wardcraft'))parts.push('🔰 障壁の補充上限 '+shieldCap());
+ if(lvl('wardcraft')||game.bonuses?.wardCapacity)parts.push('🔰 障壁の補充上限 '+shieldCap());
  const el=$('combatBuffs');el.hidden=!parts.length;el.textContent=parts.join('　·　');
 }
 function formatCompact(n){if(n>=1e9)return (n/1e9).toFixed(1)+'B';if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'k';return Math.floor(n).toLocaleString('ja-JP')}
-function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${s.desc(lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)} / ${skillCap(s.id)}${game.skillBreaks?.[s.id]?`<br>✦ ${game.skillBreaks[s.id]}/2`:""}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');renderRelicInventory();}
+function renderBuild(){const active=SKILLS.filter(s=>lvl(s.id));$('buildList').innerHTML=active.length?active.map(s=>`<div class="build-item"><span class="build-symbol">${s.icon}</span><div style="min-width:0"><div class="build-name">${s.name}</div><div class="build-desc">${describeSkill(s.id,lvl(s.id))}</div></div><span class="level">Lv.${lvl(s.id)} / ${skillCap(s.id)}${game.skillBreaks?.[s.id]?`<br>✦ ${game.skillBreaks[s.id]}/2`:""}</span></div>`).join(''):'<div class="empty">スキルなし</div>';$('synergyList').innerHTML=SYNERGIES.filter(s=>has(s.a,s.b)).map(s=>`<div class="synergy"><b>${s.name}</b><small>${s.desc}</small></div>`).join('');renderRelicInventory();}
 
 // Caps and refinements belong to this challenge, never to permanent progression.
-function skillCap(id){return Object.hasOwn(SK,id)?SK[id].max+(game.skillBreaks?.[id]||0):0}
+function skillCap(id){return SkillCatalog.cap(id,game.skillBreaks)}
 function availableSkills(){return SKILLS.filter(s=>lvl(s.id)<skillCap(s.id)&&!game.sealedSkillIds?.includes(s.id))}
 function merchantTargets(itemId){
  if(itemId==='polish')return RR.validIds(game.relics).filter(id=>!game.polishedRelics.includes(id));
@@ -477,26 +362,20 @@ function relicBump(id,threshold){
  game.relicCounters[id]=next>=threshold?0:next;
  return next>=threshold;
 }
-function shieldCap(){return Math.ceil((100+20*lvl('aegis'))*(100+wardcraftBonus(lvl('wardcraft')))/100)}
+function shieldCap(){return CombatMath.shieldCap(runBonus('wardCapacity'),lvl('aegis'),lvl('wardcraft'));}
 function addShield(amount,combat=false,cap=shieldCap()){
- const gain=combat?Math.ceil(amount*(100+wardcraftBonus(lvl('wardcraft')))/100):amount;
- const added=Math.max(0,Math.min(gain,cap-game.shield));
- game.shield+=added;return added;
+ return CombatHealth.addShield(game,amount,{combat,cap,wardcraftLevel:lvl('wardcraft')});
 }
 function relicShield(amount){return addShield(amount,game.mode==='combat')}
-function adjustRelicMaxHp(){
- const base=Math.ceil((game.rawMaxHp||game.maxHp)*runSkinRules().hp);
- game.maxHp=hasRelic('reaper_pact')?Math.max(1,Math.floor(base*.8)):base;
- game.hp=Math.min(game.maxHp,game.hp);
-}
+function adjustRelicMaxHp(){RunState.adjustRelicMaxHp(game)}
 function renderRelicInventory(){
- const items=RR.validIds(game.relics||[]).map(ownedRelic);
- $('relicCount').textContent=items.length+' / '+RR.MAX_HELD;
- $('relicList').innerHTML=items.length?items.map(r=>`<div class="relic-owned ${r.rarity}"><span class="relic-owned-icon">${r.icon}</span><div><div class="relic-owned-title">${r.name}</div><div class="relic-owned-desc">${r.desc}</div></div></div>`).join(''):'<div class="empty">遺物なし</div>';
+ const view=window.ParryRewardsView.inventory(RR.validIds(game.relics||[]).map(ownedRelic));
+ $('relicCount').textContent=view.count;$('relicList').innerHTML=view.listHtml;
 }
-function records(){
+function records({result=false}={}){
  const id=game?.skin||permanent.equippedSkin,skin=PR.SKINS.find(s=>s.id===id)||PR.SKINS[0];
  const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0,runs:0};
+ if(result)return `<span>${skin.icon} ${skin.name}</span><span>挑戦 <b>${r.runs}回</b></span>`;
  return `<span>${skin.icon} ${skin.name}</span><span>最高到達 <b>${r.bestFloor}F</b></span><span>最高コンボ <b>${r.bestCombo}</b></span><span>挑戦 <b>${r.runs}回</b></span>`;
 }
 function recordSkinRun(finished=false){
@@ -526,97 +405,20 @@ function grantRescueRewards(){
  return reward.bonus;
 }
 const LEGACY_OFFERS=PR.BASE_UPGRADES;
-function upgradeRow(o){
- const full=o.level>=o.max,price=full?Infinity:o.cost;
- const progress=o.action==='legacy'
-  ?`<div class="upgrade-progress" role="progressbar" aria-label="${o.name} 強化進捗" aria-valuemin="0" aria-valuemax="${o.max}" aria-valuenow="${o.level}">${Array.from({length:o.max},(_,i)=>`<span class="${i<o.level?'filled':''}"></span>`).join('')}</div>`
-  :'';
- return `<div class="upgrade-row ${o.rarity||''}"><div class="upgrade-main"><span class="upgrade-symbol">${o.icon}</span><div><div class="upgrade-name">${o.name} <span class="muted">Lv.${o.level}/${o.max}</span></div><div class="upgrade-effect">${o.desc}</div>${progress}</div></div><button type="button" class="upgrade-buy" data-action="${o.action}" data-key="${o.id}" ${full||meta.coins<price?'disabled':''}>${full?'MAX':price+' ✧'}</button></div>`;
-}
-function bonusNavigation(){
- return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
-}
-function renderSkinPicker(){
- for(const skin of PR.SKINS)window.ParryHeroPuppet?.preloadSkin?.(skin.id);
- return bonusNavigation()+'<div class="skin-picker-head"><h3>主人公スキン</h3></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
-  const owned=PR.ownsSkin(permanent,skin.id),wearing=!PR.extraEnabled(permanent,'legacyVisual')&&skin.id===permanent.equippedSkin;
-  const action=owned?'skin-equip':'skin-buy';
-  const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&meta.coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':skin.cost+' ✧')+'</button>';
-  const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0};
-  return '<article class="skin-card '+(wearing?'selected':'')+'" style="--skin-color:'+skin.color+'"><canvas class="skin-art-sample" data-skin-sample="'+skin.id+'" width="480" height="300" role="img" aria-label="'+skin.name+'の立ち絵"></canvas><h4>'+skin.name+'</h4><p class="skin-look">'+skin.look+'</p><p class="skin-rule">'+skin.rule+'</p><p class="skin-look">自己記録：'+r.bestFloor+'F / '+r.bestCombo+' COMBO</p><div class="skin-actions">'+buy+'</div></article>';
- }).join('')+'</div>';
-}
 function renderUpgradeScreen(){
- if(upgradeTab==='skills')upgradeTab='loadout';
- if(upgradeTab==='special')upgradeTab='base';
- $('upgradeCoins').textContent=meta.coins+' ✧';
- $('soulFragmentsLabel').textContent=meta.coins;
- const tabs=[['loadout','初期スキル'],['base','能力強化'],['seal','運命の封印'],['bonus','おまけ']];
- $('upgradeTabs').innerHTML=tabs.map(([id,name])=>`<button type="button" class="upgrade-tab ${upgradeTab===id?'active':''}" aria-pressed="${upgradeTab===id}" data-tab="${id}">${name}</button>`).join('');
- if(upgradeTab==='loadout'){
-  const owned=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)&&!permanent.sealedSkills.includes(skill.id));
-  const rows=PR.SLOT_COSTS.map((cost,i)=>{
-   if(i>=permanent.slots){
-    return `<div class="upgrade-row locked"><div class="upgrade-main"><span class="upgrade-symbol">🔒</span><div><div class="upgrade-name">スロット ${i+1}</div><div class="upgrade-effect">未解放</div></div></div><button type="button" class="upgrade-buy" data-action="slot" data-key="${i}" ${i!==permanent.slots||meta.coins<cost?'disabled':''}>${cost} ✧</button></div>`;
-   }
-   const selected=permanent.equipped[i];
-   const options=owned.filter(skill=>!permanent.equipped.some((id,j)=>j!==i&&id===skill.id))
-    .map(skill=>`<option value="${skill.id}" ${selected===skill.id?'selected':''}>${skill.icon} ${skill.name} · Lv.1</option>`).join('');
-   return `<div class="upgrade-slot"><div class="upgrade-slot-head"><span class="upgrade-slot-label">スロット ${i+1}</span><span class="upgrade-cost">解放済み</span></div><select class="upgrade-equip" data-equip="${i}" aria-label="スロット ${i+1} の初期装備"><option value="" ${!selected?'selected':''}>— 装備なし —</option>${options}</select></div>`;
-  }).join('');
-  const unlocked=SKILLS.filter(skill=>permanent.unlockedSkills.includes(skill.id)).length;
-  const skillRows=SKILLS.map(skill=>{
-   const isOwned=permanent.unlockedSkills.includes(skill.id),cost=PR.skillPrice(skill),sealed=permanent.sealedSkills.includes(skill.id);
-   const quickSlots=isOwned&&permanent.slots>0&&!sealed?`<div class="quick-equip-row">${Array.from({length:permanent.slots},(_,i)=>{
-    const eq=permanent.equipped[i]===skill.id;
-    return `<button type="button" class="quick-equip-btn ${eq?'equipped':''}" data-action="quick-equip" data-key="${i}:${skill.id}">${eq?`✓ スロット${i+1}装備中`:`スロット${i+1}に装備`}</button>`;
-   }).join('')}</div>`:'';
-   return `<div class="upgrade-row ${skill.rarity}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${skill.desc(1)}</div>${quickSlots}</div></div><button type="button" class="upgrade-buy" data-action="skill" data-key="${skill.id}" ${isOwned||meta.coins<cost?'disabled':''}>${isOwned?'解放済み':cost+' ✧'}</button></div>`;
-  }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">装備したスキルはLv.1で開始。変更は無料。</p><div class="upgrade-slots">${rows}</div><p class="upgrade-note">初期装備用の解放：${unlocked} / ${SKILLS.length}　ラン中の通常抽選は変わりません。</p>${skillRows}`;
- }else if(upgradeTab==='bonus'&&bonusView==='skins'){
-  $('upgradeList').innerHTML=renderSkinPicker();
- }else if(upgradeTab==='bonus'){
-  $('upgradeList').innerHTML=bonusNavigation()+'<p class="upgrade-note">購入は一度だけ。購入後はここで無料でオン・オフできます。</p>'+PR.EXTRAS.map(item=>{
-   const owned=permanent.unlockedExtras.includes(item.id),enabled=PR.extraEnabled(permanent,item.id);
-   const choice=item.choices?'<label class="bonus-choice">斬撃の色 <select data-extra-option="'+item.id+'" '+(!owned?'disabled':'')+'>'+item.choices.map(choice=>'<option value="'+choice.id+'" '+(PR.extraOption(permanent,item.id).id===choice.id?'selected':'')+'>'+choice.name+'</option>').join('')+'</select></label>':'';
-   return '<div class="upgrade-row bonus-row"><div class="upgrade-main"><span class="upgrade-symbol">'+item.icon+'</span><div><div class="upgrade-name">'+item.name+'</div><div class="upgrade-effect">'+item.description+'</div><div class="upgrade-effect">'+(owned?'購入済み · '+(enabled?'ON':'OFF'):'未購入')+'</div>'+(['slashTint','comboGlow'].includes(item.id)?'<canvas class="bonus-sample" width="180" height="74" data-bonus-sample="'+item.id+'" aria-label="'+item.name+'の見本"></canvas>':'')+choice+'</div></div><button type="button" class="upgrade-buy" data-action="'+(owned?'bonus-toggle':'bonus-buy')+'" data-key="'+item.id+'" '+(owned?'aria-pressed="'+enabled+'"':meta.coins<item.cost?'disabled':'')+'>'+(owned?(enabled?'ON → OFF':'OFF → ON'):item.cost+' ✧')+'</button></div>';
-  }).join('');
- }else if(upgradeTab==='seal'){
-  const limit=PR.value(permanent,'sealSlots'),seals=permanent.sealedSkills;
-  const nextCost=PR.costNext(permanent,'sealSlots'),full=!Number.isFinite(nextCost);
-  const upgrade=`<div class="upgrade-row"><div class="upgrade-main"><span class="upgrade-symbol">🔮</span><div><div class="upgrade-name">封印枠 ${limit}/4</div><div class="upgrade-effect">戦利品の抽選から除外。封印と解除は何度でも無料。</div></div></div><button type="button" class="upgrade-buy" data-action="extra" data-key="sealSlots" ${full||meta.coins<nextCost?'disabled':''}>${full?'MAX':nextCost+' ✧'}</button></div>`;
-  const rows=SKILLS.map(skill=>{
-   const sealed=seals.includes(skill.id),equipped=permanent.equipped.includes(skill.id);
-   const blocked=!sealed&&(equipped||seals.length>=limit);
-   const label=sealed?'封印を解く':equipped?'装備中':limit===0?'枠未解放':seals.length>=limit?'枠が満杯':'封印する';
-   return `<div class="upgrade-row ${skill.rarity} ${sealed?'sealed':''}"><div class="upgrade-main"><span class="upgrade-symbol">${skill.icon}</span><div><div class="upgrade-name">${skill.name} <span class="muted">${String(skill.rarity||'common').toUpperCase()}</span></div><div class="upgrade-effect">${sealed?'🔮 封印中 · 戦利品に出現しません':skill.desc(1)}</div></div></div><button type="button" class="upgrade-buy" data-action="seal" data-key="${skill.id}" aria-pressed="${sealed}" ${blocked?'disabled':''}>${label}</button></div>`;
-  }).join('');
-  $('upgradeList').innerHTML=`<p class="upgrade-note">🔮 運命の封印　${seals.length} / ${limit} 枠使用中（最大4枠）。出撃前ならいつでも変更可能。初期装備中のスキルは封印できません。</p>`+upgrade+rows;
- }else{
-  const legacy=LEGACY_OFFERS.map(o=>{
-   const level=PR.baseLevel(meta,o.id),now=PR.baseValue(meta,o.id);
-   const next=PR.baseValue({...meta,[o.id]:level+1},o.id);
-   return upgradeRow({...o,level,action:'legacy',cost:PR.baseCostNext(meta,o.id),
-    desc:`現在：${o.effect} +${now}${level===o.max?'（最大強化）':` → Lv.${level+1}：+${next}`}`});
-  });
-  const extra=PR.UPGRADES.filter(o=>(o.group==='base'||o.group==='special')&&o.id!=='sealSlots').map(o=>{
-   const level=permanent[o.id],nextValue=o.values[Math.min(level,o.values.length-1)];
-   const desc=o.id==='wardInheritance'
-    ?`新しい戦闘階の障壁補修：最大HP${PR.value(permanent,o.id)}%${level<o.costs.length?` → Lv.${level+1}：${nextValue}%`:'（最大強化）'}（通常上限内）`
-    :o.description(nextValue);
-   return upgradeRow({id:o.id,icon:o.icon,name:o.name,level,max:o.costs.length,cost:PR.costNext(permanent,o.id),action:'extra',desc});
-  });
-  // Make rescue milestones discoverable; claiming still happens only on game over.
-  const rescueNote=`<p class="upgrade-note">🎁 累計挑戦応援（現在 ${meta.runs}回）<br>${PR.RUN_RESCUE_MILESTONES.map((m,i)=>`${meta.rescueClaimMask&(1<<i)?'✓ 受取済':'○ 未受取'} ${m.runs}回：+${m.bonus} ✧`).join('　·　')}<br>達成済みの未受取報酬は、次のゲームオーバー時にまとめて受け取れます。</p>`;
-  $('upgradeList').innerHTML=rescueNote+legacy.concat(extra).join('');
- }
+ const view=window.ParryShopView.render({meta,permanent,tab:upgradeTab,bonusView,skillContext:skillDescriptionContext()});
+ upgradeTab=view.tab;
+ $('upgradeCoins').textContent=view.coinsLabel;
+ $('soulFragmentsLabel').textContent=view.coins;
+ $('upgradeTabs').innerHTML=view.tabsHtml;
+ for(const id of view.preloadSkins)window.ParryHeroPuppet?.preloadSkin?.(id);
+ $('upgradeList').innerHTML=view.listHtml;
 }
 function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
  runLegacyVisual=null;upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
 }
-function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');else if(upgradeReturnMode==='gameover')$('deathRecords').innerHTML=records();}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');else if(upgradeReturnMode==='gameover')$('deathRecords').innerHTML=records({result:true});}
 function syncShopAppearance(){if(DEV_MODE){devPreviewSkin=permanent.equippedSkin;if($('devSkin'))$('devSkin').value=devPreviewSkin;}if(upgradeReturnMode==='gameover')game.skin=permanent.equippedSkin;syncArtMode();}
 function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
@@ -676,32 +478,170 @@ function buyUpgrade(action,key){
  meta.coins-=cost;apply();save();savePermanent();renderUpgradeScreen();sound(740,.19,'triangle',.06,190);
 }
 function checkpointContext(){return {skills:SKILLS,relics:RR.RELICS,encounters:P.findByKey,skins:PR.SKINS.map(s=>s.id)}}
-function readCheckpoint(){try{return CP.validate(JSON.parse(localStorage.getItem(CP.KEY)||'null'),checkpointContext())}catch(e){return null}}
+function readCheckpoint(){try{return CP.validate(saves.readJson(CP.KEY).value,checkpointContext())}catch(e){return null}}
 function checkpoint(){
  if(DEV_MODE||game.practice)return;
  const data=CP.capture(game,choiceSet);if(!data)return;
- try{localStorage.setItem(CP.KEY,JSON.stringify(data));pendingCheckpoint=data;saveFailed=false;$('saveWarning').hidden=true;}
- catch(e){saveFailed=true;$('saveWarning').hidden=false;try{localStorage.removeItem(CP.KEY)}catch(e){}pendingCheckpoint=null;}
+ const result=saves.writeCheckpoint(CP.KEY,data,{discardOnFailure:true});
+ saveFailed=!result.ok;
+ $('saveWarning').hidden=result.ok;
+ pendingCheckpoint=result.ok?data:null;
 }
-function removeCheckpoint(){if(DEV_MODE)return;pendingCheckpoint=null;try{localStorage.removeItem(CP.KEY)}catch(e){saveFailed=true}}
+function removeCheckpoint(){if(DEV_MODE)return;pendingCheckpoint=null;if(!saves.remove(CP.KEY).ok)saveFailed=true;}
 function syncContinue(){
  pendingCheckpoint=DEV_MODE?null:readCheckpoint();
  $('continueBtn').hidden=!pendingCheckpoint;
  $('continueBtn').textContent=pendingCheckpoint?'つづきから · '+pendingCheckpoint.game.floor+'F →':'つづきから →';
  $('startBtn').textContent=pendingCheckpoint?'新しく挑戦する →':'塔に挑戦する →';$('startBtn').className=pendingCheckpoint?'secondary':'primary';
+ window.ParryMenuLayout?.apply(document,'title',window.ParryMenuLayoutConfig,{hasCheckpoint:!!pendingCheckpoint});
 }
-function requestStart(tutorial=false){
- pendingNewTutorial=tutorial;
- if(!DEV_MODE&&readCheckpoint()){setMode('confirm');return}
- startTutorialOrRun();
+// Shared run/menu operations. These private navigation fields never enter a saved run.
+function createGameController(){
+ let clockPausedPhase=false,pauseAt=0,settingsReturn='title',pendingNewTutorial=false;
+ function requestStart(tutorial=false){
+  pendingNewTutorial=tutorial;
+  if(!DEV_MODE&&readCheckpoint()){setMode('confirm');return}
+  startTutorialOrRun();
+ }
+ function startTutorialOrRun(){
+  removeCheckpoint();start(false,null,{tutorial:pendingNewTutorial,skinEffects:true});
+ }
+ function restoreCheckpoint(){
+  if(DEV_MODE)return false;
+  const saved=readCheckpoint();if(!saved){syncContinue();return false}
+  cancelCalibration();stopScore();clearGuardInput();particles=[];texts=[];clashFX=null;
+  game=saved.game;runLegacyVisual=game.legacyVisual;syncArtMode();choiceSet=saved.choices.map(id=>SK[id]);
+  RunState.prepareRestore(game,performance.now());
+  const mode=game.mode;
+  if(mode==='combat')prepareEncounterArt(performance.now());
+  setMode(mode);
+  if(mode==='victory'){game.clearAt=performance.now();showRewards()}
+  else if(mode==='reward')renderRewards();
+  else if(mode==='relic')renderRelicReward();
+  else if(mode==='route')showRoutes();
+  else if(mode==='room')renderRoom();
+  else if(mode==='routeSkill')renderEventSkillOffer();
+  renderBuild();syncHUD();syncTutorial();return true;
+ }
+ function openSettings(){
+  if(['loading','phase','settings','confirm'].includes(game.mode)||deathInputBlocked())return;
+  if(game.mode==='combat')togglePause();
+  settingsReturn=game.mode;
+  if(settingsReturn!=='pause')pauseAt=performance.now();
+  setMode('settings');
+  renderSettingsPreferences(preferences);
+  syncSettingsSaveStatus();
+ }
+ function closeSettings(){
+  cancelCalibration();
+  setMode(settingsReturn);
+  if(settingsReturn==='title')syncContinue();
+ }
+ function title(){
+  attackPresentation.contact=null;
+  runLegacyVisual=null;
+  syncArtMode();
+  stopScore();
+  devMusicAudition=false;
+  devMusicTheme='auto';
+  devMusicLatter=null;
+  clashFX=null;
+  game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};
+  setMode('title');
+  $('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');
+  syncContinue();syncHUD();renderBuild();
+ }
+ function start(practice=false,practiceKey=null,devOptions=null){
+  const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
+  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';devMusicLatter=typeof devOptions?.latter==='boolean'?devOptions.latter:null;}
+  if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
+  if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
+  const initialLevels=practice?{}:PR.initialLevels(permanent,SKILLS);
+  const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);
+  const bonuses=Object.fromEntries(
+   ['soulGain','bossWard','regen','revive','choice4','wardCapacity','wardInheritance','coinGain']
+    .map(id=>[id,PR.value(permanent,id)])
+  );
+  const t=performance.now();
+  particles=[];texts=[];clashFX=null;
+  game=RunState.create({
+   practice,practiceKey,skin:runSkin,skinEffects:runEffects,
+   floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,
+   devOverride:DEV_MODE?devOptions?.enemyKey||null:null,
+   initialLevels,sealedSkillIds,
+   lifeBonus:PR.baseValue(meta,'life'),
+   initialShield:PR.baseValue(meta,'ward'),
+   baseAtk:25+PR.baseValue(meta,'attack'),
+   extraRerolls:practice?0:PR.value(permanent,'extraReroll'),
+   bonuses,legacyVisual:PR.extraEnabled(permanent,'legacyVisual'),tutorial:!!devOptions?.tutorial
+  },t);
+  runLegacyVisual=game.legacyVisual;
+  syncArtMode();
+  if(DEV_MODE&&devOptions?.tempoLevel!=null){
+   const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));
+   if(level)game.lv.tempo=level;else delete game.lv.tempo;
+   if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;
+  }
+  if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);
+  if(DEV_MODE&&devOptions?.merchant){
+   stopScore();game.sealedSkillIds=[];
+   const levels=devOptions.merchant==='capped'?{blade:20,focus:6,stability:6,frost:6,double:5}:{blade:3,focus:2,heal:3,thunder:2};
+   game.lv={...levels};game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));adjustRelicMaxHp();game.hp=game.maxHp;
+   game.relics=['rusty_crest','emperor_conduit','duet_mask'];game.towerCoins=150;game.floor=14;showRoutes();selectRoute('merchant');
+  }else enterFloor(t);
+  syncHUD();renderBuild();sound(270,.20,'triangle',.07,160);
+ }
+ function startPractice(key){
+  if(!book.seen[key]||!P.findByKey(key))return;
+  start(true,key);
+ }
+ function pauseForClock(){
+  clockPausedPhase=game.mode==='phase';pauseAt=performance.now();audioClock.paused(pauseAt);
+  clearGuardInput();stopScore();setMode('pause');
+  $('pauseStatus').hidden=false;$('pauseStatus').textContent='音声の同期を確認できないため一時停止しました。再開すると4拍から始まります。';
+ }
+ function togglePause(){
+  if(game.mode==='combat'){
+   clockPausedPhase=false;
+   $('pauseStatus').hidden=true;
+   clearGuardInput();
+   pauseAt=performance.now();
+   stopScore();
+   setMode('pause');
+  }else if(game.mode==='pause'){
+   const now=performance.now();
+   RunState.resetParryInput(game);
+   game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;
+   game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';
+   game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;
+   game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
+   $('pauseStatus').hidden=true;
+   if(clockPausedPhase){
+    clockPausedPhase=false;
+    game.phaseStage='rumble';
+    setMode('phase');
+    beginFinalCountIn();
+   }else{
+    startScore(game.enemy);
+    attackPresentation.opening=true;game.attackBeat=4;game.attackSpan=4*score.beat*1000;
+    game.nextFloorHintAt=now;
+    syncAttackClock();
+    setMode('combat');
+   }
+  }
+ }
+ return Object.freeze({
+  requestStart,startTutorialOrRun,restoreCheckpoint,openSettings,closeSettings,title,start,startPractice,pauseForClock,togglePause,
+  pausedAt:()=>pauseAt
+ });
 }
-function startTutorialOrRun(){
- removeCheckpoint();start(false,null,{tutorial:pendingNewTutorial,skinEffects:true});
-}
+const gameController=createGameController();
+const {requestStart,startTutorialOrRun,restoreCheckpoint,openSettings,closeSettings,title,start,startPractice,pauseForClock,togglePause}=gameController;
+
 function configureSurvivalTrial(profile,polished){
  game.lv={blade:8,heal:6,blood:4,aegis:4,fury:3,thunder:4,echo:3,bloodlust:2};
- game.lifeBonus=120;game.rawMaxHp=275;game.baseAtk=46;game.shield=0;
- game.bonuses={regen:0,revive:0,bossWard:0,soulGain:0,choice4:0,wardInheritance:0,coinGain:0};
+ game.lifeBonus=120;game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));game.baseAtk=46;game.shield=0;
+ game.bonuses={regen:0,revive:0,bossWard:0,soulGain:0,choice4:0,wardCapacity:0,wardInheritance:0,coinGain:0};
  game.relics=[];game.devSurvival=profile;
  if(['overflow','all'].includes(profile))game.relics.push('overflow_chalice');
  if(['sigil','all'].includes(profile))game.relics.push('unbroken_sigil');
@@ -710,40 +650,25 @@ function configureSurvivalTrial(profile,polished){
  game.polishedRelics=polished?[...game.relics]:[];
  adjustRelicMaxHp();game.hp=game.maxHp;
 }
-function restoreCheckpoint(){
- if(DEV_MODE)return false;
- const saved=readCheckpoint();if(!saved){syncContinue();return false}
- cancelCalibration();stopScore();clearGuardInput();particles=[];texts=[];clashFX=null;
- game=saved.game;runLegacyVisual=game.legacyVisual;syncArtMode();choiceSet=saved.choices.map(id=>SK[id]);
- Object.assign(game,{artLoading:false,artFallback:false,playStartedAt:performance.now(),parryAnimAt:-99999,lastDeflectAt:-99999,lastDamageAt:-99999,lastImpactAt:-99999,whiffUntil:0,guardHeld:false,pendingKind:null,inputLocked:false});
- resetParryInput();const mode=game.mode;
- if(mode==='combat')prepareEncounterArt(performance.now());
- setMode(mode);
- if(mode==='victory'){game.clearAt=performance.now();showRewards()}
- else if(mode==='reward')renderRewards();
- else if(mode==='relic')renderRelicReward();
- else if(mode==='route')showRoutes();
- else if(mode==='room')renderRoom();
- else if(mode==='routeSkill')renderEventSkillOffer();
- renderBuild();syncHUD();syncTutorial();return true;
-}
 function persistPreferences(){
- if(!DEV_MODE)try{localStorage.setItem(PREF.KEY,JSON.stringify(preferences))}catch(e){saveFailed=true}
+ if(!saves.writeJson(PREF.KEY,preferences).ok)saveFailed=true;
  applyAudioPreferences();
 }
 function applyAudioPreferences(){
- if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,audioContext.currentTime,.025);
- if(playerSfxBus&&audioContext)playerSfxBus.gain.setTargetAtTime(audioEnabled?preferences.sfx/100:0,audioContext.currentTime,.025);
+ audio.setMix({enabled:audioEnabled,bgm:preferences.bgm,sfx:preferences.sfx});
 }
-function openSettings(){
- if(['loading','phase','settings','confirm'].includes(game.mode)||deathInputBlocked())return;
- if(game.mode==='combat')togglePause();
- settingsReturn=game.mode;if(settingsReturn!=='pause')pauseAt=performance.now();setMode('settings');
- for(const kind of ['bgm','sfx']){$(kind+'Volume').value=String(preferences[kind]);$(kind+'VolumeValue').textContent=preferences[kind]+'%';}
- $('screenShake').checked=preferences.shake;$('screenFlash').checked=preferences.flash;
+function renderSettingsPreferences(values){
+ for(const kind of ['bgm','sfx']){
+  $(kind+'Volume').value=String(values[kind]);
+  $(kind+'VolumeValue').textContent=values[kind]+'%';
+ }
+ $('screenShake').checked=values.shake;
+ $('screenFlash').checked=values.flash;
+}
+function syncSettingsSaveStatus(){
+ // Keep this read after the controls render; Dev and save failure skip it entirely.
  $('saveStatus').textContent=DEV_MODE?'Devの変更は保存しません。':saveFailed?'このブラウザに保存できません。':readCheckpoint()?'中断データをこのブラウザに保存しています。':'進行はこのブラウザに自動保存します。';
 }
-function closeSettings(){cancelCalibration();setMode(settingsReturn);if(settingsReturn==='title')syncContinue();}
 function cancelCalibration(){
  for(const node of calibrationNodes)try{node.stop()}catch(e){}calibrationNodes=[];calibration=null;
  $('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
@@ -751,7 +676,7 @@ function cancelCalibration(){
  $('calibrationPulse').style.transform='scale(1)';$('calibrationPulse').textContent='♫';
 }
 function calibrationTone(at,frequency=880){
- const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.value=frequency;
+ const ac=audio.context,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=frequency;
  g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.12,at+.004);g.gain.exponentialRampToValueAtTime(.0001,at+.07);
  o.connect(g);g.connect(effectDestination());o.start(at);o.stop(at+.08);calibrationNodes.push(o);
  o.onended=()=>{o.disconnect?.();g.disconnect?.();};
@@ -759,8 +684,8 @@ function calibrationTone(at,frequency=880){
 function startCalibration(){
  cancelCalibration();
  if(!audioEnabled||preferences.sfx===0){$('calibrationStatus').textContent='効果音の音量を上げて、SOUND ONで測ってください。';return}
- if(!ensureAudio()){$('calibrationStatus').textContent='音を再生できません。もう一度お試しください。';return}
- audioClock.reset();const start=audioContext.currentTime+1;
+ if(!audio.prepareScore()){$('calibrationStatus').textContent='音を再生できません。もう一度お試しください。';return}
+ audioClock.reset();const start=audio.context.currentTime+1;
  calibration={kind:'measure',start,targets:Array.from({length:CALIBRATION_COUNT_IN+CALIBRATION_SAMPLES},(_,i)=>start+i*.5),used:new Set(),errors:[],result:null};
  for(const [i,t]of calibration.targets.entries())calibrationTone(t,i%4===0?1046:784);
  $('calibrationTap').disabled=true;$('calibrationStart').disabled=true;$('calibrationCancel').hidden=false;
@@ -777,11 +702,11 @@ function calibrationTap(){
  if(c.kind==='try'){
   const delta=error-c.result.candidate,kind=Math.abs(delta)<=getPerfectWindow()?'just':Math.abs(delta)<=getParryWindow()?'parry':'guard';
   $('calibrationStatus').textContent=(kind==='just'?'JUST!':kind==='parry'?'PARRY!':delta<0?'早め':'遅め')+' · '+Math.abs(Math.round(delta))+'ms（候補での試し打ち）';
-  if(kind!=='guard')window.ParryCombatSfx?.play(audioContext,kind,audioContext.currentTime,steelDestination());
+  if(kind!=='guard')window.ParryCombatSfx?.play(audio.context,kind,audio.context.currentTime,steelDestination());
  }else{c.errors.push(error);$('calibrationStatus').textContent=c.errors.length+' / '+CALIBRATION_SAMPLES+' 回測定';}
 }
 function updateCalibration(){
- if(!calibration||game.mode!=='settings'||!audioContext)return;
+ if(!calibration||game.mode!=='settings'||!audio.context)return;
  if(!readAudioClock().healthy){cancelCalibration();$('calibrationStatus').textContent='音声が止まったため測定を中断しました。もう一度測ってください。';return;}
  const c=calibration;if(c.kind==='result'){$('calibrationPulse').style.transform='scale(1)';return}const seconds=(performance.now()-scoreToPerf(c.start,0))/1000,beat=Math.floor(seconds/.5);
  $('calibrationPulse').style.transform='scale('+(seconds>=0?1+.18*Math.max(0,1-(seconds/.5-beat)*4):1)+')';
@@ -795,12 +720,12 @@ function updateCalibration(){
   c.kind='result';c.result=PREF.recommend(c.errors);$('calibrationTap').disabled=true;$('calibrationStart').disabled=false;
   $('calibrationStatus').textContent=c.result?'おすすめ '+(c.result.candidate>=0?'+':'')+c.result.candidate+'ms · '+c.result.count+'回の入力から測定'+(c.result.clamped?'（調整範囲の上限・下限に合わせています）':''):'入力が少ないか、ばらつきが大きいため測れませんでした。もう一度試してください。';
   $('calibrationTry').hidden=!c.result;$('calibrationApply').hidden=!c.result;
- }else if(c.kind==='try'&&audioContext.currentTime>c.start+3.6){c.kind='result';$('calibrationStart').disabled=false;$('calibrationTap').disabled=true;}
+ }else if(c.kind==='try'&&audio.context.currentTime>c.start+3.6){c.kind='result';$('calibrationStart').disabled=false;$('calibrationTap').disabled=true;}
 }
 function tryCalibration(){
- if(!calibration?.result||!ensureAudio())return;
+ if(!calibration?.result||!audio.prepareScore())return;
  const result=calibration.result;cancelCalibration();
- audioClock.reset();const start=audioContext.currentTime+.5;
+ audioClock.reset();const start=audio.context.currentTime+.5;
  calibration={kind:'try',start,result,targets:Array.from({length:6},(_,i)=>start+i*.5),used:new Set()};
  for(const at of calibration.targets)calibrationTone(at,784);
  $('calibrationTap').disabled=false;
@@ -821,18 +746,6 @@ function tutorialResult(kind){
  else if(game.tutorialStep>=2&&['just','parry'].includes(kind))game.tutorialFinishing=true;
  syncTutorial();
 }
-function title(){attackPresentation.contact=null;runLegacyVisual=null;syncArtMode();stopScore();devMusicAudition=false;devMusicTheme='auto';devMusicLatter=null;clashFX=null;game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};setMode('title');$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');syncContinue();syncHUD();renderBuild();}
-function start(practice=false,practiceKey=null,devOptions=null){
- const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
- if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=musicDefinition(devOptions?.musicId)?devOptions.musicId:'auto';devMusicLatter=typeof devOptions?.latter==='boolean'?devOptions.latter:null;}
- if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
- if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
- const initial=practice?{}:PR.initialLevels(permanent,SKILLS);const sealedSkillIds=practice?[]:PR.activeSeals(permanent,SKILLS);const baseHp=65+PR.baseValue(meta,'life')+15*(initial.heal||0),startingHp=Math.ceil(baseHp*PR.skinRules(runEffects?runSkin:'normal').hp);const t=performance.now();particles=[];texts=[];clashFX=null;game={mode:'combat',skin:runSkin,skinEffects:runEffects,guardHeld:false,guardStartedAt:0,practice,practiceKey:practice?practiceKey:null,bonusSouls:0,towerCoins:0,towerCoinsEarned:0,routeTrial:false,currentRoom:null,roomStage:null,roomLocked:false,eventId:null,routeSkillSet:[],routeSkillTitle:'',relicReturn:null,relicMirrorTarget:null,lastRareFloor:-9999,lastDiscovered:false,floor:DEV_MODE&&devOptions?.floor?Math.min(999,Math.max(1,Math.floor(Number(devOptions.floor)))):1,devOverride:DEV_MODE?devOptions?.enemyKey||null:null,maxHp:startingHp,hp:startingHp,shield:PR.baseValue(meta,'ward'),baseAtk:25+PR.baseValue(meta,'attack'),lv:initial,skillBreaks:{},polishedRelics:[],sealedSkillIds,relics:[],relicDiscarded:[],relicCounters:{},relicOffer:[],relicRewardKind:null,relicSwapTarget:null,rawMaxHp:baseHp,relicBulwarkUsed:false,relicRustyUsed:false,relicStardustUsed:false,relicStopUsed:0,relicPactConsumed:false,relicPactReady:false,relicMaskReady:false,relicGearReady:false,relicBellDue:false,relicBoltDue:false,relicEmperorDue:false,relicJustStreak:0,enemy:null,combo:0,peakCombo:0,perfects:0,parries:0,damage:0,charge:0,runs:0,bossKills:0,rerolls:1+(practice?0:PR.value(permanent,'extraReroll')),reviveUsed:false,justStreak:0,overchargeCount:0,frostCount:0,frostWard:false,fortitudeReady:false,bloodlustPending:0,parryRecoveryActive:false,parryDamageActive:false,parryDamage:0,whiffUntil:0,parryAnimAt:-9999,parryAnimKind:'',lastDeflectAt:-9999,lastDamageAt:-9999,misses:0,whiffs:0,guards:0,notice:'',noticeAt:0,lastHitAt:0,feedback:'',feedbackAt:0,clearAt:0,flash:false,playStartedAt:t,pendingKind:null,inputLocked:false,lastAttemptDelta:null,lastImpactAt:-99999,lastStrikeKind:'miss',merchantBought:[],floorPerfects:0,lastEventId:null,lastUltimateAt:-99999,lastTimingDeltaMs:null,lastTimingKind:null};game.legacyVisual=PR.extraEnabled(permanent,'legacyVisual');runLegacyVisual=game.legacyVisual;syncArtMode();game.bonuses=Object.fromEntries(['soulGain','bossWard','regen','revive','choice4','wardInheritance','coinGain'].map(id=>[id,PR.value(permanent,id)]));game.lifeBonus=PR.baseValue(meta,'life');game.tutorial=!!devOptions?.tutorial;game.tutorialStep=0;game.tutorialFinishing=false;if(DEV_MODE&&devOptions?.tempoLevel!=null){const level=Math.min(6,Math.max(0,Math.floor(Number(devOptions.tempoLevel)||0)));if(level)game.lv.tempo=level;else delete game.lv.tempo;if(level>4)game.skillBreaks.tempo=level-4;else delete game.skillBreaks.tempo;}if(DEV_MODE&&devOptions?.survival)configureSurvivalTrial(devOptions.survival,devOptions.polished);if(DEV_MODE&&devOptions?.merchant){
- stopScore();game.sealedSkillIds=[];
- const levels=devOptions.merchant==='capped'?{blade:20,focus:6,stability:6,frost:6,double:5}:{blade:3,focus:2,heal:3,thunder:2};
- game.lv={...levels};game.rawMaxHp=65+PR.baseValue(meta,'life')+15*lvl('heal');adjustRelicMaxHp();game.hp=game.maxHp;
- game.relics=['rusty_crest','emperor_conduit','duet_mask'];game.towerCoins=150;game.floor=14;showRoutes();selectRoute('merchant');
- }else enterFloor(t);syncHUD();renderBuild();sound(270,.20,'triangle',.07,160)}
 // The 4F/8F rooms replace ordinary combat on each ten-floor route cycle.
 function enterFloor(at=performance.now()){
  if(!game.practice&&!(DEV_MODE&&game.devOverride)&&RT.branchKind(game.floor)){
@@ -846,8 +759,7 @@ function showRoutes(){
  game.enemy=null;game.routeTrial=false;game.currentRoom=null;
  game.routeKind=RT.branchKind(game.floor);
  setMode('route');
- $('routeCards').innerHTML=options.map(room=>`<button type="button" class="route-card" data-route="${room.id}">
- <span class="route-symbol">${room.icon}</span><span class="route-card-body"><b>${room.name}</b><small>${room.tag} · ${room.desc}</small><span class="route-warning">${room.risk}</span></span><span aria-hidden="true">›</span></button>`).join('');
+ $('routeCards').innerHTML=window.ParryRoomView.routes(options);
  syncHUD();
 }
 function resetNoncombatCombo(){
@@ -866,9 +778,46 @@ function selectRoute(id){
  if(ev)game.lastEventId=ev.id;
  setMode('room');renderRoom();syncHUD();
 }
-function roomActionButton(id,label,detail='',disabled=false){
- return `<button type="button" class="room-choice" data-room-action="${id}" ${disabled?'disabled':''}>
-  <span><b>${label}</b>${detail?`<small>${detail}</small>`:''}</span><span aria-hidden="true">›</span></button>`;
+function roomTargetViews(itemId){
+ return merchantTargets(itemId).map(id=>{
+  if(itemId==='polish'){
+   const relic=RR.BY_ID[id];
+   return {id,kind:'relic',icon:relic.icon,name:relic.name,
+    description:relic.desc+relicScaledSuffix(id,false),nextDescription:relic.polishedDesc+relicScaledSuffix(id,true)};
+  }
+  const skill=SK[id],level=lvl(id);
+  return {id,kind:'skill',icon:skill.icon,name:skill.name,level,cap:skillCap(id),breaks:game.skillBreaks[id]||0,
+   description:describeSkill(id,level),nextDescription:describeSkill(id,level+1)};
+ });
+}
+function roomEventOptions(event){
+ return event.actions.map(item=>{
+  const option={id:item.id,available:true};
+  if(event.id==='altar'&&item.id==='sacrifice'){
+   option.value=EV.altarCost(game.maxHp);
+   option.available=EV.canSacrifice(game.hp,game.maxHp)&&availableSkills().length>0;
+  }
+  if(event.id==='mirror'&&item.id==='swap'){
+   option.available=!!game.relics.length&&RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
+  }
+  if(event.id==='chest'&&item.id==='open'){
+   option.hasRelics=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
+   if(!option.hasRelics)option.value=towerCoinReward(25);
+  }
+  if(event.id==='sanctuary'&&item.id==='resonate')option.available=availableSkills().length>0;
+  if(event.id==='sanctuary'&&item.id==='train')option.available=merchantTargets('training').length>0;
+  if(event.id==='forge'&&item.id==='polish')option.available=merchantTargets('polish').length>0;
+  if(event.id==='forge'&&item.id==='temper')option.available=game.towerCoins>=15;
+  if(event.id==='forge'&&item.id==='scrap')option.value=towerCoinReward(14);
+  if(event.id==='scales'&&item.id==='toSouls'){
+   option.available=game.towerCoins>=16;option.value=soulReward(20);
+  }
+  if(event.id==='scales'&&item.id==='toCoins'){
+   option.available=game.hp>1;option.value=towerCoinReward(24);
+  }
+  option.label=item.label.replace(/塔貨\+(\d+)/g,(_,raw)=>'塔貨+'+towerCoinReward(Number(raw)));
+  return option;
+ });
 }
 function renderRoom(){
  if(game.mode!=='room')return;
@@ -876,116 +825,27 @@ function renderRoom(){
  const modal=$('roomActions').parentElement;if(modal)modal.scrollTop=0;
  const id=game.currentRoom,room=RT.ROOMS[id],event=id==='event'?EV.BY_ID[game.eventId]:null;
  if(!room||id==='trial'||(id==='event'&&!event))return;
- $('roomKicker').textContent=id==='event'?'MYSTERIOUS ENCOUNTER':id==='merchant'?'TRAVELLING MERCHANT':'A MOMENT OF RESPITE';
- $('roomIcon').textContent=event?.icon||room.icon;
- $('roomTitle').textContent=event?.name||room.name;
- $('roomDescription').textContent=event?.description||room.desc;
- $('roomNote').textContent='🪙 塔貨 '+game.towerCoins+'　♡ '+Math.ceil(game.hp)+' / '+game.maxHp+'　🛡 '+Math.ceil(game.shield);
- if(game.roomStage==='result'){
-  $('roomDescription').textContent=game.roomResult;
-  if(id==='merchant'&&!game.roomLocked){
+ const input={room,event,stage:game.roomStage,result:game.roomResult,locked:game.roomLocked,
+  status:{coins:game.towerCoins,hp:game.hp,maxHp:game.maxHp,shield:game.shield}};
+ if(id==='merchant'){
+  if(game.roomStage!=='result'&&game.roomStage?.startsWith('target:')){
+   const itemId=game.roomStage.slice(7);
+   input.targetItem=EV.ITEMS_BY_ID[itemId];input.targets=roomTargetViews(itemId);
+  }else if(game.roomStage!=='result'||!game.roomLocked){
    const bought=game.merchantBought||[];
-   $('roomActions').innerHTML=roomActionButton('continue','次の階へ進む')+EV.ITEMS.map(item=>{
-    const already=bought.includes(item.id),exhausted=!merchantAvailable(item.id);
-    return roomActionButton('buy:'+item.id,item.icon+' '+item.name+' · '+item.cost+' 🪙',item.desc+(already?' · 購入済':exhausted?' · 対象なし':''),already||game.towerCoins<item.cost||exhausted);
-   }).join('');
-   return;
+   input.items=EV.ITEMS.map(item=>({item,already:bought.includes(item.id),
+    available:merchantAvailable(item.id),affordable:game.towerCoins>=item.cost}));
   }
-  $('roomActions').innerHTML=roomActionButton('continue','次の階へ進む');
-  return;
+ }else if(id==='event'&&game.roomStage!=='result'){
+  if(game.roomStage==='target:sanctuary_train')input.targets=roomTargetViews('training');
+  else if(game.roomStage==='target:forge_polish')input.targets=roomTargetViews('polish');
+  else if(game.roomStage==='mirror')input.held=game.relics.map(ownedRelic);
+  else input.options=roomEventOptions(event);
  }
- if(id==='merchant'&&game.roomStage?.startsWith('target:')){
-  const itemId=game.roomStage.slice(7),item=EV.ITEMS_BY_ID[itemId];
-  $('roomTitle').textContent=item.name;
-  $('roomDescription').textContent='対象を選んで購入 · '+item.cost+' 🪙（この挑戦だけ有効）';
-  $('roomActions').innerHTML=merchantTargets(itemId).map(target=>{
-   if(itemId==='polish'){const r=RR.BY_ID[target];return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)),game.towerCoins<item.cost)}
-   const skill=SK[target],cap=skillCap(target),next=cap+(itemId==='breakthrough'?1:0);
-   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),
-    skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1)+' / 上限 '+cap+' → '+next+
-    (itemId==='breakthrough'?'（限界突破 '+((game.skillBreaks[target]||0)+1)+'/2）':''),game.towerCoins<item.cost);
-  }).join('')+roomActionButton('back','← 商品一覧に戻る','塔貨は消費しません');
-  return;
- }
- if(id==='event'&&game.roomStage==='target:sanctuary_train'){
-  $('roomTitle').textContent='共鳴の聖堂 — スキル強化';
-  $('roomDescription').textContent='Lv.+1する習得済みスキルを選択';
-  $('roomActions').innerHTML=merchantTargets('training').map(target=>{
-   const skill=SK[target];
-   return roomActionButton('target:'+target,skill.icon+' '+skill.name+' Lv.'+lvl(target)+' → '+(lvl(target)+1),skill.desc(lvl(target))+' → '+skill.desc(lvl(target)+1));
-  }).join('')+roomActionButton('back','← 聖堂の選択に戻る');
-  return;
- }
- if(id==='event'&&game.roomStage==='target:forge_polish'){
-  $('roomTitle').textContent='古の金床 — 遺物研磨';
-  $('roomDescription').textContent='研磨する所持遺物を選択';
-  $('roomActions').innerHTML=merchantTargets('polish').map(target=>{
-   const r=RR.BY_ID[target];
-   return roomActionButton('target:'+target,r.icon+' '+r.name,(r.desc+relicScaledSuffix(target,false))+' → '+(r.polishedDesc+relicScaledSuffix(target,true)));
-  }).join('')+roomActionButton('back','← 金床の選択に戻る');
-  return;
- }
- if(id==='rest'){
-  $('roomActions').innerHTML=[
-   roomActionButton('rest:heal','🔥 休息','最大HPの35%を回復'),
-   roomActionButton('rest:meditate','🛡 瞑想','障壁+20、スキル報酬の引き直し+1')
-  ].join('');
- }else if(id==='merchant'){
-  const bought=game.merchantBought||[];
-  $('roomActions').innerHTML=EV.ITEMS.map(item=>{
-   const already=bought.includes(item.id),exhausted=!merchantAvailable(item.id);
-   return roomActionButton('buy:'+item.id,item.icon+' '+item.name+' · '+item.cost+' 🪙',item.desc+(already?' · 購入済':exhausted?' · 対象なし':''),already||game.towerCoins<item.cost||exhausted);
-  }).join('')+roomActionButton('leave','購入せず先へ進む');
- }else if(id==='event'&&game.roomStage==='mirror'){
-  $('roomDescription').textContent='交換が確定するまで、元の遺物は失われません。';
-  $('roomActions').innerHTML=game.relics.map(id=>{
-   const relic=ownedRelic(id);return roomActionButton('mirror:'+id,relic.icon+' '+relic.name,relic.desc);
-  }).join('')+roomActionButton('back','鏡の前に戻る');
- }else if(id==='event'){
-  const options=event.actions.map(item=>{
-   let disabled=false,description='';
-   if(event.id==='altar'&&item.id==='sacrifice'){
-    const cost=EV.altarCost(game.maxHp);
-    disabled=!EV.canSacrifice(game.hp,game.maxHp)||availableSkills().length===0;
-    description='HP-'+cost+'。イベントの支払いは被弾扱いになりません。';
-   }
-   if(event.id==='mirror'&&item.id==='swap'){
-    disabled=!game.relics.length||!RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary');
-    description='所持遺物1つを選び、風化・秘宝から3択。';
-   }
-   if(event.id==='chest'&&item.id==='open')description=RR.available(game.relics,game.relicDiscarded).some(r=>r.rarity!=='legendary')?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+towerCoinReward(25)+'・引き直し+1）。失敗してもHP1で生存。';
-   if(event.id==='sanctuary'&&item.id==='resonate'){
-    disabled=availableSkills().length===0;
-    description='共鳴相方のスキルを引き当てて1つ習得。';
-   }
-   if(event.id==='sanctuary'&&item.id==='train'){
-    disabled=merchantTargets('training').length===0;
-    description='習得済みスキル1つをLv.+1。';
-   }
-   if(event.id==='sanctuary'&&item.id==='pray')description='最大HPの25%を回復。';
-   if(event.id==='forge'&&item.id==='polish'){
-    disabled=merchantTargets('polish').length===0;
-    description='未研磨の所持遺物1つを研磨（✦）。';
-   }
-   if(event.id==='forge'&&item.id==='temper'){
-    disabled=game.towerCoins<15;
-    description='塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。';
-   }
-   if(event.id==='forge'&&item.id==='scrap')description='塔貨+'+towerCoinReward(14)+'。';
-   if(event.id==='scales'&&item.id==='toSouls'){
-    disabled=game.towerCoins<16;
-    description='塔貨16枚を消費し、魂の欠片+'+soulReward(20)+' ✧を得る。';
-   }
-   if(event.id==='scales'&&item.id==='toCoins'){
-    disabled=game.hp<=1;
-    description='現在HPの20%（死亡しない）を払い、塔貨+'+towerCoinReward(24)+'・引き直し+1。';
-   }
-   if(event.id==='scales'&&item.id==='leave')description='障壁+10を得て先へ進む。';
-   const label=item.label.replace(/塔貨\+(\d+)/g,(_,raw)=>'塔貨+'+towerCoinReward(Number(raw)));
-   return roomActionButton('event:'+item.id,label,description,disabled);
-  });
-  $('roomActions').innerHTML=options.join('');
- }
+ const view=window.ParryRoomView.render(input);
+ $('roomKicker').textContent=view.kicker;$('roomIcon').textContent=view.icon;$('roomTitle').textContent=view.title;
+ $('roomDescription').hidden=view.descriptionHidden;$('roomDescription').textContent=view.description;
+ $('roomNote').textContent=view.note;$('roomActions').innerHTML=view.actionsHtml;
 }
 function showRoomResult(text,keepMerchantOpen=false){
  game.roomLocked=!keepMerchantOpen;game.roomStage='result';game.roomResult=text;renderRoom();syncHUD();
@@ -1019,20 +879,12 @@ function eventSkillOffer(title,customPool=null){
  setMode('routeSkill');
  renderEventSkillOffer();return true;
 }
-function skillCardMeta(s){
- const cur=lvl(s.id),next=cur+1;
- const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${s.desc(cur)}）</span>`:'';
- const readySynergies=cur===0?SYNERGIES.filter(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)):[];
- const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴解放可能！</span>':'';
- return {diffHtml,synHtml};
-}
 function renderEventSkillOffer(){
- const pool=game.routeSkillSet.map(id=>SK[id]);
- $('routeSkillTitle').textContent=game.routeSkillTitle||'スキルをひとつ選べ';
- $('routeSkillCards').innerHTML=pool.map(skill=>{const meta=skillCardMeta(skill);return `<button class="reward-card ${skill.rarity}" type="button" data-route-skill="${skill.id}">
- <span class="rarity">${skill.rarity.toUpperCase()} · ${lvl(skill.id)?'LEVEL UP':'NEW SKILL'}</span>
- <span class="emoji">${skill.icon}</span><span class="rname">${skill.name} <small>Lv.${lvl(skill.id)+1}</small></span>
- <span class="rdesc">${skill.desc(lvl(skill.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');
+ const view=window.ParryRewardsView.eventSkills({
+  choices:game.routeSkillSet.map(id=>SK[id]),title:game.routeSkillTitle,
+  levels:game.lv,skillContext:skillDescriptionContext()
+ });
+ $('routeSkillTitle').textContent=view.title;$('routeSkillCards').innerHTML=view.cardsHtml;
  return true;
 }
 function takeEventSkill(id){
@@ -1090,7 +942,7 @@ function roomAction(action){
   else if(item.id==='barrier'){
    const prev=game.shield;relicShield(20);
    showRoomResult('結界の護符で障壁+'+Math.round(game.shield-prev)+'。',true);
-  }else if(item.id==='skill'){game.roomLocked=true;eventSkillOffer('秘伝の巻物 — スキルをひとつ選べ');}
+  }else if(item.id==='skill'){game.roomLocked=true;eventSkillOffer('秘伝の巻物');}
   else if(item.id==='relic'){
    game.roomLocked=true;game.relicReturn='room';showRelicRewards('special');
   }
@@ -1128,7 +980,7 @@ function roomAction(action){
   if(opt==='sacrifice'){
    if(!EV.canSacrifice(game.hp,game.maxHp)||!availableSkills().length)return;
    game.hp-=EV.altarCost(game.maxHp);game.roomLocked=true;syncHUD();
-   eventSkillOffer('血の祭壇 — スキルをひとつ選べ');
+   eventSkillOffer('血の祭壇');
   }else if(opt==='ward'){const old=game.shield;relicShield(12);showRoomResult('祭壇が障壁+'+Math.round(game.shield-old)+'を授けた。');}
  }else if(event.id==='mirror'){
   if(opt==='coins'){const gained=awardTowerCoins(12);showRoomResult('鏡を背にし、塔貨'+gained+'枚を手に入れた。');}
@@ -1158,7 +1010,7 @@ function roomAction(action){
  }else if(event.id==='sanctuary'){
   if(opt==='resonate'){
    if(!availableSkills().length)return;
-   game.roomLocked=true;eventSkillOffer('共鳴の聖堂 — スキルをひとつ選べ',resonancePool());
+   game.roomLocked=true;eventSkillOffer('共鳴の聖堂',resonancePool());
   }else if(opt==='train'){
    if(!merchantTargets('training').length)return;
    game.roomStage='target:sanctuary_train';renderRoom();
@@ -1224,7 +1076,7 @@ function spawnEnemy(t){
  if(!archetype){title();return}
  // Encounter, not kill, unlocks the existing invulnerable practice mode.
  game.lastDiscovered=false;
- clearGuardInput();resetParryInput();
+ clearGuardInput();RunState.resetParryInput(game);
  if(!game.practice&&!archetype.preview){
   game.lastDiscovered=P.recordEncounter(book,archetype,floor);
   saveBook();
@@ -1296,13 +1148,13 @@ function beginFinalCountIn(){
  const e=game.enemy;
  startScore(e);
  // If the browser cannot initialize audio, the visual count-in still finishes safely.
- if(!score.active)score.beat=60/encounterBpm(e);
  game.phaseCountStartAt=score.active?scoreToPerf(score.origin):performance.now()+170;
  if(score.active){
   // Four low drum strokes on the same AudioContext clock; only the first is accented.
+  const ac=audio.context;
   for(let i=0;i<FINAL_PHASE_COUNT_BEATS;i++){
    const t=score.origin+i*score.beat;
-   scoreFinalKick(t,i===0);
+   if(audioEnabled)MUSIC?.playCountIn(ac,score.bus,score.noise,t,i===0);
   }
  }
  $('trackLabel').textContent='SECOND MOVEMENT · '+score.bpm+' BPM';
@@ -1337,40 +1189,15 @@ function updateFinalPhase(now){
 function showText(text,x,y,color='#fff',size=21){texts.push({text,x,y,t:performance.now(),life:850,color,size});if(texts.length>45)texts.shift()}
 function puff(x,y,color='#fff',count=16,power=1){for(let i=0;i<count;i++){const a=rand(0,Math.PI*2),v=rand(.6,3.7)*power;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-rand(0,.6),color,life:rand(400,1100),max:1100,size:rand(1.4,4.1)})}if(particles.length>180)particles.splice(0,particles.length-180)}
 function feedback(label,color){game.feedback=label;game.feedbackAt=performance.now();showText(label,w*.5,h*.27,color,27)}
-// Each successful parry heals once from damage actually inflicted (overkill excluded).
-// Blood Rhythm adds 1 percentage point to both lifesteal rate and max-HP recovery cap per combo.
-// The combo contribution deliberately has no upper limit.
-function bloodHealAmount(dealt,level,combo,synergy,maxHp){
- if(level<=0||dealt<=0||maxHp<=0)return 0;
- const bonus=synergy?Math.max(0,Math.floor(combo)):0;
- const rate=(6+level*2+bonus)/100;
- const cap=Math.ceil(maxHp*(25+bonus)/100);
- return Math.min(Math.max(2,Math.round(dealt*rate)),cap);
-}
-function finishParryBlood(recovery=null){
- if(!game.parryDamageActive)return 0;
- const dealt=game.parryDamage;
- game.parryDamage=0;game.parryDamageActive=false;
- const amount=bloodHealAmount(dealt,lvl('blood'),game.combo,has('blood','fury'),game.maxHp);
- return amount?heal(amount,recovery):0;
-}
-// Resolve successful-parry healing once, also when the killing blow immediately ends the floor.
-// Overheal and between-floor regeneration never become stored attack damage.
+// Settle once, including the killing blow, before floor progression changes state.
 function finishParryRecovery(){
  if(!game.parryRecoveryActive)return;
- game.parryRecoveryActive=false;
- const recovery={converted:0};
- const blood=finishParryBlood(recovery);
- const lust=lvl('bloodlust')&&!game.practice?heal(2+lvl('bloodlust'),recovery):0;
- const bell=hasRelic('pilgrim_bell')&&game.relicBellDue?heal(Math.round(relicPower('pilgrim_bell')*hpSkillScale()),recovery):0;
- game.relicBellDue=false;
- const pact=hasRelic('blood_pact_chalice')&&game.relicPactReady?heal(Math.round(relicPower('blood_pact_chalice')*hpSkillScale()),recovery):0;
- game.relicPactReady=false;
- if(lvl('bloodlust')&&!game.practice){
-  const multiple=(1+lvl('bloodlust')*.5)*(has('bloodlust','blood')?1.5:1);
-  const cap=game.baseAtk*(2.5+lvl('bloodlust')*.5);
-  game.bloodlustPending=Math.min(cap,Math.round((blood+lust+bell+pact)*multiple));
- }
+ CombatHealth.finishParryRecovery(game,{
+  bloodLevel:lvl('blood'),bloodSynergy:has('blood','fury'),
+  bloodlustLevel:lvl('bloodlust'),bloodlustSynergy:has('bloodlust','blood'),
+  bellOwned:hasRelic('pilgrim_bell'),bellAmount:Math.round(relicPower('pilgrim_bell')*hpSkillScale()),
+  pactOwned:hasRelic('blood_pact_chalice'),pactAmount:Math.round(relicPower('blood_pact_chalice')*hpSkillScale())
+ },heal);
 }
 function damageEnemy(n,color='#fff',label){
  const e=game.enemy;if(!e||e.hp<=0)return;
@@ -1389,114 +1216,289 @@ function damageEnemy(n,color='#fff',label){
  }
 }
 function heal(n,recovery=null){
- const a=game.hp;game.hp=Math.min(game.maxHp,game.hp+n);
- const restored=Math.max(0,game.hp-a);
- if(restored>.1)showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18);
- if(recovery&&hasRelic('overflow_chalice')){
-  const perParry=Math.ceil(game.maxHp*Math.round(relicPower('overflow_chalice',true)*100)/100);
-  const ceiling=Math.min(shieldCap(),Math.ceil(game.maxHp*(relicPolished('overflow_chalice')?40:30)/100));
-  const amount=Math.min(Math.floor(Math.max(0,n-restored)*Math.round(relicPower('overflow_chalice')*100)/100),Math.max(0,perParry-recovery.converted));
-  const added=addShield(amount,false,ceiling);recovery.converted+=added;
-  if(added)showText('障壁 +'+added,w*.27,h*.40,'#c4b4ff',15);
- }
- return restored;
+ const overflow=recovery&&hasRelic('overflow_chalice')?{
+  ratio:relicPower('overflow_chalice'),budgetRatio:relicPower('overflow_chalice',true),
+  polished:relicPolished('overflow_chalice')
+ }:null;
+ return CombatHealth.heal(game,n,{cap:shieldCap(),overflow},recovery,{
+  hp:restored=>showText('+'+Math.round(restored),w*.27,h*.47,'#8aefbd',18),
+  shield:added=>showText('障壁 +'+added,w*.27,h*.40,'#c4b4ff',15)
+ });
 }
-function getAttackMultiplier(){let m=(1+lvl('blade')*.25)*(1+Math.min(game.combo,120)*(.012+lvl('fury')*.02));if(game.hp<game.maxHp*.5)m*=1+lvl('gamble')*.30;if(game.enemy?.hp/game.enemy?.maxHp<.35)m*=1+lvl('execute')*.23;return m}
-function strikeResult(kind,at,effectAt=at){tutorialResult(kind);const e=game.enemy;if(!e||game.mode!=='combat')return;game.lastInputTargetAt=inputTargetAt();game.attackResolved=true;game.lastImpactAt=at;game.lastStrikeKind=kind;if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;musicParry(kind);game.lateReported=false;game.lastHitAt=effectAt;triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;if(game.practice){if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');}const perfect=kind==='just';if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;game[kind==='guard'?'guards':'misses']++;game.lastDamageAt=effectAt;game.hp=0;game.shield=0;feedback('一撃で決着！','#ff9292');die();syncHUD();return;}if(kind==='guard'){
-  game.relicJustStreak=0;game.justStreak=0;
-  if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
-   game.relicStopUsed++;showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
-  }else game.combo=guardComboAfterHit(game.combo);
-  game.guards++;
-  if(!lvl('aegis'))game.charge=0;
-  applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
-  if(game.mode!=='combat')return;
-  if(lvl('thorns')){let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();if(has('aegis','thorns'))reflect+=game.shield*.4;damageEnemy(reflect,'#dbb7ff','反射');if(game.mode!=='combat')return;}feedback('GUARD','#f6c473');
-}else if(kind==='miss'){
-  game.lastTimingDeltaMs=game.lastAttemptDelta===null?null:Math.round(game.lastAttemptDelta);game.lastTimingKind='miss';
-  game.relicJustStreak=0;game.justStreak=0;game.combo=0;game.misses++;game.charge=0;game.lastDamageAt=effectAt;applyDamage(e.atk,'MISS');if(game.mode!=='combat')return;if(!game.practice)feedback('HIT!','#ff8295');if(!splitContact())sound(145,.21,'sawtooth',.045,-85);shake=12;
-}else{
-  game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
-  const heavyJust=perfect&&!attackPresentation.opening&&(e.boss||e.elite)&&(game.attackSpan/(score.beat*1000))>=2.99;
-  game.lastDeflectAt=effectAt;game.combo++;game.peakCombo=Math.max(game.peakCombo,game.combo);game.parries++;if(perfect){game.perfects++;game.floorPerfects=(game.floorPerfects||0)+1;game.charge=Math.min(7,game.charge+(heavyJust?3:2))}else{game.charge=Math.min(7,game.charge+1)}
-  if(heavyJust)showText('HEAVY BREAK!',w*.52,h*.21,'#ffd984',19);
-  game.justStreak=perfect?(game.justStreak||0)+1:0;
-  // Record success and JUST thresholds before damage can end the floor.
-  if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
-  const heartbeatProc=!!(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3));
-  if(heartbeatProc){game.justStreak=0;game.charge=Math.min(7,game.charge+1)}
-  game.parryDamage=0;game.parryDamageActive=!!lvl('blood')&&!game.practice;
-  game.parryRecoveryActive=true;
-  if(hasRelic('conduit_stone')&&!game.relicBoltDue)game.relicBoltDue=relicBump('conduit_stone',4);
-  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&!game.relicEmperorDue)
-   game.relicEmperorDue=relicBump('emperor_conduit',5);
-  if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
-  if(hasRelic('ember_vial'))game.enemy.burn+=Math.round(relicPower('ember_vial')*skillAtkScale());
-  if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(relicPower('royal_banner'));
-  if(hasRelic('broken_gear')&&game.relicGearReady){game.relicGearReady=false;relicShield(relicPower('broken_gear'))}
-  if(hasRelic('serene_crystal')){
-   game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
-   if(game.relicJustStreak>=3){game.relicJustStreak=0;relicShield(relicPower('serene_crystal'));showText('静謐!',w*.34,h*.36,'#c7e5f9',17)}
+function getAttackMultiplier(){
+ return CombatMath.attackMultiplier({
+  bladeLevel:lvl('blade'),furyLevel:lvl('fury'),gambleLevel:lvl('gamble'),executeLevel:lvl('execute'),
+  combo:game.combo,hp:game.hp,maxHp:game.maxHp,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp
+ });
+}
+// Resolve each phase synchronously; every damaging follow-up can end combat immediately.
+function strikeResult(kind,at,effectAt=at){
+ tutorialResult(kind);
+ const e=game.enemy;
+ if(!e||game.mode!=='combat')return;
+ presentStrikeResult(kind,at,effectAt,e);
+ const perfect=kind==='just';
+ if(runSkinRules().suddenDeath&&!game.practice&&!game.tutorial&&['guard','miss'].includes(kind)){
+  game.combo=0;game.charge=0;game.justStreak=0;game.relicJustStreak=0;
+  game[kind==='guard'?'guards':'misses']++;
+  game.lastDamageAt=effectAt;game.hp=0;game.shield=0;
+  feedback('一撃で決着！','#ff9292');die();syncHUD();return;
+ }
+ const completed=kind==='guard'?resolveGuardStrike(e):
+  kind==='miss'?resolveMissStrike(e,effectAt):resolveParryStrike(e,perfect,at,effectAt);
+ if(!completed)return;
+ if(game.mode==='combat')nextStrike();
+ syncHUD();
+}
+function presentStrikeResult(kind,at,effectAt,e){
+ game.lastInputTargetAt=inputTargetAt();
+ game.attackResolved=true;
+ game.lastImpactAt=at;
+ game.lastStrikeKind=kind;
+ if(splitContact()&&attackPresentation.contact?.key===score.theme+':'+game.attackBeat)attackPresentation.contact.result=kind;
+ musicParry(kind);
+ game.lateReported=false;
+ game.lastHitAt=effectAt;
+ triggerClashFX(kind,splitContact()?(attackPresentation.contact?.at??at):effectAt,e.kind);
+ if(splitContact()&&effectAt>at+1)clashFX.noFreeze=true;
+ if(game.practice){
+  if(kind==='miss')feedback(game.lastAttemptDelta===null?'入力なし':((game.lastAttemptDelta<0?'早い ':'遅い ')+Math.abs(Math.round(game.lastAttemptDelta))+'ms'),'#f7ca8e');
+  else feedback(kind==='just'?'JUST!':kind==='parry'?'PARRY!':'GUARD',kind==='just'?'#84effa':'#ecd3a1');
+ }
+}
+function resolveGuardStrike(e){
+ game.relicJustStreak=0;
+ game.justStreak=0;
+ if(hasRelic('stopped_hand')&&game.relicStopUsed<relicPower('stopped_hand')){
+  game.relicStopUsed++;
+  showText('秒針停止!',w*.35,h*.31,'#dac8ff',17);
+ }else game.combo=guardComboAfterHit(game.combo);
+ game.guards++;
+ if(!lvl('aegis'))game.charge=0;
+ applyDamage(Math.min(e.atk*GUARD_DAMAGE_RATIO,game.maxHp*GUARD_MAX_HP_RATIO),'GUARD');
+ if(game.mode!=='combat')return false;
+ if(lvl('thorns')){
+  let reflect=e.atk*(.30+lvl('thorns')*.18)*skillAtkScale();
+  if(has('aegis','thorns'))reflect+=game.shield*.4;
+  damageEnemy(reflect,'#dbb7ff','反射');
+  if(game.mode!=='combat')return false;
+ }
+ feedback('GUARD','#f6c473');
+ return true;
+}
+function resolveMissStrike(e,effectAt){
+ game.lastTimingDeltaMs=game.lastAttemptDelta===null?null:Math.round(game.lastAttemptDelta);
+ game.lastTimingKind='miss';
+ game.relicJustStreak=0;
+ game.justStreak=0;
+ game.combo=0;
+ game.misses++;
+ game.charge=0;
+ game.lastDamageAt=effectAt;
+ applyDamage(e.atk,'MISS');
+ if(game.mode!=='combat')return false;
+ if(!game.practice)feedback('HIT!','#ff8295');
+ if(!splitContact())sound(145,.21,'sawtooth',.045,-85);
+ shake=12;
+ return true;
+}
+function prepareParryTriggers(e,perfect,at,effectAt){
+ game.parryReadyAt=Math.min(game.parryReadyAt||0,at);
+ const heavyJust=perfect&&!attackPresentation.opening&&(e.boss||e.elite)&&(game.attackSpan/(score.beat*1000))>=2.99;
+ game.lastDeflectAt=effectAt;
+ game.combo++;
+ game.peakCombo=Math.max(game.peakCombo,game.combo);
+ game.parries++;
+ if(perfect){
+  game.perfects++;
+  game.floorPerfects=(game.floorPerfects||0)+1;
+  game.charge=Math.min(7,game.charge+(heavyJust?3:2));
+ }else game.charge=Math.min(7,game.charge+1);
+ if(heavyJust)showText('HEAVY BREAK!',w*.52,h*.21,'#ffd984',19);
+ game.justStreak=perfect?(game.justStreak||0)+1:0;
+ // Record success and JUST thresholds before damage can end the floor.
+ if(lvl('overcharge'))game.overchargeCount=(game.overchargeCount||0)+1;
+ const heartbeatProc=!!(lvl('heartbeat')&&perfect&&game.justStreak>=(has('heartbeat','focus')?2:3));
+ if(heartbeatProc){
+  game.justStreak=0;
+  game.charge=Math.min(7,game.charge+1);
+ }
+ game.parryDamage=0;
+ game.parryDamageActive=!!lvl('blood')&&!game.practice;
+ game.parryRecoveryActive=true;
+ if(hasRelic('conduit_stone')&&!game.relicBoltDue)game.relicBoltDue=relicBump('conduit_stone',4);
+ if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&!game.relicEmperorDue)
+  game.relicEmperorDue=relicBump('emperor_conduit',5);
+ if(hasRelic('pilgrim_bell'))game.relicBellDue=relicBump('pilgrim_bell',4);
+ if(hasRelic('ember_vial'))game.enemy.burn+=Math.round(relicPower('ember_vial')*skillAtkScale());
+ if(hasRelic('royal_banner')&&game.combo%10===0)relicShield(relicPower('royal_banner'));
+ if(hasRelic('broken_gear')&&game.relicGearReady){
+  game.relicGearReady=false;
+  relicShield(relicPower('broken_gear'));
+ }
+ if(hasRelic('serene_crystal')){
+  game.relicJustStreak=perfect?(game.relicJustStreak||0)+1:0;
+  if(game.relicJustStreak>=3){
+   game.relicJustStreak=0;
+   relicShield(relicPower('serene_crystal'));
+   showText('静謐!',w*.34,h*.36,'#c7e5f9',17);
   }
-  const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
-  game.relicMaskReady=hasRelic('duet_mask')&&perfect;
-  if(lvl('frost')&&!game.frostWard){
-   game.frostCount=(game.frostCount||0)+1;
-   if(game.frostCount>=4){game.frostCount=0;game.frostWard=true;showText('氷の加護!',w*.32,h*.34,'#c5ecff',18)}
+ }
+ const relicMaskSlash=hasRelic('duet_mask')&&game.relicMaskReady;
+ game.relicMaskReady=hasRelic('duet_mask')&&perfect;
+ if(lvl('frost')&&!game.frostWard){
+  game.frostCount=(game.frostCount||0)+1;
+  if(game.frostCount>=4){
+   game.frostCount=0;
+   game.frostWard=true;
+   showText('氷の加護!',w*.32,h*.34,'#c5ecff',18);
   }
-  let val=game.baseAtk*getAttackMultiplier()*(perfect?(1.6+lvl('precision')*.35):1)*(heavyJust?1.25:1);
-  if(lvl('double')&&Math.random()<(.14+lvl('double')*.09)){val*=2;showText('DOUBLE!',w*.51,h*.22,'#fdd99d',18)}
-  if(game.fortitudeReady&&lvl('fortitude')){
-   val*=1+(.15+.1*lvl('fortitude'));game.fortitudeReady=false;
-   if(has('fortitude','aegis'))addShield(5,true);
-   showText('不屈!',w*.54,h*.27,'#e6e9a7',17);
-  }
-  // Spend last parry's stored healing before newly earned recovery can be calculated.
-  if(lvl('bloodlust')&&game.bloodlustPending>0){
-   val+=game.bloodlustPending;showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);game.bloodlustPending=0;
-  }
-  if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
-   game.relicStardustUsed=true;val*=1+relicPower('stardust_whetstone');
-  }
-  if(hasRelic('reaper_pact'))val*=1+relicPower('reaper_pact');
-  if(hasRelic('golden_festival_bell')&&e.boss)val*=1+relicPower('golden_festival_bell');
-  damageEnemy(val,perfect?'#93eafa':'#fff5cb');if(game.mode!=='combat')return;
-  if(relicMaskSlash){
-   damageEnemy(val*relicPower('duet_mask'),'#dfb8f5','仮面');if(game.mode!=='combat')return;
-  }
-  if(hasRelic('conduit_stone')&&game.relicBoltDue){
-   game.relicBoltDue=false;damageEnemy(relicPower('conduit_stone')*skillAtkScale(),'#a1e8ff','雷導');if(game.mode!=='combat')return;
-  }
-  if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&game.relicEmperorDue){
-   game.relicEmperorDue=false;damageEnemy(relicPower('emperor_conduit',true)*skillAtkScale(),'#bceeff','雷帝');if(game.mode!=='combat')return;
-  }
-  if(heartbeatProc){
-   damageEnemy(game.baseAtk*(.20+.15*lvl('heartbeat')),'#9ee8f7','拍動');if(game.mode!=='combat')return;
-  }
-  if(lvl('overcharge')){
-   if(game.overchargeCount>=3){
-    game.overchargeCount=0;
-    damageEnemy(game.baseAtk*(.7+.4*lvl('overcharge')),'#8cecff','過充電');if(game.mode!=='combat')return;
-    if(has('overcharge','thunder')){
-     damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*.5,'#94e8ff','雷霆');if(game.mode!=='combat')return;
-    }
+ }
+ return {heavyJust,heartbeatProc,relicMaskSlash};
+}
+function applyBaseCounterattack(e,perfect,heavyJust){
+ let val=game.baseAtk*getAttackMultiplier()*(perfect?(1.6+lvl('precision')*.35):1)*(heavyJust?1.25:1);
+ if(lvl('double')&&Math.random()<(.14+lvl('double')*.09)){
+  val*=2;
+  showText('DOUBLE!',w*.51,h*.22,'#fdd99d',18);
+ }
+ if(game.fortitudeReady&&lvl('fortitude')){
+  val*=1+(.15+.1*lvl('fortitude'));
+  game.fortitudeReady=false;
+  if(has('fortitude','aegis'))addShield(5,true);
+  showText('不屈!',w*.54,h*.27,'#e6e9a7',17);
+ }
+ // Spend last parry's stored healing before newly earned recovery can be calculated.
+ if(lvl('bloodlust')&&game.bloodlustPending>0){
+  val+=game.bloodlustPending;
+  showText('渇望 +'+Math.round(game.bloodlustPending),w*.53,h*.36,'#e9a3cb',15);
+  game.bloodlustPending=0;
+ }
+ if(hasRelic('stardust_whetstone')&&!game.relicStardustUsed){
+  game.relicStardustUsed=true;
+  val*=1+relicPower('stardust_whetstone');
+ }
+ if(hasRelic('reaper_pact'))val*=1+relicPower('reaper_pact');
+ if(hasRelic('golden_festival_bell')&&e.boss)val*=1+relicPower('golden_festival_bell');
+ damageEnemy(val,perfect?'#93eafa':'#fff5cb');
+ return val;
+}
+function applyRelicAndThunderFollowups(val,{relicMaskSlash,heartbeatProc}){
+ if(relicMaskSlash){
+  damageEnemy(val*relicPower('duet_mask'),'#dfb8f5','仮面');
+  if(game.mode!=='combat')return false;
+ }
+ if(hasRelic('conduit_stone')&&game.relicBoltDue){
+  game.relicBoltDue=false;
+  damageEnemy(relicPower('conduit_stone')*skillAtkScale(),'#a1e8ff','雷導');
+  if(game.mode!=='combat')return false;
+ }
+ if(hasRelic('emperor_conduit')&&!lvl('thunder')&&!lvl('overcharge')&&game.relicEmperorDue){
+  game.relicEmperorDue=false;
+  damageEnemy(relicPower('emperor_conduit',true)*skillAtkScale(),'#bceeff','雷帝');
+  if(game.mode!=='combat')return false;
+ }
+ if(heartbeatProc){
+  damageEnemy(game.baseAtk*heartbeatDamagePercent(lvl('heartbeat'))/100,'#9ee8f7','拍動');
+  if(game.mode!=='combat')return false;
+ }
+ if(lvl('overcharge')){
+  if(game.overchargeCount>=3){
+   game.overchargeCount=0;
+   damageEnemy(game.baseAtk*(.7+.4*lvl('overcharge')),'#8cecff','過充電');
+   if(game.mode!=='combat')return false;
+   if(has('overcharge','thunder')){
+    damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*.5,'#94e8ff','雷霆');
+    if(game.mode!=='combat')return false;
    }
   }
-  if(lvl('thunder')){const thunder=(10+12*lvl('thunder'))*skillAtkScale();damageEnemy(thunder*(1+game.combo*.018),'#86e8ff','⚡');if(game.mode!=='combat')return}
-  if(lvl('echo')){let echo=val*(.25+lvl('echo')*.13);damageEnemy(echo,'#d8baff','残響');if(game.mode!=='combat')return;if(has('thunder','echo'))damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*(1+lvl('echo')*.24),'#86e8ff','雷鳴');if(game.mode!=='combat')return}
-  if(lvl('ember')){const burnGain=Math.round(lvl('ember')*7*skillAtkScale());e.burn+=burnGain;showText('炎 +'+burnGain,w*.75,h*.33,'#ffba83',13);if(has('ember','execute')&&e.hp/e.maxHp<.35){damageEnemy(e.burn*2,'#ff996f','紅蓮');e.burn=0;if(game.mode!=='combat')return}}
-  if(perfect&&lvl('aegis')){addShield(3+3*lvl('aegis'),true);if(has('aegis','thorns')){damageEnemy(game.shield*.28,'#c5adff','鏡壁');if(game.mode!=='combat')return}}
-  if(lvl('pulse')&&game.combo%8===0){damageEnemy(42*lvl('pulse')*skillAtkScale()*(1+game.combo*.02),'#ffe298','共鳴波');if(game.mode!=='combat')return}
-  if(lvl('king')&&game.combo%(has('king','pulse')?8:10)===0){
-   damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
-   if(game.mode!=='combat')return;
-  }
-  let ultFired=false;
-  if(game.charge>=7){ultFired=true;game.charge=0;game.lastUltimateAt=effectAt;if(hasRelic('broken_gear'))game.relicGearReady=true;const ult=(game.baseAtk*1.5+lvl('rune')*45*baseAttackScale())*getAttackMultiplier();damageEnemy(ult,'#a8f7ff','奥義');if(game.mode!=='combat')return;if(has('rune','precision')){damageEnemy(ult*.65,'#d2b0ff','時空切断');if(game.mode!=='combat')return}shake=Math.max(shake,12);puff(w*.7,h*.55,'#9ef6ff',36,1.8);sound(660,.33,'sawtooth',.05,-340);sound(220,.38,'triangle',.06,-110)}
-  finishParryRecovery();
-  if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');if(perfect){chord();if(navigator.vibrate)navigator.vibrate(15);if(!ultFired){flash=.67;flashColor='#a0e8ff';}shake=Math.max(shake,5)}else if(!ultFired){flash=Math.max(flash,.18);flashColor='#9accff'};
+ }
+ if(lvl('thunder')){
+  const thunder=(10+12*lvl('thunder'))*skillAtkScale();
+  damageEnemy(thunder*(1+game.combo*.018),'#86e8ff','⚡');
+  if(game.mode!=='combat')return false;
+ }
+ if(lvl('echo')){
+  const echo=val*(.25+lvl('echo')*.13);
+  damageEnemy(echo,'#d8baff','残響');
+  if(game.mode!=='combat')return false;
+  if(has('thunder','echo'))damageEnemy((10+12*lvl('thunder'))*skillAtkScale()*(1+lvl('echo')*.24),'#86e8ff','雷鳴');
+  if(game.mode!=='combat')return false;
+ }
+ return true;
 }
-if(game.mode==='combat')nextStrike();syncHUD();}
+function applyElementAndBarrierFollowups(e,perfect){
+ if(lvl('ember')){
+  const burnGain=Math.round(lvl('ember')*7*skillAtkScale());
+  e.burn+=burnGain;
+  showText('炎 +'+burnGain,w*.75,h*.33,'#ffba83',13);
+  if(has('ember','execute')&&e.hp/e.maxHp<=.35){
+   damageEnemy(e.burn,'#ff996f','紅蓮');
+   if(game.mode!=='combat')return false;
+  }
+ }
+ if(perfect&&lvl('aegis')){
+  addShield(3+3*lvl('aegis'),true);
+  if(has('aegis','thorns')){
+   damageEnemy(game.shield*.28,'#c5adff','鏡壁');
+   if(game.mode!=='combat')return false;
+  }
+ }
+ return true;
+}
+// A null result means an earlier blow ended combat; no later charge or effect is consumed.
+function applyComboFinishers(effectAt){
+ if(lvl('pulse')&&game.combo%PULSE_COMBO_STEP===0){
+  damageEnemy(42*lvl('pulse')*skillAtkScale()*(1+game.combo*.02),'#ffe298','共鳴波');
+  if(game.mode!=='combat')return null;
+ }
+ if(lvl('king')&&game.combo%kingComboStep()===0){
+  damageEnemy(game.baseAtk*(2+lvl('king'))*getAttackMultiplier(),'#ffdaa0','王の一撃');
+  if(game.mode!=='combat')return null;
+ }
+ let ultFired=false;
+ if(game.charge>=7){
+  ultFired=true;
+  game.charge=0;
+  game.lastUltimateAt=effectAt;
+  if(hasRelic('broken_gear'))game.relicGearReady=true;
+  const ult=(game.baseAtk*ULTIMATE_BASE_MULTIPLIER+lvl('rune')*45*baseAttackScale())*getAttackMultiplier();
+  damageEnemy(ult,'#a8f7ff','奥義');
+  if(game.mode!=='combat')return null;
+  if(has('rune','precision')){
+   damageEnemy(ult*.65,'#d2b0ff','時空切断');
+   if(game.mode!=='combat')return null;
+  }
+  shake=Math.max(shake,12);
+  puff(w*.7,h*.55,'#9ef6ff',36,1.8);
+  sound(660,.33,'sawtooth',.05,-340);
+  sound(220,.38,'triangle',.06,-110);
+ }
+ return {ultFired};
+}
+function presentParryFeedback(perfect,ultFired){
+ if(!game.practice)feedback(perfect?'JUST PARRY!':'PARRY!',perfect?'#8beaff':'#ffe1a0');
+ if(perfect){
+  chord();
+  if(navigator.vibrate)navigator.vibrate(15);
+  if(!ultFired){flash=.67;flashColor='#a0e8ff';}
+  shake=Math.max(shake,5);
+ }else if(!ultFired){
+  flash=Math.max(flash,.18);flashColor='#9accff';
+ }
+}
+function resolveParryStrike(e,perfect,at,effectAt){
+ const triggers=prepareParryTriggers(e,perfect,at,effectAt);
+ const val=applyBaseCounterattack(e,perfect,triggers.heavyJust);
+ if(game.mode!=='combat')return false;
+ if(!applyRelicAndThunderFollowups(val,triggers))return false;
+ if(!applyElementAndBarrierFollowups(e,perfect))return false;
+ const finishers=applyComboFinishers(effectAt);
+ if(!finishers)return false;
+ finishParryRecovery();
+ presentParryFeedback(perfect,finishers.ultFired);
+ return true;
+}
 function clearFloor(){
  if(game.mode!=='combat')return;
  if(game.tutorial&&!game.tutorialFinishing){game.enemy.hp=1;return;}
@@ -1527,50 +1529,30 @@ function clearFloor(){
  sound(450,.24,'triangle',.05,300);setTimeout(()=>sound(790,.28,'triangle',.045,230),120);syncHUD();checkpoint();
 }
 function applyDamage(n,tag){
- let damage=game.practice||game.tutorial?0:Math.max(1,Math.ceil(n));
- const previousShield=game.shield,previousHp=game.hp;
- let prevented=0;
- // Consume the ice ward before regular shield absorption.
- if(damage>0&&lvl('frost')&&game.frostWard&&!game.practice){
-  prevented=Math.floor(damage*frostReduction(lvl('frost'))/100);
-  damage=Math.max(0,damage-prevented);game.frostWard=false;
-  showText('氷結 -'+prevented,w*.31,h*.36,'#baeaff',17);
- }
- const used=Math.min(game.shield,damage);
- game.shield=Math.max(0,game.shield-used);damage-=used;
- if(previousShield>0&&damage>0&&hasRelic('unbroken_sigil')&&!game.relicBulwarkUsed){
-  game.relicBulwarkUsed=true;
-  const blocked=Math.floor(damage*Math.round(relicPower('unbroken_sigil')*100)/100);damage-=blocked;
-  showText('紋章 -'+blocked,w*.31,h*.39,'#c4b4ff',16);
- }
- if(tag==='GUARD'&&hasRelic('silver_mirror')&&damage>0)damage-=Math.min(Math.round(relicPower('silver_mirror',true)*hpSkillScale()),Math.floor(damage*relicPower('silver_mirror')));
- if(damage>0&&hasRelic('rusty_crest')&&!game.relicRustyUsed){
-  game.relicRustyUsed=true;damage=Math.max(0,damage-Math.round(relicPower('rusty_crest')*hpSkillScale()));
- }
- if(damage>0)game.hp=Math.max(0,game.hp-damage);
- if(game.hp<previousHp&&hasRelic('blood_pact_chalice')&&!game.relicPactConsumed){
-  game.relicPactConsumed=true;game.relicPactReady=true;
- }
- // Normal Fortitude responds to lost HP; Immortal Shield additionally triggers on barrier break.
- if(lvl('fortitude')&&!game.practice){
-  if(game.hp<previousHp||(has('fortitude','aegis')&&previousShield>0&&game.shield===0))
-   game.fortitudeReady=true;
- }
- showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);
- puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);
- shake=Math.max(shake,damage?11:4);
- if(game.hp<=0){
-  const revive=runBonus('revive');
-  if(!game.practice&&!game.reviveUsed&&revive){
-   game.reviveUsed=true;game.hp=Math.max(1,Math.ceil(game.maxHp*revive/100));
+ const rules={
+  frostLevel:lvl('frost'),frostMirror:has('frost','thorns'),
+  sigilRatio:hasRelic('unbroken_sigil')?relicPower('unbroken_sigil'):null,
+  silver:hasRelic('silver_mirror')?{
+   cap:Math.round(relicPower('silver_mirror',true)*hpSkillScale()),ratio:relicPower('silver_mirror')
+  }:null,
+  rustyReduction:hasRelic('rusty_crest')?Math.round(relicPower('rusty_crest')*hpSkillScale()):null,
+  pactOwned:hasRelic('blood_pact_chalice'),fortitudeLevel:lvl('fortitude'),
+  fortitudeSynergy:has('fortitude','aegis'),revivePercent:runBonus('revive')
+ };
+ CombatHealth.applyDamage(game,n,tag,rules,{
+  frost:prevented=>showText('氷結 -'+prevented,w*.31,h*.36,'#baeaff',17),
+  sigil:blocked=>showText('紋章 -'+blocked,w*.31,h*.39,'#c4b4ff',16),
+  hit:damage=>{
+   showText(damage?'−'+damage:'BLOCK!',w*.27,h*.49,damage?'#ff818f':'#c4b4ff',21);
+   puff(w*.28,h*.64,damage?'#ff879c':'#c5b0fa',12,1);
+   shake=Math.max(shake,damage?11:4);
+  },
+  revive:()=>{
    showText('復活!',w*.28,h*.34,'#ffdc97',26);flash=.65;flashColor='#ffc878';
    sound(660,.30,'triangle',.07,120);
-  }else die();
- }
- // Frost Mirror works for guards and misses; never counts as parry lifesteal damage.
- if(prevented>0&&has('frost','thorns')&&game.mode==='combat')
-  damageEnemy(prevented*.5,'#bbebff','氷鏡');
- syncHUD();
+  },
+  die,reflect:amount=>damageEnemy(amount,'#bbebff','氷鏡'),sync:syncHUD
+ });
 }
 function die(){
  if(game.mode==='gameover')return;
@@ -1589,7 +1571,7 @@ function die(){
  const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
  $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
- $('deathRecords').innerHTML=records();runLegacyVisual=null;
+ $('deathRecords').innerHTML=records({result:true});runLegacyVisual=null;
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
 }
@@ -1615,18 +1597,16 @@ function showRelicRewards(kind){
 function renderRelicReward(){
  if(game.mode!=='relic')return;
  checkpoint();
- const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
  const selected=game.relicSwapTarget&&RR.BY_ID[game.relicSwapTarget];
- $('relicOfferTitle').textContent=selected?'交換する遺物を選べ':'遺物をひとつ選べ';
- $('relicOfferHint').textContent=selected?'取り外した遺物は、このランでは再取得できません。':'所持 '+game.relics.length+' / '+RR.MAX_HELD;
- $('relicOfferCards').innerHTML=selected?'':
-  offered.map(r=>`<button type="button" class="relic-reward-card ${r.rarity}" data-relic="${r.id}"><span class="relic-reward-rarity">${RR.RARITY_LABELS[r.rarity]}</span><span class="relic-reward-symbol">${r.icon}</span><strong>${r.name}</strong><span class="relic-reward-desc">${r.desc+relicScaledSuffix(r.id,false)}</span><small>相性：${r.affinity}</small></button>`).join('');
- $('relicReplaceList').hidden=!selected;
- $('relicReplaceList').innerHTML=selected?
-  `<p class="relic-replace-note">${selected.icon} ${selected.name} と交換する遺物</p>`+
-  game.relics.map(id=>{const r=ownedRelic(id);return `<button type="button" class="relic-replace-card" data-replace="${id}"><span>${r.icon}</span><span><b>${r.name}</b><small>${r.desc}</small></span></button>`}).join(''):'';
- $('relicBackBtn').hidden=!selected;
- $('relicSkipBtn').textContent='今回は見送る →';
+ const offered=game.relicOffer.map(id=>RR.BY_ID[id]).filter(Boolean);
+ const view=window.ParryRewardsView.relics({
+  selected,heldCount:game.relics.length,held:selected?game.relics.map(ownedRelic):[],
+  offered:selected?[]:offered.map(r=>({...r,desc:r.desc+relicScaledSuffix(r.id,false)}))
+ });
+ $('relicOfferTitle').textContent=view.title;$('relicOfferHint').textContent=view.hint;
+ $('relicOfferCards').innerHTML=view.cardsHtml;
+ $('relicReplaceList').hidden=view.replaceHidden;$('relicReplaceList').innerHTML=view.replaceHtml;
+ $('relicBackBtn').hidden=view.backHidden;$('relicSkipBtn').textContent=view.skipLabel;
 }
 function grantRelic(id,replaceId=null){
  if(!RR.BY_ID[id]||!game.relicOffer.includes(id)||game.mode!=='relic')return false;
@@ -1687,14 +1667,27 @@ function showRewards(){
  }
  game.mode='reward';choiceSet=choosePool();renderRewards();setMode('reward');
 }
-function renderRewards(){const rar={common:'COMMON',rare:'RARE',epic:'EPIC'};$('rewardCards').className='reward-cards'+(choiceSet.length===4?' four':'');$('rewardTitle').textContent=game.finalClear&&game.floor===80?'80F制覇 — 終刻の王を討伐':`${game.floor}F 突破 — 戦利品`;$('rewardCards').innerHTML=choiceSet.map(s=>{const meta=skillCardMeta(s);return `<button class="reward-card ${s.rarity}" data-skill="${s.id}"><span class="rarity">${rar[s.rarity]||String(s.rarity||'COMMON').toUpperCase()} · ${lvl(s.id)?'LEVEL UP':'NEW SKILL'}</span><span class="emoji">${s.icon}</span><span class="rname">${s.name} <span class="muted" style="font-size:10px">Lv.${lvl(s.id)+1}</span></span><span class="rdesc">${s.desc(lvl(s.id)+1)}</span>${meta.diffHtml}${meta.synHtml}</button>`}).join('');for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));$('rerollBtn').textContent=`↻ 引き直す (残 ${game.rerolls})`;$('rerollBtn').disabled=game.rerolls<=0;$('healBtn').textContent=`♡ 強化せずHPを ${Math.round(game.maxHp*.2)} 回復`;const notices=[game.finalClear&&game.floor===80?'👑 塔の頂を制覇！ 81Fから無限踏破が始まる':null,game.lastDiscovered?'📖 図鑑登録':null,game.enemy?.rare?'✦ レア報酬獲得':null,game.floor%5===0?'↻ 引き直し +1':null].filter(Boolean);$('rewardNote').textContent=notices.join('　');$('rewardNote').hidden=!notices.length;checkpoint()}
+function renderRewards(){
+ const view=window.ParryRewardsView.skills({
+  choices:choiceSet,levels:game.lv,skillContext:skillDescriptionContext(),floor:game.floor,
+  finalClear:game.finalClear,rerolls:game.rerolls,maxHp:game.maxHp,lastDiscovered:game.lastDiscovered,rare:game.enemy?.rare
+ });
+ $('rewardCards').className=view.cardsClass;
+ $('rewardTitle').textContent=view.title;
+ $('rewardCards').innerHTML=view.cardsHtml;
+ for(const btn of $('rewardCards').querySelectorAll('[data-skill]'))btn.addEventListener('click',()=>takeSkill(btn.dataset.skill));
+ $('rerollBtn').textContent=view.rerollLabel;$('rerollBtn').disabled=view.rerollDisabled;
+ $('healBtn').textContent=view.healLabel;
+ $('rewardNote').textContent=view.note;$('rewardNote').hidden=view.noteHidden;
+ checkpoint();
+}
 function gainSkillLevel(id){
  if(!Object.hasOwn(SK,id)||lvl(id)>=skillCap(id)||game.sealedSkillIds?.includes(id))return false;
  const prevMax=game.maxHp;
  game.lv[id]=(game.lv[id]||0)+1;
  if(id==='thunder'||id==='overcharge')game.relicEmperorDue=false;
  if(id==='heal'){
-  game.rawMaxHp=65+(game.lifeBonus??PR.baseValue(meta,'life'))+lvl('heal')*15;adjustRelicMaxHp();
+  game.rawMaxHp=runBaseHp()+PR.lifeVesselBonus(runBaseHp(),lvl('heal'));adjustRelicMaxHp();
   game.hp=Math.min(game.maxHp,game.hp+game.maxHp-prevMax+12);
  }
  return true;
@@ -1743,84 +1736,30 @@ function populatePracticeEnemies(selected,allowUnseen=false){
  if(selected&&(allowUnseen||book.seen[selected]))select.value=selected;
  else if(options.length)select.value=options[0].bookKey;
 }
-function renderSkillCodex(){
- const unlockedCount=SKILLS.filter(s=>permanent.unlockedSkills.includes(s.id)).length;
- $('codexSummary').textContent=unlockedCount+' / '+SKILLS.length+' 解放 · '+SYNERGIES.length+' 共鳴';
- if($('codexFilter'))$('codexFilter').hidden=true;
- $('codexList').innerHTML=SKILLS.map(s=>{
-  if(!permanent.unlockedSkills.includes(s.id)){
-   return `<div class="codex-card locked"><div class="codex-symbol">🔒</div><strong>未解放</strong><small>${s.rarity.toUpperCase()} · ショップで解放後に登録</small></div>`;
-  }
-  const syns=SYNERGIES.filter(syn=>syn.a===s.id||syn.b===s.id).map(syn=>{
-   const partner=SK[syn.a===s.id?syn.b:syn.a];
-   return `<div class="codex-synergy-hint"><b>${syn.name}</b>（+${partner.icon}${partner.name}）：${syn.desc}</div>`;
-  }).join('');
-  return `<div class="codex-card ${s.rarity}"><div class="codex-symbol">${s.icon}</div><strong>${s.name}</strong><small>${s.rarity.toUpperCase()} · 最大Lv.${s.max}（限界突破+2） · ${s.hint}</small><p>${s.desc(1)}</p>${syns}</div>`;
- }).join('');
+function resetCodexScroll(){
+ const list=$('codexList');list.scrollTop=0;
+ if(list.parentElement)list.parentElement.scrollTop=0;
 }
 function renderCodex(){
+ $('codexToolbar').hidden=codexTab==='skills';
  if($('codexTabs')){
   for(const btn of $('codexTabs').querySelectorAll('[data-codex-tab]')){
    const active=btn.dataset.codexTab===codexTab;
-   btn.className='codex-tab'+(active?' active':'');
+   btn.className='upgrade-tab'+(active?' active':'');
    btn.setAttribute('aria-pressed',String(active));
   }
  }
- if(codexTab==='skills'){renderSkillCodex();return;}
- if($('codexFilter'))$('codexFilter').hidden=false;
- const groups=P.all.map(m=>{
-  if(m.rare)return {m,base:P.findByKey(m.id+':rare'),elite:null};
-  return {m,base:P.findByKey(m.id+':normal'),elite:P.findByKey(m.id+':elite')};
+ const view=window.ParryCodexView.render({
+  tab:codexTab,filter:$('codexFilter').value,book,
+  unlockedSkills:permanent.unlockedSkills,skillContext:skillDescriptionContext()
  });
- const entries=P.codexEntries(),discovered=entries.filter(e=>book.seen[e.bookKey]).length;
- $('codexSummary').textContent=discovered+' / '+entries.length+' 発見';
- const filter=$('codexFilter').value;
- const filtered=groups.filter(g=>{
-  const seenBase=!!book.seen[g.base.bookKey],seenElite=!!(g.elite&&book.seen[g.elite.bookKey]);
-  if(filter==='discovered')return seenBase||seenElite;
-  if(filter==='rare')return !!g.m.rare;
-  if(filter==='elite')return !!g.elite&&(seenElite||!seenBase);
-  if(filter==='normal')return !g.m.rare;
-  return true;
- });
- $('codexList').innerHTML=filtered.map(g=>{
-  const seenBase=book.seen[g.base.bookKey],seenElite=g.elite?book.seen[g.elite.bookKey]:null;
-  if(!seenBase&&!seenElite)return '<div class="codex-card locked"><div class="codex-symbol">？</div><strong>未遭遇</strong></div>';
-  const winsBase=book.defeated[g.base.bookKey]?.wins||0,winsElite=g.elite?(book.defeated[g.elite.bookKey]?.wins||0):0;
-  const firstF=Math.min(seenBase?.firstFloor||999,seenElite?.firstFloor||999);
-  const rank=g.m.rare?'rare':g.m.boss?'boss':seenElite?'elite':'normal';
-  const type=g.m.rare?'RARE':g.m.boss?(seenElite?'BOSS / ELITE':'BOSS'):(seenElite?'NORMAL / ELITE':'NORMAL');
-  const stats=g.m.rare
-   ?`${type} · 遭遇 ${seenBase.encounters}回 · 討伐 ${winsBase}回 · 初遭遇 ${firstF}F`
-   :`${type} · 通常 遭遇${seenBase?.encounters||0}/討伐${winsBase} · 精鋭 遭遇${seenElite?.encounters||0}/討伐${winsElite} · 初遭遇 ${firstF}F`;
-  const btns=g.m.rare
-   ?`<div class="codex-practice-row"><button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 稽古場で練習</button></div>`
-   :`<div class="codex-practice-row">${seenBase?`<button class="codex-practice" data-practice="${g.base.bookKey}">⚔ 通常で稽古</button>`:'<button class="codex-practice" disabled>未遭遇 (通常)</button>'}${seenElite?`<button class="codex-practice elite-btn" data-practice="${g.elite.bookKey}">⚔ 精鋭で稽古</button>`:'<button class="codex-practice elite-btn" disabled>未遭遇 (精鋭)</button>'}</div>`;
-  return '<div class="codex-card '+rank+'"><div class="codex-symbol">'+(g.m.rare?'✦':g.m.boss?'♛':seenElite?'◆':'⚔')+'</div><strong>'+g.m.name+'</strong><small>'+stats+'</small><p>'+g.m.desc+'</p>'+btns+'</div>';
- }).join('')||'<div class="empty">該当する敵はまだいません。</div>';
+ $('codexSummary').textContent=view.summary;
+ $('codexList').innerHTML=view.listHtml;
  for(const btn of $('codexList').querySelectorAll('[data-practice]'))btn.addEventListener('click',()=>startPractice(btn.dataset.practice));
 }
 function openCodex(){
  if(deathInputBlocked()||!['title','gameover','codex'].includes(game.mode))return;
- stopScore();setMode('codex');renderCodex();
-}
-function startPractice(key){
- if(!book.seen[key]||!P.findByKey(key))return;
- start(true,key);
-}
-function pauseForClock(){
- clockPausedPhase=game.mode==='phase';pauseAt=performance.now();audioClock.paused(pauseAt);
- clearGuardInput();stopScore();setMode('pause');
- $('pauseStatus').hidden=false;$('pauseStatus').textContent='音声の同期を確認できないため一時停止しました。再開すると4拍から始まります。';
-}
-function togglePause(){
- if(game.mode==='combat'){clockPausedPhase=false;$('pauseStatus').hidden=true;clearGuardInput();pauseAt=performance.now();stopScore();setMode('pause');}
- else if(game.mode==='pause'){
-  const now=performance.now();resetParryInput();game.whiffUntil=0;game.parryAnimAt=-99999;game.lastDeflectAt=-99999;game.lastDamageAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.pendingKind=null;game.inputLocked=false;game.attackResolved=false;game.guardAtImpact=null;game.cuePlayed=false;game.windupPlayed=false;
-  $('pauseStatus').hidden=true;
-  if(clockPausedPhase){clockPausedPhase=false;game.phaseStage='rumble';setMode('phase');beginFinalCountIn();}
-  else{startScore(game.enemy);attackPresentation.opening=true;game.attackBeat=4;game.attackSpan=4*score.beat*1000;game.nextFloorHintAt=now;syncAttackClock();setMode('combat');}
- }
+ stopScore();setMode('codex');renderCodex();resetCodexScroll();$('codexCloseBtn').focus?.();
 }
 function resize(){const r=canvas.getBoundingClientRect();w=Math.max(260,r.width);h=Math.max(300,r.height);dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 window.addEventListener('resize',resize);if('ResizeObserver'in window)new ResizeObserver(resize).observe(canvas);
@@ -2058,21 +1997,15 @@ function hero(now){
   const pulse=(.8+.2*Math.sin(now/180)).toFixed(2);
   ctx.filter=`drop-shadow(0 0 4px rgba(255,190,70,${pulse})) drop-shadow(0 0 10px rgba(235,105,15,${pulse}))`;
  }
- let drawn=false;
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
-   counterWave:!ultActive,
-   attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,
-   pose:poseInput}))drawn=true;
- else if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawHero(ctx,{width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):{reach:110},now,pose:poseInput}))drawn=true;
- else if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawHero(ctx,{width:w,height:h,e:game.enemy,now,pose:poseInput}))drawn=true;
+ let drawn=characterRenderer.heroWorld(ctx,{illustrated:useIllustratedArt()&&!game.artFallback,legacy:legacyVisualEnabled()},
+  {width:w,height:h,e:game.enemy,m:game.enemy?motionFor(game.enemy):undefined,now,skin:visualSkin(),counterTint:PR.extraEnabled(permanent,'slashTint')?PR.extraOption(permanent,'slashTint'):null,
+   counterWave:!ultActive,attackAt:game.attackAt,attackSpan:game.attackSpan,lastImpactAt:impactAt,
+   lastDeflectAt:game.lastDeflectAt,lastStrikeKind:visibleKind,pose:poseInput});
  if(!drawn){
   ctx.save();ctx.translate(x-hurt*8-push*4,y+Math.sin(now/390)*1.6+hurt*5+push*2);ctx.scale(s,s);
   ctx.fillStyle='#080d20aa';ctx.beginPath();ctx.ellipse(0,0,44,10,0,0,Math.PI*2);ctx.fill();
-  if(!legacyVisualEnabled()&&CHARACTER_READY_ENABLED&&CHARACTER_READY?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_TRACE_ENABLED&&CHARACTER_TRACE?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_SVG_ENABLED&&CHARACTER_SVG?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
-  else if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawHero(ctx,{now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt}))drawn=true;
+  drawn=characterRenderer.heroLocal(ctx,{legacy:legacyVisualEnabled()},
+   {now,lift,heldLift,push,action,guardHeld:game.guardHeld,lastStrikeKind:visibleKind,lastImpactAt:impactAt});
   if(!drawn){
    fillPoly([[-11,-69],[-34,-59],[-52,-7],[-29,-16],[-11,-24]],'#315b78');fillPoly([[-8,-66],[-29,-53],[-42,-8],[-23,-17]],'#3f8ca4');
    fillPoly([[-15,-34],[-1,-34],[-3,0],[-19,0]],'#778aa5');fillPoly([[1,-35],[15,-35],[22,0],[6,0]],'#657793');
@@ -2141,22 +2074,10 @@ function enemy(now){
  const presentedKind=splitContact()?(['just','parry'].includes(shownResult)?shownResult:'contact'):(awaitingInput?'':game.lastStrikeKind);
  const d=attackAt-now;
  const isHeavy=game.mode==='combat'&&(e.boss||e.elite)&&!opening&&(span/(score.beat*1000))>=2.99;
- if(useIllustratedArt()&&!game.artFallback&&KNIGHT_PUPPET?.readyFor(e)){
-  const enemyData={e,m,now,width:w,height:h,attackAt,attackSpan:span,lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind};
-  const sampleFn=window.ParryEnemyPuppet?.supports?.(e)?window.ParryEnemyPuppet.sample:KNIGHT_PUPPET.sample;
-  const sampled=isHeavy&&sampleFn?sampleFn(enemyData):null;
-  if(sampled)drawSampledHeavyAura(sampled,e,now,false);
-  if(KNIGHT_PUPPET.drawEnemy(ctx,enemyData)){
-   if(sampled)drawSampledHeavyAura(sampled,e,now,true);
-   return;
-  }
- }
- if(!legacyVisualEnabled()&&CHARACTER_RIG_ENABLED&&CHARACTER_RIG?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
- if(!legacyVisualEnabled()&&COMBAT_ART_ENABLED&&COMBAT_ART?.drawEnemy(ctx,{e,m,now,width:w,height:h,
-  attackAt,attackSpan:span,lastImpactAt,
-  lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind}))return;
+ if(characterRenderer.enemyWorld(ctx,
+  {illustrated:useIllustratedArt()&&!game.artFallback,legacy:legacyVisualEnabled(),heavy:isHeavy},
+  {e,m,now,width:w,height:h,attackAt,attackSpan:span,lastImpactAt,lastDeflectAt:game.lastDeflectAt,lastStrikeKind:presentedKind},
+  drawSampledHeavyAura))return;
  const base=Math.min(w/550,h/470)*1.23,scale=base*(e.boss?1.34:1);
  const heroX=w*.28,restX=w*.73,hitX=heroX+39*base,hitY=h*.80-58*base;
  const prepare=m.cuePrepare??Math.min(m.prepare,Math.max(m.swing+120,span-130));
@@ -2207,10 +2128,8 @@ function enemy(now){
   ctx.filter='hue-rotate('+degrees+'deg) saturate('+saturation+'%)';
  }
  // Visual-only enemy identities; attack tip uses the original contact coordinate.
- if(!legacyVisualEnabled()&&CHARACTER_KNIGHT_ENABLED&&CHARACTER_KNIGHT?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
-  // Traced knight art only: original timing, position, parry contact and saved state unchanged.
- }else if(!legacyVisualEnabled()&&CHARACTER_ART_ENABLED&&CHARACTER_ART?.drawEnemy(ctx,{e,m,now,charge,action,p,recoil,rec,impact})){
-  // Optional art-layer pilot; the attack clock and contact point are unchanged.
+ if(characterRenderer.enemyLocal(ctx,{legacy:legacyVisualEnabled()},{e,m,now,charge,action,p,recoil,rec,impact})){
+  // Optional local-coordinate artwork; gameplay timing and transforms stay external.
  }else if(VARIANT_MOTIONS?.draw(e.sprite||e.id,ctx,{e,m,now,charge,action,p,recoil,rec,impact,round,line,fillPoly})){
   // Dedicated silhouette drawn without changing the Web Audio clock or hitboxes.
  }else if(e.kind==='slime'){
@@ -2488,14 +2407,9 @@ function attackCues(now,beat,at,motion){
  const played=cues.get(key);
  if(!motion.noWindup&&!played.windup&&now>=at-motion.cuePrepare){played.windup=true;sound(game.enemy.boss?135:195,.14,'triangle',.026,-65);}
  if(!played.swing&&now>=at-motion.swing){played.swing=true;sfxSwing();}
- const contactAt=score.origin+beat*score.beat;
- if(splitContact()&&!played.contact&&score.active&&audioContext?.state==='running'&&contactAt<=audioContext.currentTime+.17){
-  played.contact=true;
-  // Muting consumes the event too. Never replay an old impact on unmute.
-  if(audioEnabled&&contactAt>=audioContext.currentTime-.025){
-   attackPresentation.sounds=attackPresentation.sounds.filter(s=>!s.ended);
-   attackPresentation.sounds.push(window.ParryCombatSfx.playContact(audioContext,contactAt,steelDestination()));
-  }
+ if(splitContact()&&!played.contact){
+  const contactAt=score.origin+beat*score.beat;
+  played.contact=audio.reserveContact(contactAt,(ac,at,destination)=>window.ParryCombatSfx.playContact(ac,at,destination));
  }
 }
 function update(now,dt){const m=game.mode;
@@ -2538,7 +2452,7 @@ function update(now,dt){const m=game.mode;
  else if(m==='victory'&&now-game.clearAt>900)showRewards();
  shake=Math.max(0,shake-dt*.08);flash=Math.max(0,flash-dt*.003);particles=particles.filter(p=>{p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vx*=.985;p.vy+=.025;p.life-=dt;return p.life>0});texts=texts.filter(a=>now-a.t<a.life);
 }
-function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(DEV_MODE&&devMusicAudition)scheduleScore();if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='settings'&&game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover'&&game.mode!=='upgrade')update(now,dt);drawScreen(['settings','pause'].includes(game.mode)?pauseAt:now);updateCalibration();if(['combat','phase','victory'].includes(game.mode))syncHUD();if(DEV_MODE)window.__parryDevUI?.updateMusic?.();drawBonusSamples(now);requestAnimationFrame(frame)}
+function frame(now){const dt=clamp(now-lastT,0,55);lastT=now;if(DEV_MODE&&devMusicAudition)scheduleScore();if(game.mode==='gameover'&&$('deathCover').inert&&now>=game.deathInputUnlockAt)syncDeathInputLock(now);if(game.mode!=='settings'&&game.mode!=='pause'&&game.mode!=='title'&&game.mode!=='reward'&&game.mode!=='gameover'&&game.mode!=='upgrade')update(now,dt);drawScreen(['settings','pause'].includes(game.mode)?gameController.pausedAt():now);updateCalibration();if(['combat','phase','victory'].includes(game.mode))syncHUD();if(DEV_MODE)window.__parryDevUI?.updateMusic?.();drawBonusSamples(now);requestAnimationFrame(frame)}
 canvas.addEventListener('pointerdown',e=>{
  if(game.mode!=='combat')return;
  e.preventDefault();
@@ -2571,7 +2485,7 @@ $('practiceEnemy').addEventListener('change',()=>{if(game.practice&&game.mode===
  const key=$('practiceEnemy').value;
  if((!DEV_MODE&&!book.seen[key])||!P.findByKey(key))return;
  clearGuardInput();game.practiceKey=key;game.combo=0;game.charge=0;particles=[];texts=[];spawnEnemy(performance.now());game.parryAnimAt=-99999;game.lastImpactAt=-99999;game.lastStrikeKind='miss';game.whiffUntil=0;syncHUD()
- }});$('startBtn').addEventListener('click',()=>requestStart(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('deathPracticeBtn')?.addEventListener('click',()=>{if(!deathInputBlocked()&&game.enemy?.bookKey&&book.seen[game.enemy.bookKey])startPractice(game.enemy.bookKey)});$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',renderCodex);$('codexTabs')?.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-codex-tab]');if(!btn)return;codexTab=btn.dataset.codexTab==='skills'?'skills':'monsters';renderCodex()});$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
+ }});$('startBtn').addEventListener('click',()=>requestStart(false));$('practiceBtn').addEventListener('click',openCodex);$('deathCodexBtn').addEventListener('click',openCodex);$('deathPracticeBtn')?.addEventListener('click',()=>{if(!deathInputBlocked()&&game.enemy?.bookKey&&book.seen[game.enemy.bookKey])startPractice(game.enemy.bookKey)});$('codexCloseBtn').addEventListener('click',title);$('codexFilter').addEventListener('change',()=>{renderCodex();resetCodexScroll();});$('codexTabs')?.addEventListener('click',e=>{const btn=e.target?.closest?.('[data-codex-tab]');if(!btn)return;codexTab=btn.dataset.codexTab==='skills'?'skills':'monsters';renderCodex();resetCodexScroll()});$('exitPracticeBtn').addEventListener('click',title);$('retryBtn').addEventListener('click',()=>{if(!deathInputBlocked())start(false)});$('homeBtn').addEventListener('click',()=>{if(!deathInputBlocked())title()});$('pauseBtn').addEventListener('click',togglePause);$('resumeBtn').addEventListener('click',togglePause);$('relicOfferCards').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-relic]');
  if(btn)selectRelic(btn.dataset.relic);
 });
@@ -2592,7 +2506,7 @@ $('roomActions').addEventListener('click',e=>{
 $('routeSkillCards').addEventListener('click',e=>{
  const btn=e.target.closest?.('[data-route-skill]');if(btn)takeEventSkill(btn.dataset.routeSkill);
 });
-$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';if(score.bus&&audioContext)score.bus.gain.setTargetAtTime(audioEnabled?.35*preferences.bgm/100:0,audioContext.currentTime,.025);applyAudioPreferences();if(audioEnabled)sound(600,.10,'sine',.04,160)});
+$('rerollBtn').addEventListener('click',()=>{if(game.mode!=='reward'||game.rerolls<1)return;game.rerolls--;choiceSet=choosePool();renderRewards();sound(490,.13,'sine',.04,100)});$('healBtn').addEventListener('click',showHeal);$('audioBtn').addEventListener('click',()=>{audioEnabled=!audioEnabled;$('audioBtn').textContent=audioEnabled?'♫ SOUND ON':'♫ SOUND OFF';applyAudioPreferences();if(audioEnabled)sound(600,.10,'sine',.04,160)});
 
 $('settingsBtn').addEventListener('click',openSettings);
 $('settingsCloseBtn').addEventListener('click',closeSettings);
@@ -2603,12 +2517,12 @@ $('calibrationTap').addEventListener('pointerdown',e=>{if(e.button!==undefined&&
 $('calibrationTap').addEventListener('click',e=>{if(!e?.detail)calibrationTap()});
 $('calibrationCancel').addEventListener('click',()=>{cancelCalibration();$('calibrationStatus').textContent='元の補正を保っています。';});
 $('calibrationTry').addEventListener('click',tryCalibration);
-$('calibrationApply').addEventListener('click',()=>{if(!calibration?.result)return;latencyOffset=calibration.result.candidate;$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';if(!DEV_MODE)try{localStorage.setItem(OFFSET_KEY,String(latencyOffset))}catch(e){}cancelCalibration();$('calibrationStatus').textContent='補正を保存しました。';});
+$('calibrationApply').addEventListener('click',()=>{if(!calibration?.result)return;latencyOffset=calibration.result.candidate;$('latencySlider').value=String(latencyOffset);$('latencyValue').textContent=(latencyOffset>=0?'+':'')+latencyOffset+'ms';saves.writeText(OFFSET_KEY,latencyOffset);cancelCalibration();$('calibrationStatus').textContent='補正を保存しました。';});
 $('tutorialBtn').addEventListener('click',()=>requestStart(true));
 $('continueBtn').addEventListener('click',restoreCheckpoint);
 $('newRunConfirm').addEventListener('click',startTutorialOrRun);
 $('newRunCancel').addEventListener('click',title);
-$('suspendBtn').addEventListener('click',()=>{if(game.mode!=='pause')return;if(!DEV_MODE&&!game.practice){const snapshot=CP.capture({...game,mode:'combat'},choiceSet);try{localStorage.setItem(CP.KEY,JSON.stringify(snapshot))}catch(e){saveFailed=true;return}}title();});
+$('suspendBtn').addEventListener('click',()=>{if(game.mode!=='pause')return;if(!DEV_MODE&&!game.practice){const snapshot=CP.capture({...game,mode:'combat'},choiceSet);if(!saves.writeCheckpoint(CP.KEY,snapshot).ok){saveFailed=true;return}}title();});
 $('tutorialNext').addEventListener('click',()=>{if(game.tutorial){game.tutorialFinishing=true;syncTutorial();checkpoint()}});
 $('tutorialSkip').addEventListener('click',()=>{game.tutorial=false;syncTutorial();checkpoint()});
 
@@ -2642,7 +2556,7 @@ $('upgradeList').addEventListener('change',e=>{
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode==='combat')togglePause();if(document.hidden&&devMusicAudition){stopScore();devMusicAudition=false;window.__parryDevUI?.updateMusic?.();}});
 // Developer controls exist only when loaded from the separate dev.html page.
  // The dev page never writes progression, bestiary or timing-correction storage.
- if(DEV_MODE)window.__parryDev=Object.freeze({
+ function createDevController(){return Object.freeze({
   launch(floor=1,enemyKey='',practice=false,skin='normal',skinEffects=false,tempoLevel=null,timingMode='previous',inputOffset=null){
    const f=Math.min(999,Math.max(1,Math.floor(Number(floor)||1)));
    if(enemyKey&&!P.findByKey(enemyKey))return false;
@@ -2653,18 +2567,18 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
    }
    devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
    const key=practice?(enemyKey||P.encounterForFloor(f,()=>.5).bookKey):null;
-   start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects,tempoLevel});
+   gameController.start(practice,practice?key:null,{floor:f,enemyKey:enemyKey||null,allowUnseenPractice:practice,skinEffects,tempoLevel});
    return true;
   },
   merchant(profile='growing',skin='normal',skinEffects=true){
    if(!['growing','capped'].includes(profile))return false;
    devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
-   start(false,null,{floor:14,merchant:profile,skinEffects});return true;
+   gameController.start(false,null,{floor:14,merchant:profile,skinEffects});return true;
   },
   survival(profile='all',skin='normal',skinEffects=true,polished=false){
    if(!['baseline','overflow','wardcraft','inheritance','sigil','all'].includes(profile))return false;
    devPreviewSkin=PR.SKINS.find(s=>s.id===skin)?.id||'normal';
-   start(false,null,{floor:80,enemyKey:'endking:elite',survival:profile,polished:!!polished,skinEffects});return true;
+   gameController.start(false,null,{floor:80,enemyKey:'endking:elite',survival:profile,polished:!!polished,skinEffects});return true;
   },
   survivalHit(kind){
    if(game.mode!=='combat'||!game.devSurvival||!['guard','miss'].includes(kind))return false;
@@ -2680,39 +2594,34 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
     beatAt,contactAt:game.attackAt,targetAt:inputTargetAt(),beatPulse:active&&performance.now()>=origin&&((performance.now()-origin)%(score.beat*1000))<55,
     lastInput:devTimingTrace.input?{...devTimingTrace.input}:null,firstContactFrameMs:devTimingTrace.frame?.delay??null};
   },
-  reset(){title()},
-  musicList(){return STAGE_MUSIC?.themes||[]},
-  musicReviews(){return FINAL_MUSIC?.pieces||[]},
+  reset(){gameController.title()},
+  musicList(){return MUSIC?.list().filter(piece=>piece.floor==null)||[]},
+  musicReviews(){return MUSIC?.list().filter(piece=>piece.floor!=null)||[]},
   previewMusic(id,variant='normal'){
-   if(!audioEnabled||!musicDefinition(id)||!['normal','latter','boss'].includes(variant))return false;
-   const review=FINAL_MUSIC?.get(id);
-   title();devMusicTheme=id;devMusicAudition=true;devMusicLatter=!review&&(variant==='latter'||variant==='boss');startScore({kind:'knight',boss:!!review||variant==='boss'});
+   const piece=MUSIC?.get(id);
+   if(!audioEnabled||!piece||!['normal','latter','boss'].includes(variant))return false;
+   gameController.title();devMusicTheme=id;devMusicAudition=true;devMusicLatter=piece.floor==null&&(variant==='latter'||variant==='boss');startScore({kind:'knight',boss:piece.floor!=null||variant==='boss'});
    if(!score.active)devMusicAudition=false;return score.active;
   },
   stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;devMusicLatter=null;return true},
   practiceMusic(id,variant='normal'){
-   const theme=musicDefinition(id);if(!theme||!['normal','latter','boss'].includes(variant))return false;
-   const review=FINAL_MUSIC?.get(id),zone=P.zoneForFloor(theme.from),floor=review?review.floor:theme.from+(variant==='boss'?4:variant==='latter'?5:0),enemy=review||variant==='boss'?zone.boss:zone.fixed[1];
-   const key=enemy+(review?.floor===80?':elite':':normal');
-   title();start(true,key,{floor,allowUnseenPractice:true,musicId:id,latter:!review&&(variant==='latter'||variant==='boss')});return true;
+   const theme=MUSIC?.get(id);if(!theme||!['normal','latter','boss'].includes(variant))return false;
+   const zone=P.zoneForFloor(theme.from),floor=theme.floor??theme.from+(variant==='boss'?4:variant==='latter'?5:0);
+   const enemy=theme.floor!=null||variant==='boss'?zone.boss:zone.fixed[1];
+   const key=enemy+(theme.floor===80?':elite':':normal');
+   gameController.title();gameController.start(true,key,{floor,allowUnseenPractice:true,musicId:id,latter:theme.floor==null&&(variant==='latter'||variant==='boss')});return true;
   },
   musicState(){
-   const beats=score.active&&audioContext?Math.max(0,(audioContext.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
-   const bars=musicDefinition(score.music)?.bars||8;
+   const beats=score.active&&audio.context?Math.max(0,(audio.context.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
+   const bars=MUSIC?.get(score.music)?.bars||8;
    return {active:score.active,audition:devMusicAudition,id:score.music,latter:!!score.latter,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
-  getSfxVolume(){return Math.round(devSfxVolume*100)},
-  setSfxVolume(percent){
-   const value=Number(percent);if(!Number.isFinite(value))return Math.round(devSfxVolume*100);
-   devSfxVolume=Math.max(0,Math.min(100,Math.round(value)))/100;
-   if(devSfxBus)devSfxBus.gain.setTargetAtTime(devSfxVolume,audioContext.currentTime,.015);
-   return Math.round(devSfxVolume*100);
-  },
+  getSfxVolume:audio.getDevSfxVolume,
+  setSfxVolume:audio.setDevSfxVolume,
   previewSound(kind){
    if(!audioEnabled||!window.ParryCombatSfx?.PROFILES[kind])return false;
-   audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
-   if(audioContext.state==='suspended')audioContext.resume();
-   return window.ParryCombatSfx.play(audioContext,kind,audioContext.currentTime,steelDestination());
+   const ac=audio.ensureContext();
+   return !!ac&&window.ParryCombatSfx.play(ac,kind,ac.currentTime,steelDestination());
   },
   list(){return P.codexEntries().map(e=>({key:e.bookKey,name:e.displayName,rare:e.rare,boss:e.boss,elite:e.elite}))},
   preview(floor=1,enemyKey=''){
@@ -2725,6 +2634,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   },
   state(){return {floor:game.floor,enemy:game.enemy?.id,variant:game.enemy?.bookKey,mode:game.mode,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk}},
   isolated:true
- });
- window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audioContext?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,clock:audioClock.snapshot(),rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},skillBreaks:{...(game.skillBreaks||{})},polishedRelics:[...(game.polishedRelics||[])],charge:game.charge||0,towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v0.9.9',window.__parryV05);requestAnimationFrame(frame);
+ });}
+ if(DEV_MODE)window.__parryDev=createDevController();
+
+ window.ParryMenuLayout?.initialize(document,window.ParryMenuLayoutConfig);
+ window.__parryV05=()=>({mode:game.mode,floor:game.floor,enemy:game.enemy?.preview?'？？？':game.enemy?.id,preview:!!game.enemy?.preview,practice:!!game.practice,encounterKey:game.enemy?.preview?null:game.enemy?.bookKey,encounterElite:!!game.enemy?.elite,encounterRare:!!game.enemy?.rare,discovered:Object.keys(book.seen),souls:meta.coins,bpm:score.bpm,attackBeat:game.attackBeat,attackAt:game.attackAt,beat:score.beat,scoreOrigin:score.origin,audioNow:audio.context?.currentTime,scoreActive:score.active,combo:game.combo,hp:game.hp,maxHp:game.maxHp,shield:game.shield,attackSpan:game.attackSpan,guardHeld:!!game.guardHeld,guardReady:guardReadyAt(performance.now()),lastStrikeKind:game.lastStrikeKind,parryAnimAt:game.parryAnimAt,parryCooldownRemaining:Math.max(0,(game.parryReadyAt||0)-performance.now()),parryReleaseRemaining:Math.max(0,PARRY_RELEASE_MS-(performance.now()-(game.guardReleasedAt??-99999))),offset:latencyOffset,clock:audioClock.snapshot(),rerolls:game.rerolls,reviveUsed:!!game.reviveUsed,enemyHp:game.enemy?.hp,enemyMaxHp:game.enemy?.maxHp,enemyAttack:game.enemy?.atk,bossPhase:game.enemy?.phase||1,enemyRhythm:[...(game.enemy?.rhythm||[])],phaseStage:game.phaseStage||null,phaseCountStartAt:game.phaseCountStartAt||0,finalClear:!!game.finalClear,justStreak:game.justStreak||0,overchargeCount:game.overchargeCount||0,frostCount:game.frostCount||0,frostWard:!!game.frostWard,fortitudeReady:!!game.fortitudeReady,bloodlustPending:game.bloodlustPending||0,sealedSkillIds:[...(game.sealedSkillIds||[])],runSkills:{...(game.lv||{})},skillBreaks:{...(game.skillBreaks||{})},polishedRelics:[...(game.polishedRelics||[])],charge:game.charge||0,towerCoins:game.towerCoins||0,towerCoinsEarned:game.towerCoinsEarned||0,routeTrial:!!game.routeTrial,currentRoom:game.currentRoom||null,eventId:game.eventId||null,roomStage:game.roomStage||null,routeSkillSet:[...(game.routeSkillSet||[])],relicReturn:game.relicReturn||null,relicMirrorTarget:game.relicMirrorTarget||null,relics:[...(game.relics||[])],relicDiscarded:[...(game.relicDiscarded||[])],relicOffer:[...(game.relicOffer||[])],relicRewardKind:game.relicRewardKind||null,relicSwapTarget:game.relicSwapTarget||null,relicMaskReady:!!game.relicMaskReady,relicGearReady:!!game.relicGearReady,relicPactReady:!!game.relicPactReady,relicBellDue:!!game.relicBellDue,relicCounters:{...(game.relicCounters||{})},permanent:{...permanent,unlockedSkills:[...permanent.unlockedSkills],equipped:[...permanent.equipped],sealedSkills:[...permanent.sealedSkills],unlockedExtras:[...permanent.unlockedExtras],enabledExtras:[...permanent.enabledExtras],extraOptions:{...permanent.extraOptions}}});resize();title();window.ParryDiagnostics?.registerGame('v1.0.5',window.__parryV05);requestAnimationFrame(frame);
 })();

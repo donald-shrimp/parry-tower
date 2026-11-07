@@ -18,6 +18,8 @@ TEXT_FILES = (
     'index.html', 'dev.html', 'credits.html', 'assets/game.js',
     'assets/encounters.js', 'assets/enemy-motions.js', 'assets/progression.js',
     'assets/relics.js', 'assets/routes.js', 'assets/events.js', 'assets/stage-music.js',
+    'assets/skills.js', 'assets/room-view.js', 'assets/rewards-view.js',
+    'assets/shop-view.js', 'assets/codex-view.js',
     'assets/final-boss-music.js',
     'ending-preview.html', 'assets/ending-scene.js', 'assets/ending-preview.js',
 )

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="color-scheme" content="dark"><title>パリィの塔 | レイアウト工房</title>
+ <link rel="stylesheet" href="./assets/layout-studio.css">
+</head>
+<body>
+ <header class="studio-header">
+  <div><p class="eyebrow">PARRY TOWER / LAYOUT STUDIO</p><h1>レイアウト工房</h1><p>主役のボタンと、画面の並びを整える。</p></div>
+  <div class="toolbar"><a href="./links.html">リンク集</a><button type="button" id="saveProject" class="accent">保存</button><button type="button" id="exportProject">JSONを書き出す</button><label class="file-button">読み込む<input id="importProject" type="file" accept="application/json,.json"></label></div>
+ </header>
+ <p id="studioStatus" role="status">読み込み中…</p>
+ <nav id="screenList" aria-label="編集する画面"></nav>
+ <main class="studio-grid">
+  <section class="controls" aria-labelledby="screenTitle">
+   <h2 id="screenTitle">タイトル</h2>
+   <details open><summary>ボタン</summary>
+    <label>主操作<select id="mainAction"></select></label>
+    <label class="check"><input id="pixelMain" type="checkbox">主操作にピクセルフォントを使う</label>
+    <label class="check"><input id="pixelSecondary" type="checkbox">サブボタンにピクセルフォントを使う</label>
+    <p class="hint">主操作は単独の上段へ。ほかのボタンは下の順で並びます。</p>
+    <ol id="buttonOrder" class="order-list"></ol>
+   </details>
+   <details><summary>画面全体の並び</summary><ol id="blockOrder" class="order-list"></ol></details>
+   <details open><summary>大きさ・余白</summary>
+    <div class="profile-tabs" role="group" aria-label="設定する画面幅"><button type="button" id="mobileProfile" aria-pressed="true">スマホ（600px以下）</button><button type="button" id="desktopProfile" aria-pressed="false">PC</button></div>
+    <div id="sizeFields"></div>
+   </details>
+   <button type="button" id="resetScreen">この画面を採用中の配置に戻す</button>
+   <p class="hint">保存先はこのPCの編集ファイル。保存後に本編への反映を依頼できます。</p>
+  </section>
+  <section class="preview-pane" aria-labelledby="previewHeading">
+   <div class="preview-toolbar"><h2 id="previewHeading">プレビュー</h2><label>画面幅<select id="previewWidth"><option value="320">320px</option><option value="390" selected>390px</option><option value="520">520px</option><option value="960">960px</option><option value="1280">1280px</option></select></label><label id="checkpointLabel" class="check"><input id="hasCheckpoint" type="checkbox">つづきからあり</label><label class="check"><input id="showOriginal" type="checkbox">採用中と比較</label></div>
+   <p class="hint" id="previewInfo">実際の画面と同じHTML・CSSで表示します。</p>
+   <div class="preview-grid" id="previewGrid">
+    <article><h3>編集中</h3><div class="frame-stage"><iframe id="editedFrame" title="編集中の画面" sandbox="allow-same-origin"></iframe></div></article>
+    <article id="originalPanel" hidden><h3>採用中</h3><div class="frame-stage"><iframe id="originalFrame" title="採用中の画面" sandbox="allow-same-origin"></iframe></div></article>
+   </div>
+  </section>
+ </main>
+ <script src="./assets/menu-layout.js"></script><script src="./assets/menu-layout-config.js"></script><script src="./assets/layout-studio.js"></script>
+</body>
+</html>

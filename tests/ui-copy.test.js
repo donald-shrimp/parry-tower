@@ -4,43 +4,53 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=name=>fs.readFileSync(name,'utf8');
 
-test('route selection is self-explanatory, without duplicated HP/coins or instruction',()=>{
- const game=read('assets/game.js');
- for(const page of ['index.html','dev.html']){
-  const html=read(page);
-  assert.doesNotMatch(html,/id="routeHint"|進む道を選べ。/);
-  assert.doesNotMatch(html,/この報酬では引き直し・HP回復はできません。/);
-  assert.match(html,/id="hpText"/);
-  assert.match(html,/id="towerCoinsLabel"/);
- }
- assert.doesNotMatch(game,/\$\('routeHint'\)|現在HP .*進む道を選べ/);
- assert.match(game,/room\.risk/,'risk/reward consequences remain visible on route options');
+test('run choices show the consequences of spending, replacing or discarding items',()=>{
+ const routes=read('assets/routes.js');
+ const roomView=require('../assets/room-view.js'),RT=require('../assets/routes.js'),EV=require('../assets/events.js');
+ const roomInput={room:RT.ROOMS.event,status:{coins:0,hp:65,maxHp:65,shield:0}};
+ const shop=require('../assets/shop-view.js');
+ const shopInput={meta:{coins:0},permanent:require('../assets/progression.js').defaults(),
+  bonusView:'items',skillContext:{baseAtk:25,bladeLevel:0,baseHp:65}};
+ const routeCards=roomView.routes(RT.options(4));
+ assert.doesNotMatch(routeCards,/route-warning|通常スキル報酬なし|コンボ維持/);
+ assert.match(routeCards,/route-card-heading/);
+ assert.match(routeCards,/HP35%回復/);
+ assert.match(roomView.render({...roomInput,event:EV.BY_ID.mirror,stage:'mirror'}).description,/交換が確定するまで、元の遺物は失われません。/);
+ const relicView=require('../assets/rewards-view.js').relics({
+  offered:[],selected:require('../assets/relics.js').RELICS[0],held:[],heldCount:3
+ });
+ assert.match(relicView.hint,/取り外した遺物は、このランでは再取得できません。/);
+ assert.match(roomView.render({...roomInput,event:EV.BY_ID.altar,options:[{id:'sacrifice',available:true,value:8}]}).actionsHtml,/イベントの支払いは被弾扱いになりません。/);
+ assert.match(roomView.render({...roomInput,event:EV.BY_ID.chest,options:[{id:'open',available:true,hasRelics:true}]}).actionsHtml,/失敗してもHP1で生存。/);
+ assert.match(shop.render({...shopInput,tab:'seal'}).listHtml,/戦利品の抽選から除外/);
+ assert.match(shop.render({...shopInput,tab:'loadout'}).listHtml,/ラン中の通常抽選は変わりません/);
+ assert.match(routes,/ラン限定の強化/);
 });
 
-test('redundant hints and tags are absent, while effect and risk details remain',()=>{
- const game=read('assets/game.js');
- const css=read('assets/style.css');
- for(const phrase of [
-  '各候補の効果を確認しよう',
-  'この階の通常スキル報酬はありません。',
-  '塔貨を次の商人まで温存する',
-  '実際の不足分だけ',
-  '遺物を交換しない',
-  '成功確率40%。',
-  '手放す遺物を選ぼう。',
-  '交換する →',
- ]){
-  assert.ok(!game.includes(phrase),phrase);
+test('short reward headings also clean up restored legacy titles and event gains remain accurate',()=>{
+ const rewards=require('../assets/rewards-view.js'),rooms=require('../assets/room-view.js');
+ const RT=require('../assets/routes.js'),EV=require('../assets/events.js');
+ for(const source of ['秘伝の巻物','血の祭壇','共鳴の聖堂']){
+  const view=rewards.eventSkills({choices:[],levels:{},title:source+' — スキルをひとつ選べ'});
+  assert.equal(view.title,source);
  }
- assert.doesNotMatch(game,/class="rtag"/);
- assert.doesNotMatch(css,/\.reward-card \.rtag|\.relic-replace-card>span:last-child/);
- assert.match(game,/class="rdesc"/);
- assert.match(game,/class="relic-reward-desc"/);
- assert.match(game,/class="relic-replace-card"/);
- assert.match(game,/交換が確定するまで、元の遺物は失われません。/);
- assert.match(game,/取り外した遺物は、このランでは再取得できません。/);
- assert.match(game,/イベントの支払いは被弾扱いになりません。/);
- assert.match(game,/失敗してもHP1で生存。/);
- assert.match(game,/ラン中の通常抽選は変わりません。/);
- assert.match(game,/初期装備中のスキルは封印できません。/);
+ assert.equal(rewards.eventSkills({choices:[],levels:{},title:'スキルをひとつ選べ'}).title,'スキル獲得');
+ const result=rooms.render({room:RT.ROOMS.event,event:EV.BY_ID.scales,
+  status:{coins:20,hp:65,maxHp:65,shield:0},
+  options:[{id:'toSouls',label:EV.BY_ID.scales.actions[0].label,available:true,value:25},
+   {id:'toCoins',label:EV.BY_ID.scales.actions[1].label,available:true,value:35}]});
+ assert.equal((result.actionsHtml.match(/魂の欠片\+25/g)||[]).length,1);
+ assert.ok((result.actionsHtml.match(/塔貨\+35/g)||[]).length>=1);
+ assert.match(result.actionsHtml,/現在HPの20%を捧げる/);
+ assert.match(result.actionsHtml,/代償を払い、塔貨\+35・引き直し\+1/);
+});
+
+test('setup and Dev disclose save replacement and practice exceptions',()=>{
+ for(const page of ['index.html','dev.html']){
+  const html=read(page);
+  assert.match(html,/今の中断データを置き換え、1Fから始めます/);
+ }
+ const dev=read('dev.html');
+ assert.match(dev,/無敵練習中はふんどしでも死にません/);
+ assert.match(dev,/入力補正は保存しません/);
 });

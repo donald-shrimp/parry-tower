@@ -9,17 +9,17 @@
  // Original five tiers and their prices are fixed for save compatibility.
  // Additional survivability levels give struggling players a long-term path forward.
  const ORIGINAL_BASE_COSTS=[8,21,40,65,96];
- const SURVIVAL_EXTRA_COSTS=[100,130,165,205,250,300,360];
+ const SURVIVAL_EXTRA_COSTS=[100,130,165,205,250,300,360,240,340];
  const BASE_UPGRADES=Object.freeze([
   Object.freeze({id:'life',icon:'♡',name:'生命の祝福',effect:'最大HP',
-   max:12,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
-   bonuses:Object.freeze(Array.from({length:12},(_,i)=>(i+1)*10))}),
+   max:17,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS,380,420,460]),
+   bonuses:Object.freeze(Array.from({length:17},(_,i)=>(i+1)*10))}),
   Object.freeze({id:'attack',icon:'⚔',name:'剣の研鑽',effect:'基礎反撃ダメージ',
    max:8,costs:Object.freeze([...ORIGINAL_BASE_COSTS,150,210,285]),
    bonuses:Object.freeze(Array.from({length:8},(_,i)=>i<5?(i+1)*3:15+(i-4)*2))}),
   Object.freeze({id:'ward',icon:'🛡',name:'守護の祈り',effect:'初期障壁',
-   max:12,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
-   bonuses:Object.freeze(Array.from({length:12},(_,i)=>(i+1)*8))})
+   max:14,costs:Object.freeze([...ORIGINAL_BASE_COSTS,...SURVIVAL_EXTRA_COSTS]),
+   bonuses:Object.freeze(Array.from({length:14},(_,i)=>(i+1)*8))})
  ]);
  const KNOWN_BASE_UPGRADES=Object.freeze(Object.fromEntries(BASE_UPGRADES.map(v=>[v.id,v])));
  function baseLevel(progress,id){
@@ -31,6 +31,9 @@
   const def=KNOWN_BASE_UPGRADES[id];
   const level=baseLevel(progress,id);
   return def&&level?def.bonuses[level-1]:0;
+ }
+ function lifeVesselBonus(baseHp,level){
+  return Math.max(15*level,Math.ceil(baseHp*8*level/100));
  }
  function baseCostNext(progress,id){
   const def=KNOWN_BASE_UPGRADES[id];
@@ -45,15 +48,16 @@
  });
  // Each definition controls its own prices, effects and visibility in the shop.
  const UPGRADES=Object.freeze([
-  {id:'regen',group:'base',icon:'💗',name:'再生力',costs:[12,24,45,80,140],values:[5,10,15,18,20],description:v=>`階層クリア時 HP ${v}%回復`},
-  {id:'bossWard',group:'base',icon:'🛡️',name:'守護の備え',costs:[15,30,55,90,155,235],values:[5,10,15,25,40,55],description:v=>`ボス戦開始時 障壁 +${v}`},
-  {id:'wardInheritance',group:'base',icon:'🔰',name:'守護の継承',costs:[60,120,220],values:[5,8,10],description:v=>`新しい戦闘階で障壁を最大HP${v}%まで補修（通常上限内）`},
-  {id:'soulGain',group:'base',icon:'✧',name:'魂の共鳴',costs:[30,60,100,150,225],values:[5,10,15,20,25],description:v=>`獲得する魂の欠片 +${v}%`},
-  {id:'extraReroll',group:'special',icon:'↻',name:'出撃準備',costs:[25],values:[1],description:v=>`初期引き直し +${v}回`},
-  {id:'choice4',group:'special',icon:'🎴',name:'選択眼',costs:[80],values:[4],description:v=>`戦利品が${v}択になる`},
-  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],description:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`},
+  {id:'regen',group:'base',icon:'💗',name:'再生力',costs:[12,24,45,80,140,180,260],values:[5,10,15,18,20,23,26],effect:'階層クリア時 HP',formatValue:v=>`${v}%回復`},
+  {id:'bossWard',group:'base',icon:'🛡️',name:'守護の備え',costs:[15,30,55,90,155,235,260],values:[5,10,15,25,40,55,75],effect:'ボス戦開始時 障壁',formatValue:v=>`+${v}`},
+  {id:'wardCapacity',group:'base',icon:'🛡️',name:'障壁の器',costs:[60,110,180],values:[20,40,60],effect:'障壁の補充上限',formatValue:v=>`+${v}`,note:'（スキル補正前）'},
+  {id:'wardInheritance',group:'base',icon:'🔰',name:'守護の継承',costs:[60,120,220,240,320],values:[5,8,10,15,20],effect:'新しい戦闘階の障壁補修',formatValue:v=>`最大HP${v}%まで`,note:'（通常上限内）'},
+  {id:'soulGain',group:'base',icon:'✧',name:'魂の共鳴',costs:[30,60,100,150,225],values:[5,10,15,20,25],effect:'獲得する魂の欠片',formatValue:v=>`+${v}%`},
+  {id:'extraReroll',group:'special',icon:'↻',name:'出撃準備',costs:[25],values:[1],formatValue:v=>`初期引き直し +${v}回`},
+  {id:'choice4',group:'special',icon:'🎴',name:'選択眼',costs:[80],values:[4],formatValue:v=>`戦利品が${v}択になる`},
+  {id:'revive',group:'special',icon:'🔥',name:'不死鳥の加護',costs:[150],values:[30],formatValue:v=>`1ラン1回、致死ダメージを受けてもHP${v}%で復活`},
   {id:'sealSlots',group:'special',icon:'🔮',name:'運命の封印',costs:[25,60,120,220],values:[1,2,3,4],description:v=>`戦利品から除外できるスキル ${v}種`},
-  {id:'coinGain',group:'special',icon:'🪙',name:'黄金の直感',costs:[25,55,100,160],values:[10,20,30,45],description:v=>`獲得する塔貨 +${v}%`}
+  {id:'coinGain',group:'special',icon:'🪙',name:'黄金の直感',costs:[25,55,100,160],values:[10,20,30,45],effect:'獲得する塔貨',formatValue:v=>`+${v}%`}
  ]);
  // One-time consolation rewards for repeated completed attempts. A bitmask is
  // stored alongside the existing run count so old saves can claim past milestones
@@ -103,7 +107,7 @@
  }
  const EXTRAS=Object.freeze([
   Object.freeze({id:'legacyVisual',icon:'◇',name:'開発初期モード',cost:1000,description:'原点回帰 — あの頃の見た目に。スキンと併用できません。'}),
-  Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。紅・紫・翠から選べます。',choices:Object.freeze([
+  Object.freeze({id:'slashTint',icon:'✧',name:'斬撃の染色',cost:500,description:'反撃の斬撃を好きな色へ。',choices:Object.freeze([
    Object.freeze({id:'crimson',name:'紅',fill:'#fff0f2',glow:'#f15472',edge:'#ff90ad',core:'#fff8fc'}),
    Object.freeze({id:'violet',name:'紫',fill:'#f6eeff',glow:'#a66bff',edge:'#cf9bff',core:'#fff9ff'}),
    Object.freeze({id:'jade',name:'翠',fill:'#effff7',glow:'#35cfaa',edge:'#84efca',core:'#f8fffc'})
@@ -131,7 +135,7 @@
   return typeof value==='number'&&Number.isFinite(value)?Math.min(max,Math.max(0,Math.floor(value))):0;
  }
  function defaults(){return {version:VERSION,slots:0,unlockedSkills:[],equipped:[null,null],
-  regen:0,bossWard:0,wardInheritance:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,coinGain:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[],extraOptions:{slashTint:'crimson'},unlockedSkins:[],equippedSkin:'normal',skinRecords:{}};}
+  regen:0,bossWard:0,wardCapacity:0,wardInheritance:0,soulGain:0,extraReroll:0,choice4:0,revive:0,sealSlots:0,coinGain:0,sealedSkills:[],unlockedExtras:[],enabledExtras:[],extraOptions:{slashTint:'crimson'},unlockedSkins:[],equippedSkin:'normal',skinRecords:{}};}
  function skillPrice(skill){
   if(!skill||typeof skill.id!=='string')return Infinity;
   if(Number.isSafeInteger(skill.startCost)&&skill.startCost>=0)return skill.startCost;
@@ -214,7 +218,7 @@
   const level=safeLevel(progress?.[id],def.costs.length);
   return level===def.costs.length?Infinity:def.costs[level];
  }
- const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
+ const api=Object.freeze({VERSION,SLOT_COSTS,BASE_UPGRADES,baseLevel,baseValue,lifeVesselBonus,baseCostNext,RUN_RESCUE_MILESTONES,rescueMask,rescueReward,DEFAULT_SKILL_COSTS,UPGRADES,
   SKINS,skinRules,ownsSkin,equipSkin,EXTRAS,extraEnabled,extraOption,setExtraOption,toggleExtra,defaults,normalize,skillPrice,equip,seal,activeSeals,initialLevels,value,costNext});
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.ParryProgression=api;

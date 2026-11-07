@@ -1,4 +1,5 @@
 'use strict';
+const {assertPilotSelected}=require('./helpers/character-renderer.js');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -22,11 +23,11 @@ test('flat hero SVG has seven independently selectable semantic groups',()=>{
 });
 
 test('flat mode is opt-in and does not remove earlier renderers',()=>{
- const game=fs.readFileSync('assets/game.js','utf8');
- assert.match(game,/art=flat/);
- assert.match(game,/CHARACTER_FLAT_ENABLED&&CHARACTER_FLAT\?\.drawHero/);
- assert.match(game,/CHARACTER_SVG_ENABLED&&CHARACTER_SVG\?\.drawHero/);
- assert.match(game,/CHARACTER_ART_ENABLED&&CHARACTER_ART\?\.drawHero/);
+
+
+ assertPilotSelected('flat','hero');
+ assertPilotSelected('svg','hero');
+ assertPilotSelected('prototype','hero');
  for(const path of ['index.html','dev.html']){
   const html=fs.readFileSync(path,'utf8');
   assert.ok(html.indexOf('assets/character-svg.js')<html.indexOf('assets/character-flat.js'));

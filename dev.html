@@ -4,14 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v0.9.9">
-<title>パリィの塔 | 開発者テスト v0.9.9</title>
-<link rel="stylesheet" href="./assets/style.css?v=v0.9.9&font=8">
-<link rel="stylesheet" href="./assets/dev-tools.css?v=v0.9.9&beat-contact=1&layout=2&music=1">
+<meta name="parry-build" content="v1.0.5">
+<title>パリィの塔 | 開発者テスト v1.0.5</title>
+<!-- BEGIN GENERATED GAME STYLES -->
+<link rel="stylesheet" href="./assets/style.css?v=v1.0.5&r=851ea50361b1">
+<link rel="stylesheet" href="./assets/menu-layout.css?v=v1.0.5&r=264038a21efa">
+<link rel="stylesheet" href="./assets/dev-tools.css?v=v1.0.5&r=aedb6fa8dc31">
+<!-- END GENERATED GAME STYLES -->
 </head>
 <body>
 <section id="devSetup" class="dev-panel" aria-label="開発者テスト設定" tabindex="-1">
- <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v0.9.9 / 本編と別URL · <a href="https://donald-shrimp.github.io/parry-tower/links.html" target="_blank" rel="noopener" style="color:#e4cb99">リンク集 ↗</a></span></div>
+ <div class="dev-title"><strong>⚙ パリィの塔 開発者テスト</strong><span>v1.0.5 / 本編と別URL · <a href="https://donald-shrimp.github.io/parry-tower/links.html" target="_blank" rel="noopener" style="color:#e4cb99">リンク集 ↗</a></span></div>
  <div class="dev-controls dev-quick-controls">
   <label for="devFloor">開始階層<input id="devFloor" type="number" inputmode="numeric" min="1" max="999" value="11"></label>
   <label for="devEnemy">出現する敵<select id="devEnemy"><option value="">階層テーブルから抽選</option></select></label>
@@ -19,7 +22,7 @@
   <button type="button" id="devReset">↻ タイトルに戻る</button>
   <label for="devPractice" class="dev-toggle"><input id="devPractice" type="checkbox"> 無敵で動きを試す</label>
  </div>
- <div class="dev-status-row"><p id="devStatus" role="status">フロアと敵を選んで開始。戦闘画面へすぐ移動します。</p><button type="button" id="devShowPlay">戦闘画面へ ↓</button></div>
+ <div class="dev-status-row"><p id="devStatus" role="status"></p><button type="button" id="devShowPlay">戦闘画面へ ↓</button></div>
  <div class="dev-foldouts">
  <details class="dev-foldout">
   <summary>スキン・緩慢の呪い</summary>
@@ -30,7 +33,7 @@
 
   </div>
  <p id="devSkinStatus" class="dev-note" role="status"></p>
- <p class="dev-note">設定を変えたら「指定条件で開始」。無敵練習中はふんどしでも死にません。効果をOFFにすると外見だけを比較できます。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
+ <p class="dev-note">無敵練習中はふんどしでも死にません。<a href="./skin-preview.html" style="color:#e4cb99">全スキンの立ち絵・モーションを並べる ↗</a></p>
   </div>
  </details>
  <details class="dev-foldout">
@@ -40,7 +43,7 @@
    <label for="devTimingMode">振りかぶりのタイミング<select id="devTimingMode"><option value="half">半拍前</option><option value="full">一拍前</option><option value="onehalf">1.5拍前</option><option value="previous">以前（旧方式）</option></select></label>
    <label for="devInputOffset">開始時の入力補正（ms）<input id="devInputOffset" type="number" min="-180" max="180" step="1" value="0"></label>
   </div>
-  <p class="dev-note">選んで「指定条件で開始」。半拍前・一拍前・1.5拍前は、初撃と2拍以上空く攻撃の振りかぶりの音・動作開始をそろえ、拍でタップ・接触。1.5拍以内の追撃は振りかぶりなし。以前は旧方式どおり、接触の100ms前にタップ。入力補正は保存しません。</p>
+  <p class="dev-note">半拍前・一拍前・1.5拍前は、初撃と2拍以上空く攻撃の振りかぶりの音・動作開始をそろえ、拍でタップ・接触。1.5拍以内の追撃は振りかぶりなし。以前は旧方式どおり、接触の100ms前にタップ。入力補正は保存しません。</p>
   </div>
  </details>
  <details class="dev-foldout">
@@ -52,7 +55,7 @@
  <div class="dev-volume">
   <label for="devSfxVolume">パリィ系効果音の音量 <output id="devSfxVolumeValue" for="devSfxVolume">100%</output></label>
   <div class="dev-volume-row"><input id="devSfxVolume" type="range" min="0" max="100" step="1" value="100"><button type="button" id="devSfxOriginal">本編の音量（100%）</button></div>
-  <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編（試遊で選んだ旧音量の25%を採用済み）。BGMの音量は変わりません。戦闘中も変更できます。</p>
+  <p class="dev-note">ガード・パリィ・ジャスト共通。100%＝現在の本編（試遊で選んだ旧音量の25%を採用済み）。BGMの音量は変わりません。</p>
  </div>
   </div>
  </details>
@@ -60,7 +63,7 @@
   <summary>敵のステータス・行商人</summary>
   <div class="dev-foldout-body">
  <div id="devBalanceInfo" class="dev-balance" aria-live="polite">HP・攻撃力を計算しています…</div>
- <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v0.9.9 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
+ <div class="dev-controls" aria-label="行商人の新商品を試す"><span>v1.0.5 行商人 · 塔貨150</span><button type="button" id="devMerchantGrowing">育成途中で買い物</button><button type="button" id="devMerchantCapped">上限到達で限界突破</button></div>
   </div>
  </details>
  <details class="dev-foldout" id="devSurvivalRoom">
@@ -79,7 +82,7 @@
   <summary>操作・各プレビュー</summary>
   <div class="dev-foldout-body">
  <p class="dev-note">押すと盾を前へ、長押しでガード。空振り後は盾を戻し、ボタンを少し離してから再パリィ。成功時だけ剣で反撃します。</p>
- <p class="dev-note"><a href="./ending-preview.html?v=v0.9.9" style="color:#e4cb99">エンディングの演出を確認する ↗</a> · <a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
+ <p class="dev-note"><a href="./ending-preview.html?v=v1.0.5" style="color:#e4cb99">エンディングの演出を確認する ↗</a> · <a href="./art-preview.html" style="color:#e4cb99">キャラクターの大きさ・動きを比較する ↗</a></p>
  <p class="dev-note">開発者向けの検証ページです。魂の欠片・図鑑・恒久育成・音声補正は保存しません。公開URLを知っている人は開けるため、認証付き管理画面ではありません。</p>
   </div>
  </details>
@@ -90,7 +93,7 @@
  <div class="dev-foldout-body">
  <div class="dev-music-prototypes" aria-label="75階と80階の採用曲">
   <strong>75階 → 80階：終王の主題〈本編採用〉</strong>
-  <p class="dev-note">同じ旋律が、行進から本気の最終決戦へ。ボタンで音楽だけを試聴できます。</p>
+  <p class="dev-note">同じ旋律が、行進から本気の最終決戦へ。</p>
   <div class="dev-controls dev-music-actions"><button type="button" id="devRoyalMarch">75階 · 王の行進 · 136 BPM</button><button type="button" id="devRoyalAwakening">80階 · 終王の覚醒 · 142 BPM</button><button type="button" id="devRoyalFinale">80階 · 第二楽章 · 142 BPM</button></div>
  </div>
  <div class="dev-controls">
@@ -107,7 +110,7 @@
 </details>
 <div class="app" id="devPlay" tabindex="-1" role="region" aria-label="戦闘画面">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v0.9.9 DEV</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v1.0.5 DEV</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" type="button" id="devShowSetup">敵・試遊設定 ↑</button><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
@@ -116,15 +119,15 @@
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><div id="tutorialGuide" class="tutorial-guide" hidden><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button type="button" id="tutorialNext" hidden>次へ</button><button type="button" id="tutorialSkip">案内を終える</button></div><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
-     <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
+     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn"><span class="menu-button-icon" aria-hidden="true">📖</span> 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn"><span class="menu-button-icon" aria-hidden="true">✦</span> ショップ</button></div></div></div>
+     <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ HP回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
-      <h2 id="relicOfferTitle">遺物をひとつ選べ</h2>
+      <h2 id="relicOfferTitle">遺物を見つけた！</h2>
       <p class="relic-offer-hint" id="relicOfferHint"></p>
       <div class="relic-offer-cards" id="relicOfferCards"></div>
       <div class="relic-replace-list" id="relicReplaceList" hidden></div>
-      <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>← 候補に戻る</button><button type="button" class="secondary" id="relicSkipBtn">今回は見送る →</button></div>
+      <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>戻る</button><button type="button" class="secondary" id="relicSkipBtn">見送る</button></div>
       </div></div>
      <div class="cover" id="routeCover" hidden><div class="modal crossroads-modal">
        <div class="modal-kicker">THE TOWER · CROSSROADS</div><h2>岐路の祭壇</h2>
@@ -137,21 +140,26 @@
        <p id="roomNote" class="smallnote"></p>
       </div></div>
      <div class="cover" id="routeSkillCover" hidden><div class="modal reward-modal">
-       <div class="modal-kicker">A GIFT OF THE TOWER</div><h2 id="routeSkillTitle">スキルをひとつ選べ</h2>
+       <div class="modal-kicker">A GIFT OF THE TOWER</div><h2 id="routeSkillTitle">スキル獲得</h2>
        <div id="routeSkillCards" class="reward-cards"></div>
        
       </div></div>
-     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="deathPracticeBtn">⚔ この敵で稽古</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ ショップ</button></div></div></div>
-     <div class="cover" id="codexCover" hidden><div class="modal codex-modal">
-       <div class="modal-kicker">THE BESTIARY · PRACTICE</div><h2>📖 魔物図鑑・稽古場</h2>
-       <p id="codexSummary">0 / 50 発見</p><div class="codex-tabs" id="codexTabs" role="group" aria-label="図鑑の分類"><button class="upgrade-tab active" type="button" data-codex-tab="monsters" aria-pressed="true">📖 魔物図鑑</button><button class="upgrade-tab" type="button" data-codex-tab="skills" aria-pressed="false">📜 スキル図鑑</button></div>
-       <div class="codex-toolbar"><label for="codexFilter">表示</label><select id="codexFilter">
-        <option value="all">すべて</option><option value="discovered">登録済みのみ</option>
-        <option value="normal">通常・ボス</option><option value="elite">精鋭</option><option value="rare">レア</option>
-       </select><button class="secondary" id="codexCloseBtn">戻る</button></div>
-       <div class="codex-list" id="codexList"></div>
-       
-      </div></div>
+     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="deathPracticeBtn"><span class="menu-button-icon" aria-hidden="true">⚔</span> この敵で稽古</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn"><span class="menu-button-icon" aria-hidden="true">📖</span> 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn"><span class="menu-button-icon" aria-hidden="true">✦</span> ショップ</button></div></div></div>
+     <div class="cover" id="codexCover" hidden><div class="modal upgrade-modal codex-modal" role="dialog" aria-modal="true" aria-labelledby="codexTitle">
+       <div class="upgrade-top"><h2 id="codexTitle">図鑑・稽古場</h2><button class="secondary" type="button" id="codexCloseBtn">戻る</button></div>
+       <div class="upgrade-wallet codex-status">
+        <span id="codexSummary">0 / 50 発見</span>
+        <label class="codex-toolbar" id="codexToolbar">表示 <select id="codexFilter">
+          <option value="all">すべて</option><option value="discovered">発見済み</option>
+          <option value="nonboss">ボス以外</option><option value="boss">ボス</option>
+        </select></label>
+       </div>
+       <div class="upgrade-tabs" id="codexTabs" role="group" aria-label="図鑑の切り替え">
+        <button class="upgrade-tab active" type="button" data-codex-tab="monsters" aria-pressed="true">📖 魔物</button>
+        <button class="upgrade-tab" type="button" data-codex-tab="skills" aria-pressed="false">📜 スキル</button>
+       </div>
+       <div class="upgrade-list codex-list" id="codexList" tabindex="0" aria-label="図鑑の一覧"></div>
+     </div></div>
      <div class="cover" id="upgradeCover" hidden><div class="modal upgrade-modal">
        <div class="upgrade-top"><h2>ショップ</h2><button class="secondary" id="upgradeCloseBtn">戻る</button></div>
        <div class="upgrade-wallet">魂の欠片 <strong id="upgradeCoins">0 ✧</strong></div>
@@ -171,7 +179,6 @@
       <section class="timing-calibration"><h3>タイミング調整</h3>
        <label for="latencySlider" class="latency-title">入力補正 <strong id="latencyValue">+0ms</strong></label><input id="latencySlider" class="latency-slider" type="range" min="-180" max="180" step="5" value="0">
        <small class="latency-note">＋：遅めの入力 / −：早めの入力</small>
-       <p>音の拍に合わせて押して、おすすめの補正を測れます。</p>
        <div class="calibration-pulse" id="calibrationPulse" aria-hidden="true">♫</div>
        <div class="actionrow"><button type="button" class="secondary" id="calibrationStart">おすすめ補正を測る</button><button type="button" class="primary" id="calibrationTap" disabled>拍に合わせてタップ</button></div>
        <p id="calibrationStatus" role="status">3 → 2 → 1 → GO のあと、16回タップ。</p>
@@ -196,36 +203,52 @@
  </div>
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
-<script src="./assets/diagnostics.js?v=v0.9.9" defer></script>
-<script src="./assets/encounters.js?v=v0.9.9&cue=1" defer></script>
-<script src="./assets/enemy-motions.js?v=v0.9.9" defer></script>
-<script src="./assets/progression.js?v=v0.9.9" defer></script>
-<script src="./assets/relics.js?v=v0.9.9" defer></script>
-<script src="./assets/routes.js?v=v0.9.9" defer></script>
-<script src="./assets/events.js?v=v0.9.9" defer></script>
-<script src="./assets/character-art.js?v=v0.9.9" defer></script>
-<script src="./assets/character-svg.js?v=v0.9.9" defer></script>
-<script src="./assets/character-flat.js?v=v0.9.9" defer></script>
-<script src="./assets/character-trace.js?v=v0.9.9" defer></script>
-<script src="./assets/character-ready.js?v=v0.9.9" defer></script>
-<script src="./assets/character-knight.js?v=v0.9.9" defer></script>
-<script src="./assets/combat-art.js?v=v0.9.9&cue=1&contact=1" defer></script>
-<script src="./assets/combat-sfx.js?v=v0.9.9&contact=1" defer></script>
-<script src="./assets/character-art-defaults.js?v=v0.9.9" defer></script>
-<script src="./assets/character-edit.js?v=v0.9.9" defer></script>
-<script src="./assets/palette-candidates.js?v=v0.9.9" defer></script>
-<script src="./assets/character-style.js?v=v0.9.9" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v0.9.9" defer></script>
-<script src="./assets/character-enemy-data.js?v=v0.9.9" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v0.9.9&contact=1" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v0.9.9" defer></script>
-<script src="./assets/character-rig.js?v=v0.9.9" defer></script>
-<script src="./assets/stage-music.js?v=v0.9.9" defer></script>
-<script src="./assets/final-boss-music.js?v=v0.9.9&review=2" defer></script>
-<script src="./assets/audio-clock.js?v=v0.9.9" defer></script>
-<script src="./assets/player-settings.js?v=v0.9.9&timing=2" defer></script>
-<script src="./assets/run-checkpoint.js?v=v0.9.9&checkpoint=2&tempo=1" defer></script>
-<script src="./assets/game.js?v=v0.9.9&timing=2&tempo=1&beat-contact=1&cue=1&music=1&finale=2&combo=1&contact=1" defer></script>
-<script src="./assets/dev-tools.js?v=v0.9.9&tempo=1&beat-contact=1&cue=1&layout=2&music=1" defer></script>
+<!-- BEGIN GENERATED GAME SCRIPTS -->
+<script src="./assets/diagnostics.js?v=v1.0.5&r=51f504f6809c" defer></script>
+<script src="./assets/encounters.js?v=v1.0.5&r=32c52eac979c" defer></script>
+<script src="./assets/enemy-motions.js?v=v1.0.5&r=7be9b8caae8d" defer></script>
+<script src="./assets/progression.js?v=v1.0.5&r=349a56dcf86d" defer></script>
+<script src="./assets/combat-math.js?v=v1.0.5&r=6a2aa740c915" defer></script>
+<script src="./assets/combat-health.js?v=v1.0.5&r=0dbe1a208dda" defer></script>
+<script src="./assets/skills.js?v=v1.0.5&r=187803a99c29" defer></script>
+<script src="./assets/shop-view.js?v=v1.0.5&r=cb9a1ca87d48" defer></script>
+<script src="./assets/codex-view.js?v=v1.0.5&r=bf0a898a97b6" defer></script>
+<script src="./assets/run-state.js?v=v1.0.5&r=5fa81aa2d010" defer></script>
+<script src="./assets/relics.js?v=v1.0.5&r=ed22aae688c1" defer></script>
+<script src="./assets/rewards-view.js?v=v1.0.5&r=f081501b59c0" defer></script>
+<script src="./assets/room-view.js?v=v1.0.5&r=fabd31e37a26" defer></script>
+<script src="./assets/routes.js?v=v1.0.5&r=8019627544cf" defer></script>
+<script src="./assets/events.js?v=v1.0.5&r=00ae7d9806fa" defer></script>
+<script src="./assets/character-art.js?v=v1.0.5&r=7e07100d8c76" defer></script>
+<script src="./assets/character-svg.js?v=v1.0.5&r=d56f4daa7efc" defer></script>
+<script src="./assets/character-flat.js?v=v1.0.5&r=92f77dc59e13" defer></script>
+<script src="./assets/character-trace.js?v=v1.0.5&r=8ac1844fd5bc" defer></script>
+<script src="./assets/character-ready.js?v=v1.0.5&r=9e729291fe80" defer></script>
+<script src="./assets/character-knight.js?v=v1.0.5&r=eff952ba2d35" defer></script>
+<script src="./assets/combat-art.js?v=v1.0.5&r=2d1ff6b0b361" defer></script>
+<script src="./assets/combat-sfx.js?v=v1.0.5&r=b9c466e4e2aa" defer></script>
+<script src="./assets/character-art-defaults.js?v=v1.0.5&r=c86d37521644" defer></script>
+<script src="./assets/character-edit.js?v=v1.0.5&r=a212c885e8a4" defer></script>
+<script src="./assets/palette-candidates.js?v=v1.0.5&r=da3fe3dc9ffd" defer></script>
+<script src="./assets/character-style.js?v=v1.0.5&r=49d4384cc125" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v1.0.5&r=d69a86c3e5b7" defer></script>
+<script src="./assets/character-enemy-data.js?v=v1.0.5&r=0dca23af5926" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v1.0.5&r=2d32969c0ff4" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v1.0.5&r=42a4a46c3c42" defer></script>
+<script src="./assets/character-rig.js?v=v1.0.5&r=d23ec0ed87b0" defer></script>
+<script src="./assets/stage-music.js?v=v1.0.5&r=4fe448beb8e5" defer></script>
+<script src="./assets/final-boss-music.js?v=v1.0.5&r=4e2173da7f0a" defer></script>
+<script src="./assets/music.js?v=v1.0.5&r=3f4934974599" defer></script>
+<script src="./assets/audio-clock.js?v=v1.0.5&r=ac95cde2b1c1" defer></script>
+<script src="./assets/audio-session.js?v=v1.0.5&r=40e923170452" defer></script>
+<script src="./assets/player-settings.js?v=v1.0.5&r=c400b16202db" defer></script>
+<script src="./assets/run-checkpoint.js?v=v1.0.5&r=9b895e69a1a7" defer></script>
+<script src="./assets/save-store.js?v=v1.0.5&r=996d6313adf5" defer></script>
+<script src="./assets/character-renderer.js?v=v1.0.5&r=9f1022ee834c" defer></script>
+<script src="./assets/menu-layout.js?v=v1.0.5&r=32e6caeadc2c" defer></script>
+<script src="./assets/menu-layout-config.js?v=v1.0.5&r=086cf2efdcf5" defer></script>
+<script src="./assets/game.js?v=v1.0.5&r=9816a1017020" defer></script>
+<script src="./assets/dev-tools.js?v=v1.0.5&r=8de95ac5e703" defer></script>
+<!-- END GENERATED GAME SCRIPTS -->
 </body>
 </html>

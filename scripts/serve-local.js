@@ -3,12 +3,19 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {normalize}=require('../assets/character-edit');
 const {render}=require('./build-art-defaults');
+const copyEditor=require('../assets/copy-editor-model'),layoutEditor=require('../assets/menu-layout');
+const {createEditorProjectHandler}=require('./local-editor-project');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
  '.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png',
  '.json':'application/json; charset=utf-8','.woff2':'font/woff2'};
 function createPreviewServer(root=path.resolve(__dirname,'..')){
  let saving=false;
+ const editors=new Map([
+  ['/__copy-editor/project',createEditorProjectHandler(root,{folder:'copy-editor',header:'x-parry-copy-editor',normalize:copyEditor.normalize})],
+  ['/__layout-editor/project',createEditorProjectHandler(root,{folder:'layout-editor',header:'x-parry-layout-editor',normalize:layoutEditor.normalize})]
+ ]);
  return http.createServer(async(req,res)=>{
+ if(editors.has(req.url)){await editors.get(req.url)(req,res);return;}
  if(req.url==='/__art-studio/project'){
   if(req.method==='GET'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end('{"writable":true}');return;}
   if(req.method!=='POST'){res.writeHead(405,{'Allow':'GET, POST'}).end();return;}
