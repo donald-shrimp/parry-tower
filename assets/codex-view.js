@@ -36,9 +36,8 @@
   const filtered=groups.filter(g=>{
    const seenBase=!!book.seen[g.base.bookKey],seenElite=!!(g.elite&&book.seen[g.elite.bookKey]);
    if(filter==='discovered')return seenBase||seenElite;
-   if(filter==='rare')return !!g.m.rare;
-   if(filter==='elite')return !!g.elite&&(seenElite||!seenBase);
-   if(filter==='normal')return !g.m.rare;
+   if(filter==='nonboss')return !g.m.boss;
+   if(filter==='boss')return !!g.m.boss;
    return true;
   });
   view.listHtml=filtered.map(g=>{

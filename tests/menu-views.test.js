@@ -34,7 +34,7 @@ test('codex presentation reads immutable discovery data without granting practic
  const book=encounters.emptyBook();
  book.seen['slime:normal']={encounters:1,firstFloor:1};
  const input=freeze({book,unlockedSkills:['heal'],skillContext});
- for(const filter of ['all','discovered','normal','elite','rare']){
+ for(const filter of ['all','discovered','nonboss','boss']){
   const view=codex.render({...input,tab:'monsters',filter});
   assert.ok(view.listHtml.length>0);
   assert.doesNotMatch(view.listHtml,/data-practice="slime:elite"/);
@@ -45,6 +45,22 @@ test('codex presentation reads immutable discovery data without granting practic
  const second=codex.render({...input,tab:'skills'});
  assert.match(second.listHtml,/最大HP \+15/);
  assert.equal(Object.keys(book.seen).length,1);
+});
+
+test('codex separates boss species from all other species including rares and elite-only discoveries',()=>{
+ const book=encounters.emptyBook();
+ for(const e of encounters.codexEntries())book.seen[e.bookKey]={encounters:1,firstFloor:1};
+ const names=filter=>[...codex.render({tab:'monsters',filter,book}).listHtml.matchAll(/<strong>([^<]+)<\/strong>/g)].map(match=>match[1]);
+ assert.deepEqual(names('all'),encounters.all.map(m=>m.name));
+ assert.deepEqual(names('nonboss'),[...encounters.monsters,...encounters.rares].map(m=>m.name));
+ assert.deepEqual(names('boss'),encounters.bosses.map(m=>m.name));
+ assert.deepEqual(names('discovered'),names('all'));
+ const selected=[encounters.monsters[0],encounters.bosses[0],...encounters.rares];
+ book.seen=Object.fromEntries(selected.map(m=>[m.id+':'+(m.rare?'rare':'elite'),{encounters:1,firstFloor:1}]));
+ const known=filter=>names(filter).filter(name=>name!=='未遭遇');
+ assert.deepEqual(known('discovered'),selected.map(m=>m.name));
+ assert.deepEqual(known('nonboss'),[encounters.monsters[0],...encounters.rares].map(m=>m.name));
+ assert.deepEqual(known('boss'),[encounters.bosses[0].name]);
 });
 
 test('reward presentation uses frozen choices and current skill values without consuming the offer',()=>{
