@@ -9,10 +9,10 @@
  function skillCardMeta(s,levels,skillContext){
   const lvl=id=>levels?.[id]||0;
   const describeSkill=(id,level)=>SkillCatalog.describe(id,level,skillContext);
-  const cur=lvl(s.id);
-  const diffHtml=cur>0?`<span class="levelup-diff">現在：${describeSkill(s.id,cur)}</span>`:'';
+  const cur=lvl(s.id),next=cur+1;
+  const diffHtml=cur>0?`<span class="levelup-diff">Lv.${cur} → Lv.${next}（現在：${describeSkill(s.id,cur)}）</span>`:'';
   const readySynergies=cur===0?SYNERGIES.filter(syn=>(syn.a===s.id&&lvl(syn.b)>0)||(syn.b===s.id&&lvl(syn.a)>0)):[];
-  const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴</span>':'';
+  const synHtml=readySynergies.length?'<span class="synergy-ready-badge">✦ 共鳴解放可能！</span>':'';
   return {diffHtml,synHtml};
  }
 

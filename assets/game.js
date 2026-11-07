@@ -886,7 +886,7 @@ function takeEventSkill(id){
  if(game.mode!=='routeSkill'||!game.routeSkillSet.includes(id)||!SK[id]||lvl(id)>=skillCap(id))return;
  game.routeSkillSet=[];gainSkillLevel(id);sound(800,.18,'triangle',.05,130);
  if(game.currentRoom==='merchant'){
-  renderBuild();setMode('room');showRoomResult(SK[id].name+' Lv.'+lvl(id),true);return;
+  renderBuild();setMode('room');showRoomResult(SK[id].name+'がLv.'+lvl(id)+'になった！',true);return;
  }
  finishNoncombatRoom();
 }
@@ -1649,7 +1649,7 @@ function finishRelicReward(acquired=false){
   game.roomLocked=false;game.roomStage=null;setMode('room');renderRoom();return;
  }
  if(returned==='room'&&game.currentRoom==='merchant'){
-  setMode('room');showRoomResult(acquired?'遺物を獲得':'見送った',true);return;
+  setMode('room');showRoomResult(acquired?'遺物箱から遺物を手に入れた！':'遺物箱の遺物を見送った。',true);return;
  }
  if(returned==='mirror'||returned==='room'){finishNoncombatRoom();return;}
  showRewards();

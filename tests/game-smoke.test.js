@@ -558,7 +558,7 @@ test('v0.5.5 retains essential HUD and settings but does not narrate the control
    assert.match(html,new RegExp('id="'+id+'"'),page+' keeps '+id);
   }
   assert.match(html,/HOW TO PLAY/);
-  assert.doesNotMatch(html,/リズムに合わせて敵を斬れ！/);
+  assert.match(html,/リズムに合わせて敵を斬れ！/);
   assert.match(html,/短押しでパリィ、長押しで盾を構えてガード/);
   assert.doesNotMatch(html,/id="codexCount"|体遭遇済み/);
   assert.doesNotMatch(html,/id="timingInfo"|id="musicStatus"/);

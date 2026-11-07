@@ -3,12 +3,45 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {normalize}=require('../assets/character-edit');
 const {render}=require('./build-art-defaults');
+const copyEditor=require('../assets/copy-editor-model');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
  '.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png',
  '.json':'application/json; charset=utf-8','.woff2':'font/woff2'};
 function createPreviewServer(root=path.resolve(__dirname,'..')){
- let saving=false;
+ let saving=false,copySaving=false;
  return http.createServer(async(req,res)=>{
+ if(req.url==='/__copy-editor/project'){
+  const folder=path.join(root,'.local-only','copy-editor'),target=path.join(folder,'project.json');
+  res.setHeader('Cache-Control','no-store');
+  if(req.method==='GET'){
+   try{
+    let project=null;
+    try{project=copyEditor.normalize(JSON.parse(await fs.promises.readFile(target,'utf8')));}catch(error){if(error.code!=='ENOENT')throw error;}
+    res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify({writable:true,project}));
+   }catch(error){res.writeHead(422).end('Saved copy project cannot be read');}
+   return;
+  }
+  if(req.method!=='POST'){res.writeHead(405,{'Allow':'GET, POST'}).end();return;}
+  const host=req.headers.host||'';
+  if(!/^(127\.0\.0\.1|localhost):\d+$/.test(host)||req.headers.origin!=='http://'+host||req.headers['x-parry-copy-editor']!=='1'){
+   res.writeHead(403).end('Same-origin editor request required');return;
+  }
+  if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||'')){res.writeHead(415).end('JSON required');return;}
+  if(copySaving){res.writeHead(409).end('A save is in progress');return;}
+  copySaving=true;let temporary;
+  try{
+   let body='',size=0;for await(const chunk of req){size+=chunk.length;if(size>200000){res.writeHead(413).end('Project too large');return;}body+=chunk.toString('utf8');}
+   const project=copyEditor.normalize(JSON.parse(body));
+   await fs.promises.mkdir(folder,{recursive:true});
+   try{await fs.promises.copyFile(target,path.join(folder,'project.backup.json'));}catch(error){if(error.code!=='ENOENT')throw error;}
+   temporary=path.join(folder,'project-'+process.pid+'.tmp');
+   await fs.promises.writeFile(temporary,JSON.stringify(project,null,2)+'\n','utf8');
+   await fs.promises.rename(temporary,target);temporary=null;
+   res.writeHead(200,{'Content-Type':'application/json'}).end('{"saved":true}');
+  }catch(error){res.writeHead(error instanceof SyntaxError?400:422).end(error.message);}
+  finally{copySaving=false;if(temporary)await fs.promises.unlink(temporary).catch(()=>{});}
+  return;
+ }
  if(req.url==='/__art-studio/project'){
   if(req.method==='GET'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end('{"writable":true}');return;}
   if(req.method!=='POST'){res.writeHead(405,{'Allow':'GET, POST'}).end();return;}

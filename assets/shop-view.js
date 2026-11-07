@@ -21,7 +21,7 @@
   return '<div class="bonus-nav" role="group" aria-label="おまけの種類">'+[['items','演出のおまけ'],['skins','主人公スキン']].map(([id,name])=>'<button type="button" class="upgrade-tab '+(bonusView===id?'active':'')+'" data-action="bonus-section" data-key="'+id+'" aria-pressed="'+(bonusView===id)+'">'+name+'</button>').join('')+'</div>';
  }
  function renderSkinPicker(permanent,coins,bonusView){
-  return bonusNavigation(bonusView)+'<div class="skin-grid">'+PR.SKINS.map(skin=>{
+  return bonusNavigation(bonusView)+'<div class="skin-picker-head"><h3>主人公スキン</h3></div><div class="skin-grid">'+PR.SKINS.map(skin=>{
    const owned=PR.ownsSkin(permanent,skin.id),wearing=!PR.extraEnabled(permanent,'legacyVisual')&&skin.id===permanent.equippedSkin;
    const action=owned?'skin-equip':'skin-buy';
    const buy='<button type="button" class="upgrade-buy skin-buy" data-action="'+action+'" data-key="'+skin.id+'" '+(wearing||!owned&&coins<skin.cost?'disabled':'')+'>'+(owned?'装備する':skin.cost+' ✧')+'</button>';

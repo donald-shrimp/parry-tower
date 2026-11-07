@@ -29,26 +29,20 @@
  }
  function eventActions(eventId,options){
   return options.map(option=>{
-   const {id,available,value,hasRelics}=option;
-   let label=option.label;
+   const {id,label,available,value,hasRelics}=option;
    let description='';
    if(eventId==='altar'&&id==='sacrifice')description='HP-'+value+'。イベントの支払いは被弾扱いになりません。';
    if(eventId==='mirror'&&id==='swap')description='所持遺物1つを選び、風化・秘宝から3択。';
    if(eventId==='chest'&&id==='open')description=hasRelics?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+value+'・引き直し+1）。失敗してもHP1で生存。';
-   if(eventId==='sanctuary'&&id==='resonate')label='共鳴相方を習得';
-   if(eventId==='sanctuary'&&id==='train')label='スキル強化 +1Lv';
-   if(eventId==='sanctuary'&&id==='pray')label='祈る · 最大HPの25%回復';
-   if(eventId==='forge'&&id==='polish')label='遺物研磨（無料）';
-   if(eventId==='forge'&&id==='temper'){
-    label='武具強化 · 塔貨15';
-    description='この挑戦の基礎攻撃力+3・障壁+15。';
-   }
-   if(eventId==='scales'&&id==='toSouls')label='塔貨16 → 魂の欠片+'+value+' ✧';
-   if(eventId==='scales'&&id==='toCoins'){
-    label='現在HP20% → 塔貨+'+value+'・引き直し+1';
-    description='死亡しない。';
-   }
-   if(eventId==='scales'&&id==='leave')label='立ち去る · 障壁+10';
+   if(eventId==='sanctuary'&&id==='resonate')description='共鳴相方のスキルを引き当てて1つ習得。';
+   if(eventId==='sanctuary'&&id==='train')description='習得済みスキル1つをLv.+1。';
+   if(eventId==='sanctuary'&&id==='pray')description='最大HPの25%を回復。';
+   if(eventId==='forge'&&id==='polish')description='未研磨の所持遺物1つを研磨（✦）。';
+   if(eventId==='forge'&&id==='temper')description='塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。';
+   if(eventId==='forge'&&id==='scrap')description='塔貨+'+value+'。';
+   if(eventId==='scales'&&id==='toSouls')description='塔貨16枚を消費し、魂の欠片+'+value+' ✧を得る。';
+   if(eventId==='scales'&&id==='toCoins')description='現在HPの20%（死亡しない）を払い、塔貨+'+value+'・引き直し+1。';
+   if(eventId==='scales'&&id==='leave')description='障壁+10を得て先へ進む。';
    return action('event:'+id,label,description,!available);
   }).join('');
  }
