@@ -21,11 +21,11 @@
   Object.freeze({id:'chest',icon:'📦',name:'封じられた宝箱',description:'宝箱の隙間から、不気味な魔力が漏れている。',
    actions:Object.freeze([{id:'open',label:'40%で遺物、60%で最大HP20%分の被害'},{id:'coins',label:'開けずに塔貨+10'}])}),
   Object.freeze({id:'sanctuary',icon:'🎼',name:'共鳴の聖堂',description:'古い聖堂に、互いを呼び合う技の残響が満ちている。',
-   actions:Object.freeze([{id:'resonate',label:'所持スキルの共鳴相方を引き当てる'},{id:'train',label:'所持スキル1つを強化（+1Lv）'},{id:'pray',label:'静かに祈り、HP25%回復'}])}),
+   actions:Object.freeze([{id:'resonate',label:"歌うように祈る"},{id:'train',label:"一心に祈る"},{id:'pray',label:"静かに祈る"}])}),
   Object.freeze({id:'forge',icon:'⚒️',name:'古の金床',description:'まだ熱を残す金床が、武具や遺物のさらなる覚醒を待っている。',
-   actions:Object.freeze([{id:'polish',label:'未研磨の所持遺物1つを無料で研磨'},{id:'temper',label:'塔貨15枚で基礎攻撃力+3・障壁+15'},{id:'scrap',label:'鉄屑を拾い、塔貨+14'}])}),
+   actions:Object.freeze([{id:'polish',label:"遺物を研磨"},{id:'temper',label:"塔貨を支払う"},{id:'scrap',label:"鉄屑を拾う"}])}),
   Object.freeze({id:'scales',icon:'⚖️',name:'試練の祭器',description:'黄金の器と魂の器が、捧げ物を待って静かに揺れている。',
-   actions:Object.freeze([{id:'toSouls',label:'塔貨16枚を捧げ、魂の欠片+20 ✧'},{id:'toCoins',label:'現在HP20%を捧げ、塔貨+24・引き直し+1'},{id:'leave',label:'祭器に触れず先へ進む（障壁+10）'}])})
+   actions:Object.freeze([{id:'toSouls',label:"塔貨を捧げる"},{id:'toCoins',label:"現在HPの20%を捧げる"},{id:'leave',label:"祭器に触れず先へ進む"}])})
  ]);
  const BY_ID=Object.freeze(Object.fromEntries(EVENTS.map(e=>[e.id,e])));
  const ITEMS_BY_ID=Object.freeze(Object.fromEntries(ITEMS.map(x=>[x.id,x])));

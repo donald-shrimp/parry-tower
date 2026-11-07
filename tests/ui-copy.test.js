@@ -37,10 +37,12 @@ test('short reward headings also clean up restored legacy titles and event gains
  assert.equal(rewards.eventSkills({choices:[],levels:{},title:'スキルをひとつ選べ'}).title,'スキル獲得');
  const result=rooms.render({room:RT.ROOMS.event,event:EV.BY_ID.scales,
   status:{coins:20,hp:65,maxHp:65,shield:0},
-  options:[{id:'toSouls',available:true,value:25},{id:'toCoins',available:true,value:35}]});
+  options:[{id:'toSouls',label:EV.BY_ID.scales.actions[0].label,available:true,value:25},
+   {id:'toCoins',label:EV.BY_ID.scales.actions[1].label,available:true,value:35}]});
  assert.equal((result.actionsHtml.match(/魂の欠片\+25/g)||[]).length,1);
  assert.ok((result.actionsHtml.match(/塔貨\+35/g)||[]).length>=1);
- assert.match(result.actionsHtml,/死亡しない/);
+ assert.match(result.actionsHtml,/現在HPの20%を捧げる/);
+ assert.match(result.actionsHtml,/代償を払い、塔貨\+35・引き直し\+1/);
 });
 
 test('setup and Dev disclose save replacement and practice exceptions',()=>{
