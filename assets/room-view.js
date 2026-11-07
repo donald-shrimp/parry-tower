@@ -34,7 +34,7 @@
    if(eventId==='altar'&&id==='sacrifice')description='HP-'+value+'。イベントの支払いは被弾扱いになりません。';
    if(eventId==='mirror'&&id==='swap')description='所持遺物1つを選び、風化・秘宝から3択。';
    if(eventId==='chest'&&id==='open')description=hasRelics?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+value+'・引き直し+1）。失敗してもHP1で生存。';
-   if(eventId==='sanctuary'&&id==='resonate')description="習得済みスキルに共鳴するスキルをランダムに1つ習得。";
+   if(eventId==='sanctuary'&&id==='resonate')description="習得済みスキルに共鳴するスキルを1つ習得。";
    if(eventId==='sanctuary'&&id==='train')description="習得済みスキル1つをLv.+1。";
    if(eventId==='sanctuary'&&id==='pray')description="最大HPの25%を回復。";
    if(eventId==='forge'&&id==='polish')description="未研磨の所持遺物1つを研磨（✦）。";
