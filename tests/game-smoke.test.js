@@ -385,8 +385,8 @@ test('dev entry is unlinked from the public game and runtime is dev-only',()=>{
  assert.match(dev,/id="devFloor"/);
  assert.match(dev,/id="devEnemy"/);
  assert.match(dev,/id="devLaunch"/);
- assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.0&r=[a-f0-9]{12}"/);
- assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.0&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/enemy-motions\.js\?v=v1\.0\.1&r=[a-f0-9]{12}"/);
+ assert.match(dev,/src="\.\/assets\/dev-tools\.js\?v=v1\.0\.1&r=[a-f0-9]{12}"/);
  assert.match(control,/engine\.launch/);
  assert.equal(makeHarness().dev(),undefined,'ordinary players must not receive dev controls');
 });
@@ -877,6 +877,38 @@ test('a fatal parry heals only from enemy remaining HP, before switching to vict
  assert.equal(chain.state().mode,'victory','thunder can deliver the final blow');
  assert.equal(chain.state().hp,18,'count full 45 HP lost across the normal strike and killing thunder');
 });
+test('Crimson Execution includes 35%, preserves the shared burn pool and repeats with new accumulation',()=>{
+ for(const [hp,trigger]of [[35026,false],[35025,true],[30000,true]]){
+  const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+  d.setEnemyHp(100000);d.setEnemyHp(hp);d.setSkill('ember',1);d.setSkill('execute',1);d.setBurn(100);
+  d.survivalAnalysis.strike('parry');
+  assert.equal(d.relicInfo().burn,107);
+  assert.deepEqual(Array.from(d.hits().filter(hit=>hit.label==='紅蓮'),hit=>hit.dealt),trigger?[107]:[]);
+  if(trigger){
+   d.survivalAnalysis.strike('parry');
+   assert.equal(d.relicInfo().burn,114);
+   assert.equal(d.hits().filter(hit=>hit.label==='紅蓮').at(-1).dealt,114);
+  }
+ }
+ const g=makeHarness();g.press('startBtn');const d=g.bloodTest();
+ d.setEnemyHp(100000);d.setEnemyHp(30000);d.setSkill('ember',1);d.setSkill('execute',1);
+ d.grantRelic('ember_vial');d.setBurn(100);d.survivalAnalysis.strike('parry');
+ assert.equal(d.relicInfo().burn,110);
+ assert.equal(d.hits().filter(hit=>hit.label==='紅蓮').at(-1).dealt,110);
+});
+
+test('burn finishes the last 6 HP after Crimson Execution for both successful parry results',()=>{
+ for(const [kind,basic]of [['parry',31],['just',50]]){
+  const g=makeHarness();g.random(.5);g.press('startBtn');const d=g.bloodTest();
+  d.setEnemyHp(100000);d.setEnemyHp(basic+107+6);d.setEnemyAttack(0);
+  d.setSkill('ember',1);d.setSkill('execute',1);d.setBurn(100);
+  d.survivalAnalysis.strike(kind);
+  assert.equal(g.state().enemyHp,6);assert.equal(d.relicInfo().burn,107);
+  g.frame(g.now+55);assert.ok(g.state().enemyHp<6&&g.state().enemyHp>0);
+  g.frame(g.now+55);assert.equal(g.state().enemyHp,0);assert.equal(g.state().mode,'victory');
+ }
+});
+
 test('guard reflection and burn damage do not grant blood healing; successful parry does',()=>{
  const g=makeHarness();g.press('startBtn');
  const d=g.bloodTest();
@@ -934,7 +966,7 @@ test('v0.5.8 registers 25 skills, six new abilities, and six new synergies in bo
   '不滅の盾','共鳴心眼','雷霆循環','鮮血連鎖','氷鏡','王の共鳴'])assert.ok(names.some(value=>value.includes(name)),name);
  for(const page of ['index.html','dev.html']){
   const html=fs.readFileSync(page,'utf8');
-  assert.match(html,/v1\.0\.0/);
+  assert.match(html,/v1\.0\.1/);
   assert.match(html,/id="combatBuffs"/);
   assert.match(html,/data-tab="seal"/);
  }
@@ -1147,8 +1179,8 @@ test('v0.6.0 relic overlay, module links, status panel and skill rewards are sep
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['relicCover','relicOfferCards','relicReplaceList','relicBackBtn',
    'relicSkipBtn','relicList','relicCount'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.0(?:&[^"]+)?"/);
-  assert.match(html,/v1\.0\.0/);
+  assert.match(html,/src="\.\/assets\/relics\.js\?v=v1\.0\.1(?:&[^"]+)?"/);
+  assert.match(html,/v1\.0\.1/);
  }
  const g=makeHarness({},true);
  assert.equal(g.dev().launch(3,'slime:normal'),true);
@@ -1466,8 +1498,8 @@ test('v0.7.0 crossroads routes, tower coins and both entrypoints render correctl
   const html=fs.readFileSync(page,'utf8');
   for(const id of ['routeCover','routeCards','roomCover','roomActions','roomNote','roomTitle',
    'routeSkillCover','routeSkillCards','towerCoinsLabel'])assert.ok(html.includes('id="'+id+'"'),id+' in '+page);
-  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.0&r='),asset);
-  assert.match(html,/v1\.0\.0/);
+  for(const asset of ['routes','events'])assert.ok(html.includes('src="./assets/'+asset+'.js?v=v1.0.1&r='),asset);
+  assert.match(html,/v1\.0\.1/);
  }
  const {g,d}=makeCrossroads(4);
  assert.deepEqual(Array.from(d.getRouteOptions()),['rest','merchant','trial']);
