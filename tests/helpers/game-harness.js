@@ -231,7 +231,6 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   calibrationInfo:()=>calibration?{kind:calibration.kind,targets:calibration.targets?.map(t=>scoreToPerf(t,0)),result:calibration.result,errors:calibration.errors?[...calibration.errors]:[]}:null,
   timingInfo:()=>({windup:!motionFor(game.enemy).noWindup,windupLead:motionFor(game.enemy).cuePrepare,recovery:motionFor(game.enemy).recovery,parryWindow:getParryWindow(),target:inputTargetAt(),telegraphStart:game.telegraphStart,guardAtImpact:game.guardAtImpact,lastDeflectAt:game.lastDeflectAt}),
   skillCatalog:()=>SKILLS.map(s=>({id:s.id,max:s.max,desc:level=>describeSkill(s.id,level)})),
-  skillCap,merchantTargets,
   setBreaks:(id,n)=>{game.skillBreaks[id]=n},
   bloodHealAmount:CombatMath.bloodHealAmount,
   setSkill:(id,level)=>{game.lv[id]=level},
@@ -252,7 +251,7 @@ function makeHarness(seed={},devMode=false,artMode='',devSearch='?floor=21&enemy
   window,document,location:{search:devSearch},URLSearchParams,console
  },{filename:'dev-tools.js'});
  return {
-  el,clickers,storage,artMode:()=>document.documentElement.dataset.parryArt,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>window.__parryBloodTest,
+  el,clickers,storage,artMode:()=>document.documentElement.dataset.parryArt,state:()=>window.__parryV05(),dev:()=>window.__parryDev,bloodTest:()=>({...window.__parryBloodTest,skillCap:id=>window.ParrySkills.cap(id,window.__parryV05().skillBreaks)}),
   artStatus:()=>({hero:!!window.ParryHeroReady?.ready(),knight:!!window.ParryKnightTrace?.ready()}),
   readyArt:async(e)=>{await window.ParryCombatArt?.preload();await window.ParryKnightPuppet?.preload(e);await new Promise(resolve=>setImmediate(resolve));},
   illustratedStatus:()=>({hero:!!window.ParryHeroPuppet?.ready(),knight:!!window.ParryKnightPuppet?.ready()}),

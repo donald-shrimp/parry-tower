@@ -28,6 +28,8 @@
 
 ## 検証済み
 
+- 5B：全Node522件（39.7秒）成功。基準297620bと252遷移時点の公開状態/DOM/保存/音声予約が一致。新規/チュートリアル/再開/新規確認の取消と確定/一時停止/設定/Dev4スキン・テンポ・商人・曲試聴と練習を比較。Chrome3幅の本編/Devで設定・音量・較正取消・pause復帰・Dev無保存も成功。構文/diff check成功。scratchのverify-controller.cjs、verify-controller-browser.cjs、controller-node.logが証跡。恒久テスト追加なし。
+
 - 5A：全Node522件（39.0秒）、画像8件・フォント2件成功。基準01643b6とChrome390/1280pxの312 Canvas出力がピクセル一致（採用/legacy/8試作方式、6種の敵、通常/ヒヨコ/ふんどし、予備動作/接触/JUST/被弾/入力待ち）。ブラウザーエラーなし。読込失敗と離脱/別遭遇後の遅延完了は既存Nodeで成功。工房JSONとart-defaultsは改行CRLFを正規化すると完全一致、データ変更なし。構文/Pages/diff check成功。旧画面のソース文字列検査は公開描画APIの実呼出へ移行。scratchのverify-character-browser.cjs、character-renderer-node.log、character-renderer-chick.pngが証跡。
 
 - 4B-3：全Node520件（40.3秒）成功。基準5bfb729と15mode×Dev/保存失敗/死亡入力禁止/中断有無の240条件で表示・戻り先・pause・中断読取位置と条件が一致。Chrome320/390/1280pxの本編/Devで文字/寸法、音量更新、Dev無保存、戦闘から設定→一時停止→再開、較正開始→取消を確認。構文/Pages/diff check成功。scratchのverify-settings-view.cjs、verify-settings-browser.cjs、settings-view-node.logが証跡。恒久テスト追加なし。
@@ -59,7 +61,7 @@
 
 ## 残る範囲と次の一手
 
-4B（報酬/遺物/部屋/イベント/設定）と5A（アート参照表/描画dispatch）まで完了。設定は小さい画面なので名前付き段階に整理。character-rendererは描画だけを扱い、prepareEncounterArtのrun/encounter/modeによる取消はgame側に維持した。次は5B Dev/controller、その後5C配信manifest。公開指示を受けたら統合候補の全チェック・配信検証を行う。
+5Bまで完了。game内部のcreateGameControllerが開始/中断復元/稽古/設定/一時停止/タイトルと私有の遷移状態を所有する。createDevControllerはDevでだけ生成し、開始/終了は共通controller経由。スキル上限をskills.capへ移し、検証ハーネスの上限/merchantTargetsアクセスをソース差込から除去した。戦闘途中の任意状態を作る残りの差込はtests/helpers内のみ。次は5C配信manifest。公開指示を受けたら統合候補の全チェック・配信検証を行う。
 
 途中の試算・比較スクリプト・ログは物理チェックアウトの `.local-only/scratch/` にあり、Git対象外。既存の原画・ポーズ・ユーザー参照ファイルを保持する。
 

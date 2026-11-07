@@ -33,6 +33,8 @@ Canvas 2Dと素のJavaScript、HTML/CSS、Web Audioによる合成音、localSto
 
 状態・戦闘・画面・描画はまだ `game.js` に多く残る。ファイル数を減らすことではなく、変更する責務を限定することを整備の目標にする。
 
+game内のcreateGameControllerが本編/Dev共通の開始・復元・稽古・停止・設定・タイトル操作を所有する。一時停止時刻、設定の戻り先、音声停止時のphase復帰、開始確認中のtutorial選択はcontrollerの私有状態。描画はpausedAt()を読む。Devの操作APIはcreateDevControllerをDevでのみ生成し、共通controllerに開始/終了を依頼する。外部へ任意状態書換え口を増やさない。skills.cap(id,breaks)はgameと単体検証で共用する。
+
 ## 音楽と命中判定は同じ時計を使う
 
 基準は `AudioContext.currentTime`、拍の長さは `score.beat`。音声セッションの `startScore` が準備完了後に原点を置き、`scheduleScore` が0.17秒先まで8分音符のステップを予約する。1回の予約は最大24ステップ、25msより古い音は飛ばし、ごく短い遅れは現在時刻+2msへ補正する。

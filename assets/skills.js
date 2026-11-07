@@ -107,5 +107,7 @@
   return byId[id].desc(level,context);
  }
 
- return {SKILLS,SYNERGIES,PULSE_COMBO_STEP,KING_COMBO_STEP,describe};
+ function cap(id,breaks){return Object.hasOwn(byId,id)?byId[id].max+(breaks?.[id]||0):0;}
+
+ return {SKILLS,SYNERGIES,PULSE_COMBO_STEP,KING_COMBO_STEP,describe,cap};
 });

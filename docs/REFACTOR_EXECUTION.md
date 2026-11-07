@@ -203,6 +203,8 @@
 
 5Aの参照表は[ART_DEPENDENCIES](./ART_DEPENDENCIES.md)。character-rendererは描画方式の選択とworld/local描画のdispatchを所有し、原画・pose・Canvas変換・攻撃時刻・読込取消を変更しない。createに渡す依存は描画モジュールと固定modeだけで、ゲーム状態のgetter群は渡さない。工房は編集に必要なpuppet APIを直接利用し続ける。旧描画をgameから丸ごと移す作業は今回の境界整理に含めない。
 
+5Bはgameの組み立て層内にcreateGameControllerを置き、10操作と私有のpause/settings/開始確認状態を集約した。Devアダプターもfactory化し、共通controllerへ開始/終了を渡す。別ファイルへの移動のために多数のgetter/setter callbackを作る案は採らない。新規/復元のfactoryと計算は既存の独立モジュールを再利用する。skills.capを明示APIにし、ハーネスのskillCap/未使用merchantTargets差込を除去。残る差込は戦闘途中のfixtureと演出/音声の観測用でtests/helpersに限定し、本番に任意変更APIを追加しない。
+
 - 5A：既存character-*をまず参照表にする。本編/legacy/工房/比較ページの使用箇所、原画→studio-project→character-art-defaultsの生成関係を記録。描画側は時刻・姿勢・描画に必要な値を受ける。アート読込のrun/encounter同一性による取消を維持。未使用に見える画像を名前だけで削除しない。
 - 5B：実際に使う開始/稽古/一時停止/設定等の操作を共通controllerへ移し、Devはそれを呼ぶ。テスト専用の任意eval/任意フィールド書換えAPIを本番へ公開しない。factory/計算の単体テストからソース差し込みを置き換え、残りを明記する。全テストの一斉書換えはしない。
 - 5C：静的アセットの順序付きmanifestを一箇所に置き、両HTMLのscript領域とCI/診断向け必要一覧を生成/照合する。実行時の動的ローダーは導入しない。Dev専用scriptと本編用scriptを区別し、再生成して差分ゼロになる検査を用意する。更新queryの整理は同じ版の内容が入れ替わるキャッシュ事故を防ぐ単位で実施。
