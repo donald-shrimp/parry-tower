@@ -199,7 +199,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @media(max-width:540px){.version-warning{padding:10px;font-size:12px;gap:8px}.version-warning p{flex-basis:100%}}
 
 /* Display typography for scene titles, UI headings, big counters and canvas feedback.
-   Reading copy, action labels, item descriptions and help remain system UI. */
+   Reading copy, secondary action labels, item descriptions and help remain system UI. */
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),

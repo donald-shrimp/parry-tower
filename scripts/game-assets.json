@@ -10,6 +10,10 @@
       "diagnose": true
     },
     {
+      "file": "menu-layout.css",
+      "diagnose": true
+    },
+    {
       "file": "dev-tools.css",
       "pages": [
         "dev.html"
@@ -324,6 +328,22 @@
       "module": {
         "name": "characterRenderer",
         "global": "ParryCharacterRenderer"
+      }
+    },
+    {
+      "file": "menu-layout.js",
+      "diagnose": true,
+      "module": {
+        "name": "menuLayout",
+        "global": "ParryMenuLayout"
+      }
+    },
+    {
+      "file": "menu-layout-config.js",
+      "diagnose": true,
+      "module": {
+        "name": "menuLayoutConfig",
+        "global": "ParryMenuLayoutConfig"
       }
     },
     {

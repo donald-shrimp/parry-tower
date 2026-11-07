@@ -2,6 +2,18 @@
 
 ## 現在の状態
 
+最新の作業：レイアウト工房をローカル実装済み。ブランチui/menu-layout-studio、作業ツリーは引き続きshop-upgrade-display。サーバー8017を起動済みで、入口は http://127.0.0.1:8017/layout-studio.html 、実プレイ候補は http://127.0.0.1:8017/ 。今回の依頼は準備まで。本番は下記v1.0.2のまま。
+
+タイトル・挑戦終了・一時停止の3画面に共通のmenu-layoutモデル/DOM適用/CSSと採用設定を導入。主操作を上段単独＋ピクセルフォント、補助操作を下段へ配置し、端数も中央寄せ。タイトルは中断データがあればつづきからを主操作へ変更。既存DOMを移動し、イベント・hidden・disabled・敗北後の入力ロックを維持する。工房では同じindex.html/CSSをスクリプトなしsandboxへ読み込み、主操作・書体・ボタン順・画面の並び/装飾表示・スマホ/PC別の寸法を編集し、320/390/520/960/1280pxで比較する。
+
+編集ファイルは.local-only/layout-editor/project.json、バックアップはproject.backup.json、ブラウザー下書きはparry.menu-layout.draft.v1。実際の編集ファイルは未作成。検証用保存は別の一時フォルダーと専用ブラウザーで行い、既存の文言編集ファイルとプレイヤーの保存を維持。copy/layoutのローカル保存処理をlocal-editor-project.jsへ共通化し、分割されたUTF-8の本文もBuffer結合後に読む。
+
+検証：全Node532件、追加後の関連7件、JS構文、フォント2件、生成一致、diff check成功。Chromeで3画面×320/390/1280px、主操作/書体/並び/表示/サイズ変更、比較、保存/バックアップ/新規ブラウザー復元、JSON入出力/不正データ、画面リセットを確認。実ゲームの開始・中断・再開・新規開始確認、敗北入力ロック・ショップ往復・再挑戦も成功。既存の本編/Dev診断、80FヒヨコDevの保存分離、8ツール、file://起動も成功。採用設定スクリプト欠落時にも初期配置へ退避して戦闘開始できる。証跡はscratchのlayout-node-final.log、verify-layout-studio.cjs、verify-layout-fallback.cjs、layout-studio-desktop.png、layout-studio-mobile.png、layout-game-title-390.png、layout-game-death.png。
+
+次：ユーザーが工房で編集して「保存」後に採用を依頼したら、保存ファイルを確認し、node scripts/adopt-menu-layout.js .local-only/layout-editor/project.json、node scripts/build-game-entries.jsで候補へ反映する。画面追加は今回の3画面の確認後に行う。使い方/契約はMENU_LAYOUT_STUDIO.md、設計判断はDECISIONS.mdを参照。
+
+### 公開済みの状態
+
 v1.0.2を本番公開済み。PR #43、main統合08ce3cb19f762d921f696374caea89abba61006b、タグv1.0.2。ユーザー承認済みのUI文言・岐路バッジ・保存済みB編集内容・C04〜C07・ローカル文言エディタを配信した。共鳴説明は「習得済みスキルに共鳴するスキルを1つ習得。」が最終形。ゲーム仕様と保存形式は維持。
 
 検証：全Node530件、画像8件、フォント2件、構文、生成一致、バランス試算が成功。PRのStatic checks（42352553480）、mainのStatic checks（42352697502）、Pages（42352696798）はすべて成功。ライブの本編/Dev HTML・45 JS/CSS・フォント・文言エディタ・リンク集が統合コミットとバイト一致。新しい「歌」と分離済みview/skillsの文字を表示フォントへ収録（1,232文字、CSSフォント版9）。Chrome320/390/1280pxで保存済み文言・補正後報酬・Lv比較・岐路バッジ・下段削除・横はみ出しなしをローカル/本番で確認。本番でも中断/再読込/4拍復帰、80FヒヨコDevの保存分離、8ツールを確認。file://起動も成功。本番のnetworkidle待ちが一度タイムアウトしたため、load待ちへ変更して再確認し全項目成功。実装変更は不要だった。

@@ -1,0 +1,34 @@
+/* Applied by the shared adapter to title, defeat and pause only. */
+.menu-modal{
+ --menu-columns:var(--menu-desktop-columns);--menu-main-width:var(--menu-desktop-main-width);
+ --menu-main-size:var(--menu-desktop-main-size);--menu-height:var(--menu-desktop-height);
+ --menu-gap:var(--menu-desktop-gap);--menu-row-gap:var(--menu-desktop-row-gap);
+ --menu-block-gap:var(--menu-desktop-block-gap);--menu-padding:var(--menu-desktop-padding);
+ display:flex;flex-direction:column;gap:var(--menu-block-gap);padding:var(--menu-padding);
+}
+#titleCover .menu-modal>.menu-block,#deathCover .menu-modal>.menu-block,#pauseCover .menu-modal>.menu-block{margin:0}
+.menu-block-hidden{display:none!important}
+.menu-modal>.menu-block{flex-shrink:0}
+.menu-modal>.records{gap:6px;font-size:11px}
+.menu-modal>.records span{padding:5px 8px}
+.menu-modal>p{font-size:12px;line-height:1.6}
+.menu-modal .menu-actions{display:flex;flex-direction:column;align-items:stretch;gap:var(--menu-row-gap);width:100%}
+.menu-main-row{width:var(--menu-main-width);max-width:100%;align-self:center}
+.menu-secondary{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--menu-gap);width:100%}
+.menu-secondary>button{flex:0 0 calc((100% - (var(--menu-columns) - 1)*var(--menu-gap))/var(--menu-columns));max-width:100%}
+.menu-modal button{min-width:0;overflow-wrap:anywhere}
+.menu-main-row>.menu-main-button{
+ width:100%;min-height:var(--menu-height);padding:12px 14px;font-size:var(--menu-main-size);
+ line-height:1.4;letter-spacing:.02em;white-space:normal;
+}
+.menu-main-button.menu-pixel-button{font-family:"Checkpoint Period Display",system-ui,sans-serif;font-weight:400;font-synthesis:none}
+.menu-secondary>button,#pauseCover .menu-secondary>#suspendBtn{width:100%;min-height:var(--menu-height);margin:0;line-height:1.5;white-space:normal}
+.menu-modal button:focus-visible{outline:3px solid #fff1c9;outline-offset:3px}
+@media(max-width:600px){
+ .menu-modal{
+  --menu-columns:var(--menu-mobile-columns);--menu-main-width:var(--menu-mobile-main-width);
+  --menu-main-size:var(--menu-mobile-main-size);--menu-height:var(--menu-mobile-height);
+  --menu-gap:var(--menu-mobile-gap);--menu-row-gap:var(--menu-mobile-row-gap);
+  --menu-block-gap:var(--menu-mobile-block-gap);--menu-padding:var(--menu-mobile-padding);
+ }
+}
