@@ -779,6 +779,26 @@ test('soul gains and once-per-run revive apply while preserving combat timing',(
  g.press('upgradeCloseBtn');
  assert.equal(g.state().mode,'gameover');
 });
+test('result badges only show the current skin while title retains saved lifetime records',()=>{
+ const g=makeHarness({parryTowerPermanent_v1:JSON.stringify({skinRecords:{normal:{bestFloor:55,bestCombo:900,runs:149}}})});
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>149回<\/b>/);
+ g.press('startBtn');g.bloodTest().incoming(99999);assert.equal(g.state().mode,'gameover');
+ const checkResult=()=>{
+  assert.match(g.el.get('deathRecords').innerHTML,/いつもの主人公/);
+  assert.doesNotMatch(g.el.get('deathRecords').innerHTML,/最高到達|最高コンボ|挑戦/);
+  assert.match(g.el.get('deathSummary').innerHTML,/1F[\s\S]*ジャストパリィ[\s\S]*最大コンボ[\s\S]*魂の欠片/);
+ };
+ checkResult();g.frame(g.now+700);g.press('deathUpgradeBtn');g.press('upgradeCloseBtn');checkResult();
+ g.press('homeBtn');assert.equal(g.state().mode,'title');
+ assert.match(g.el.get('titleRecords').innerHTML,/最高到達 <b>55F<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/最高コンボ <b>900<\/b>/);
+ assert.match(g.el.get('titleRecords').innerHTML,/挑戦 <b>150回<\/b>/);
+ const record=JSON.parse(g.storage.get('parryTowerPermanent_v1')).skinRecords.normal;
+ assert.deepEqual(record,{bestFloor:55,bestCombo:900,runs:150});
+});
+
 test('practice and developer page do not write permanent progression',()=>{
  const raw=JSON.stringify({slots:1,unlockedSkills:['blood'],equipped:['blood',null],regen:3,bossWard:3});
  const meta=JSON.stringify({coins:450,life:1,runs:3});

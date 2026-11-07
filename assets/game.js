@@ -370,8 +370,9 @@ function renderRelicInventory(){
  const view=window.ParryRewardsView.inventory(RR.validIds(game.relics||[]).map(ownedRelic));
  $('relicCount').textContent=view.count;$('relicList').innerHTML=view.listHtml;
 }
-function records(){
+function records({currentRun=false}={}){
  const id=game?.skin||permanent.equippedSkin,skin=PR.SKINS.find(s=>s.id===id)||PR.SKINS[0];
+ if(currentRun)return `<span>${skin.icon} ${skin.name}</span>`;
  const r=permanent.skinRecords[skin.id]||{bestFloor:0,bestCombo:0,runs:0};
  return `<span>${skin.icon} ${skin.name}</span><span>最高到達 <b>${r.bestFloor}F</b></span><span>最高コンボ <b>${r.bestCombo}</b></span><span>挑戦 <b>${r.runs}回</b></span>`;
 }
@@ -415,7 +416,7 @@ function openUpgrade(){
  if(deathInputBlocked()||!['title','gameover'].includes(game.mode))return;
  runLegacyVisual=null;upgradeReturnMode=game.mode;upgradeTab='loadout';setMode('upgrade');renderUpgradeScreen();
 }
-function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');else if(upgradeReturnMode==='gameover')$('deathRecords').innerHTML=records();}
+function closeUpgrade(){if(game.mode!=='upgrade')return;setMode(upgradeReturnMode);if(upgradeReturnMode==='title')$('titleRecords').innerHTML=records().replace(/<span>[^<]*<\/span>/,'');else if(upgradeReturnMode==='gameover')$('deathRecords').innerHTML=records({currentRun:true});}
 function syncShopAppearance(){if(DEV_MODE){devPreviewSkin=permanent.equippedSkin;if($('devSkin'))$('devSkin').value=devPreviewSkin;}if(upgradeReturnMode==='gameover')game.skin=permanent.equippedSkin;syncArtMode();}
 function buyUpgrade(action,key){
  if(game.mode!=='upgrade')return;
@@ -1567,7 +1568,7 @@ function die(){
  const foe=game.enemy,foeLine=foe&&!foe.preview?`（<b>${foe.name}</b>）`:'';
  if($('deathPracticeBtn'))$('deathPracticeBtn').hidden=!(foe&&!foe.preview&&book.seen[foe.bookKey]);
  $('deathSummary').innerHTML=`<b>${game.floor}F</b>${foeLine}で力尽きた。<br>ジャストパリィ <b>${game.perfects}回</b> / 被弾 <b>${game.misses}回</b><br>最大コンボ <b>${game.peakCombo}</b><br>魂の欠片 <b style="color:#f4cf86">+${coins+techSouls+game.bonusSouls+rescue} ✧</b>${techSouls?`（技量ボーナス +${techSouls}）`:''}${game.bonusSouls?`（特別討伐 +${game.bonusSouls}）`:''}${rescue?`（累計挑戦ボーナス +${rescue} ✧）`:''}`;
- $('deathRecords').innerHTML=records();runLegacyVisual=null;
+ $('deathRecords').innerHTML=records({currentRun:true});runLegacyVisual=null;
  game.deathInputUnlockAt=performance.now()+DEATH_INPUT_GRACE_MS;
  setMode('gameover');sound(200,.42,'sawtooth',.05,-130);
 }
