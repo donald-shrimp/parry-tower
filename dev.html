@@ -8,7 +8,7 @@
 <title>パリィの塔 | 開発者テスト v1.0.2</title>
 <!-- BEGIN GENERATED GAME STYLES -->
 <link rel="stylesheet" href="./assets/style.css?v=v1.0.2&r=e2452711b8fb">
-<link rel="stylesheet" href="./assets/menu-layout.css?v=v1.0.2&r=4d5c2f100b50">
+<link rel="stylesheet" href="./assets/menu-layout.css?v=v1.0.2&r=264038a21efa">
 <link rel="stylesheet" href="./assets/dev-tools.css?v=v1.0.2&r=aedb6fa8dc31">
 <!-- END GENERATED GAME STYLES -->
 </head>
@@ -119,7 +119,7 @@
    <section class="arena-card">
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><div id="tutorialGuide" class="tutorial-guide" hidden><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button type="button" id="tutorialNext" hidden>次へ</button><button type="button" id="tutorialSkip">案内を終える</button></div><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
-     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
+     <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn"><span class="menu-button-icon" aria-hidden="true">📖</span> 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn"><span class="menu-button-icon" aria-hidden="true">✦</span> ショップ</button></div></div></div>
      <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ HP回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
@@ -144,7 +144,7 @@
        <div id="routeSkillCards" class="reward-cards"></div>
        
       </div></div>
-     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="deathPracticeBtn">⚔ この敵で稽古</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn">📖 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn">✦ ショップ</button></div></div></div>
+     <div class="cover" id="deathCover" hidden><div class="modal"><div class="modal-symbol">🕯️</div><div class="modal-kicker">THE TOWER REMAINS</div><h2>挑戦終了</h2><p id="deathSummary"></p><div class="records" id="deathRecords"></div><div class="actionrow"><button class="primary" id="retryBtn">もう一度、塔へ →</button><button class="secondary" id="deathPracticeBtn"><span class="menu-button-icon" aria-hidden="true">⚔</span> この敵で稽古</button><button class="secondary" id="homeBtn">タイトルへ</button><button class="secondary" id="deathCodexBtn"><span class="menu-button-icon" aria-hidden="true">📖</span> 図鑑を開く</button><button class="secondary" id="deathUpgradeBtn"><span class="menu-button-icon" aria-hidden="true">✦</span> ショップ</button></div></div></div>
      <div class="cover" id="codexCover" hidden><div class="modal upgrade-modal codex-modal" role="dialog" aria-modal="true" aria-labelledby="codexTitle">
        <div class="upgrade-top"><h2 id="codexTitle">図鑑・稽古場</h2><button class="secondary" type="button" id="codexCloseBtn">戻る</button></div>
        <div class="upgrade-wallet codex-status">
