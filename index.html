@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a101e">
-<meta name="parry-build" content="v1.0.1">
-<title>パリィの塔 | v1.0.1</title>
+<meta name="parry-build" content="v1.0.2">
+<title>パリィの塔 | v1.0.2</title>
 <!-- BEGIN GENERATED GAME STYLES -->
-<link rel="stylesheet" href="./assets/style.css?v=v1.0.1&r=254d89c04f0f">
+<link rel="stylesheet" href="./assets/style.css?v=v1.0.2&r=a2508cd5e4c3">
 <!-- END GENERATED GAME STYLES -->
 </head>
 <body>
 <div class="app">
  <header class="topbar">
-  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v1.0.1</span></h1></div></div>
+  <div class="brand"><div><h1>パリィ<span class="title-no">の</span>塔 <span>v1.0.2</span></h1></div></div>
   <div class="toolrow"><button class="toolbtn" id="settingsBtn" aria-label="設定を開く">⚙ 設定</button><button class="toolbtn" id="exitPracticeBtn" hidden>稽古を終了</button><button class="toolbtn" id="pauseBtn" disabled>Ⅱ 一時停止</button></div>
  </header>
  <p id="saveWarning" class="save-warning" role="status" hidden>中断データを保存できません。この画面を閉じると続きから再開できない場合があります。</p>
@@ -23,14 +23,14 @@
     <div class="battlehead"><div class="floorlabel">FLOOR <strong id="floorNumber">01</strong> <span id="floorBadge"></span> <span id="zoneLabel" class="zone-label">忘れられた地下墓地</span></div><div class="righthead"><span id="enemyName">塔の入口</span><span class="combo-heading">COMBO <strong id="comboLabel">0</strong></span></div></div>
     <div class="practice-tools" id="practiceTools" hidden><span>稽古相手</span><select id="practiceEnemy" aria-label="遭遇済みの稽古相手を選択"></select></div><div class="arena" id="arena"><div id="tutorialGuide" class="tutorial-guide" hidden><strong id="tutorialTitle"></strong><span id="tutorialText"></span><button type="button" id="tutorialNext" hidden>次へ</button><button type="button" id="tutorialSkip">案内を終える</button></div><canvas id="gameCanvas" aria-label="パリィの塔の戦闘画面。短押しでパリィ、長押しでガード"></canvas>
      <div class="cover" id="titleCover"><div class="modal"><h2 class="title-logo">パリィ<span class="title-no">の</span>塔</h2><div class="records" id="titleRecords"></div><div class="actionrow"><button class="primary" id="continueBtn" hidden>つづきから →</button><button class="primary" id="startBtn">塔に挑戦する →</button><button class="secondary" id="tutorialBtn">チュートリアル</button><button class="secondary" id="practiceBtn">📖 図鑑・稽古場</button><button class="secondary" id="upgradeOpenBtn">✦ ショップ</button></div></div></div>
-     <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品を選べ</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ 能力を取らずに回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
+     <div class="cover" id="rewardCover" hidden><div class="modal reward-modal"><div class="modal-kicker">FLOOR CLEARED</div><h2 id="rewardTitle">戦利品</h2><div class="reward-cards" id="rewardCards"></div><div class="reward-actions"><button class="secondary" id="rerollBtn">↻ 引き直す</button><button class="secondary" id="healBtn">♡ HP回復</button></div><div class="smallnote" id="rewardNote"></div></div></div>
      <div class="cover" id="relicCover" hidden><div class="modal relic-modal">
       <div class="modal-kicker">RELIC DISCOVERED ✦</div>
-      <h2 id="relicOfferTitle">遺物をひとつ選べ</h2>
+      <h2 id="relicOfferTitle">遺物を見つけた！</h2>
       <p class="relic-offer-hint" id="relicOfferHint"></p>
       <div class="relic-offer-cards" id="relicOfferCards"></div>
       <div class="relic-replace-list" id="relicReplaceList" hidden></div>
-      <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>← 候補に戻る</button><button type="button" class="secondary" id="relicSkipBtn">今回は見送る →</button></div>
+      <div class="relic-offer-actions"><button type="button" class="secondary" id="relicBackBtn" hidden>戻る</button><button type="button" class="secondary" id="relicSkipBtn">見送る</button></div>
       </div></div>
      <div class="cover" id="routeCover" hidden><div class="modal crossroads-modal">
        <div class="modal-kicker">THE TOWER · CROSSROADS</div><h2>岐路の祭壇</h2>
@@ -43,7 +43,7 @@
        <p id="roomNote" class="smallnote"></p>
       </div></div>
      <div class="cover" id="routeSkillCover" hidden><div class="modal reward-modal">
-       <div class="modal-kicker">A GIFT OF THE TOWER</div><h2 id="routeSkillTitle">スキルをひとつ選べ</h2>
+       <div class="modal-kicker">A GIFT OF THE TOWER</div><h2 id="routeSkillTitle">スキル獲得</h2>
        <div id="routeSkillCards" class="reward-cards"></div>
        
       </div></div>
@@ -106,48 +106,48 @@
  <footer class="site-footer"><a href="./credits.html">クレジット・利用素材</a></footer>
 </div>
 <!-- BEGIN GENERATED GAME SCRIPTS -->
-<script src="./assets/diagnostics.js?v=v1.0.1&r=fda5ab007a57" defer></script>
-<script src="./assets/encounters.js?v=v1.0.1&r=32c52eac979c" defer></script>
-<script src="./assets/enemy-motions.js?v=v1.0.1&r=7be9b8caae8d" defer></script>
-<script src="./assets/progression.js?v=v1.0.1&r=349a56dcf86d" defer></script>
-<script src="./assets/combat-math.js?v=v1.0.1&r=6a2aa740c915" defer></script>
-<script src="./assets/combat-health.js?v=v1.0.1&r=0dbe1a208dda" defer></script>
-<script src="./assets/skills.js?v=v1.0.1&r=187803a99c29" defer></script>
-<script src="./assets/shop-view.js?v=v1.0.1&r=c7b5b25a12d6" defer></script>
-<script src="./assets/codex-view.js?v=v1.0.1&r=9f35fd3911f5" defer></script>
-<script src="./assets/run-state.js?v=v1.0.1&r=5fa81aa2d010" defer></script>
-<script src="./assets/relics.js?v=v1.0.1&r=ed22aae688c1" defer></script>
-<script src="./assets/rewards-view.js?v=v1.0.1&r=3f3fef03f798" defer></script>
-<script src="./assets/room-view.js?v=v1.0.1&r=f1ab80fbe576" defer></script>
-<script src="./assets/routes.js?v=v1.0.1&r=8019627544cf" defer></script>
-<script src="./assets/events.js?v=v1.0.1&r=43c83f43b073" defer></script>
-<script src="./assets/character-art.js?v=v1.0.1&r=7e07100d8c76" defer></script>
-<script src="./assets/character-svg.js?v=v1.0.1&r=d56f4daa7efc" defer></script>
-<script src="./assets/character-flat.js?v=v1.0.1&r=92f77dc59e13" defer></script>
-<script src="./assets/character-trace.js?v=v1.0.1&r=8ac1844fd5bc" defer></script>
-<script src="./assets/character-ready.js?v=v1.0.1&r=9e729291fe80" defer></script>
-<script src="./assets/character-knight.js?v=v1.0.1&r=eff952ba2d35" defer></script>
-<script src="./assets/combat-art.js?v=v1.0.1&r=2d1ff6b0b361" defer></script>
-<script src="./assets/combat-sfx.js?v=v1.0.1&r=b9c466e4e2aa" defer></script>
-<script src="./assets/character-art-defaults.js?v=v1.0.1&r=c86d37521644" defer></script>
-<script src="./assets/character-edit.js?v=v1.0.1&r=a212c885e8a4" defer></script>
-<script src="./assets/palette-candidates.js?v=v1.0.1&r=da3fe3dc9ffd" defer></script>
-<script src="./assets/character-style.js?v=v1.0.1&r=49d4384cc125" defer></script>
-<script src="./assets/character-hero-puppet.js?v=v1.0.1&r=d69a86c3e5b7" defer></script>
-<script src="./assets/character-enemy-data.js?v=v1.0.1&r=0dca23af5926" defer></script>
-<script src="./assets/character-enemy-puppet.js?v=v1.0.1&r=2d32969c0ff4" defer></script>
-<script src="./assets/character-knight-puppet.js?v=v1.0.1&r=42a4a46c3c42" defer></script>
-<script src="./assets/character-rig.js?v=v1.0.1&r=d23ec0ed87b0" defer></script>
-<script src="./assets/stage-music.js?v=v1.0.1&r=20373dc8ee48" defer></script>
-<script src="./assets/final-boss-music.js?v=v1.0.1&r=4e2173da7f0a" defer></script>
-<script src="./assets/music.js?v=v1.0.1&r=7269111b6ab8" defer></script>
-<script src="./assets/audio-clock.js?v=v1.0.1&r=ac95cde2b1c1" defer></script>
-<script src="./assets/audio-session.js?v=v1.0.1&r=1aeb9df3449d" defer></script>
-<script src="./assets/player-settings.js?v=v1.0.1&r=c400b16202db" defer></script>
-<script src="./assets/run-checkpoint.js?v=v1.0.1&r=72e8610c8fc4" defer></script>
-<script src="./assets/save-store.js?v=v1.0.1&r=996d6313adf5" defer></script>
-<script src="./assets/character-renderer.js?v=v1.0.1&r=9f1022ee834c" defer></script>
-<script src="./assets/game.js?v=v1.0.1&r=91139a58f342" defer></script>
+<script src="./assets/diagnostics.js?v=v1.0.2&r=0cdbc661910a" defer></script>
+<script src="./assets/encounters.js?v=v1.0.2&r=32c52eac979c" defer></script>
+<script src="./assets/enemy-motions.js?v=v1.0.2&r=7be9b8caae8d" defer></script>
+<script src="./assets/progression.js?v=v1.0.2&r=349a56dcf86d" defer></script>
+<script src="./assets/combat-math.js?v=v1.0.2&r=6a2aa740c915" defer></script>
+<script src="./assets/combat-health.js?v=v1.0.2&r=0dbe1a208dda" defer></script>
+<script src="./assets/skills.js?v=v1.0.2&r=187803a99c29" defer></script>
+<script src="./assets/shop-view.js?v=v1.0.2&r=cb9a1ca87d48" defer></script>
+<script src="./assets/codex-view.js?v=v1.0.2&r=40ddf1d6bb4a" defer></script>
+<script src="./assets/run-state.js?v=v1.0.2&r=5fa81aa2d010" defer></script>
+<script src="./assets/relics.js?v=v1.0.2&r=ed22aae688c1" defer></script>
+<script src="./assets/rewards-view.js?v=v1.0.2&r=f081501b59c0" defer></script>
+<script src="./assets/room-view.js?v=v1.0.2&r=fabd31e37a26" defer></script>
+<script src="./assets/routes.js?v=v1.0.2&r=8019627544cf" defer></script>
+<script src="./assets/events.js?v=v1.0.2&r=00ae7d9806fa" defer></script>
+<script src="./assets/character-art.js?v=v1.0.2&r=7e07100d8c76" defer></script>
+<script src="./assets/character-svg.js?v=v1.0.2&r=d56f4daa7efc" defer></script>
+<script src="./assets/character-flat.js?v=v1.0.2&r=92f77dc59e13" defer></script>
+<script src="./assets/character-trace.js?v=v1.0.2&r=8ac1844fd5bc" defer></script>
+<script src="./assets/character-ready.js?v=v1.0.2&r=9e729291fe80" defer></script>
+<script src="./assets/character-knight.js?v=v1.0.2&r=eff952ba2d35" defer></script>
+<script src="./assets/combat-art.js?v=v1.0.2&r=2d1ff6b0b361" defer></script>
+<script src="./assets/combat-sfx.js?v=v1.0.2&r=b9c466e4e2aa" defer></script>
+<script src="./assets/character-art-defaults.js?v=v1.0.2&r=c86d37521644" defer></script>
+<script src="./assets/character-edit.js?v=v1.0.2&r=a212c885e8a4" defer></script>
+<script src="./assets/palette-candidates.js?v=v1.0.2&r=da3fe3dc9ffd" defer></script>
+<script src="./assets/character-style.js?v=v1.0.2&r=49d4384cc125" defer></script>
+<script src="./assets/character-hero-puppet.js?v=v1.0.2&r=d69a86c3e5b7" defer></script>
+<script src="./assets/character-enemy-data.js?v=v1.0.2&r=0dca23af5926" defer></script>
+<script src="./assets/character-enemy-puppet.js?v=v1.0.2&r=2d32969c0ff4" defer></script>
+<script src="./assets/character-knight-puppet.js?v=v1.0.2&r=42a4a46c3c42" defer></script>
+<script src="./assets/character-rig.js?v=v1.0.2&r=d23ec0ed87b0" defer></script>
+<script src="./assets/stage-music.js?v=v1.0.2&r=20373dc8ee48" defer></script>
+<script src="./assets/final-boss-music.js?v=v1.0.2&r=4e2173da7f0a" defer></script>
+<script src="./assets/music.js?v=v1.0.2&r=7269111b6ab8" defer></script>
+<script src="./assets/audio-clock.js?v=v1.0.2&r=ac95cde2b1c1" defer></script>
+<script src="./assets/audio-session.js?v=v1.0.2&r=1aeb9df3449d" defer></script>
+<script src="./assets/player-settings.js?v=v1.0.2&r=c400b16202db" defer></script>
+<script src="./assets/run-checkpoint.js?v=v1.0.2&r=9b895e69a1a7" defer></script>
+<script src="./assets/save-store.js?v=v1.0.2&r=996d6313adf5" defer></script>
+<script src="./assets/character-renderer.js?v=v1.0.2&r=9f1022ee834c" defer></script>
+<script src="./assets/game.js?v=v1.0.2&r=3ea631028626" defer></script>
 <!-- END GENERATED GAME SCRIPTS -->
 </body>
 </html>

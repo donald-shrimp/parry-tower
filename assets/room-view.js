@@ -11,7 +11,7 @@
  }
  function routes(options){
   return options.map(room=>`<button type="button" class="route-card" data-route="${room.id}">
- <span class="route-symbol">${room.icon}</span><span class="route-card-body"><b>${room.name}</b><small>${room.tag} · ${room.desc}</small><span class="route-warning">${room.risk}</span></span><span aria-hidden="true">›</span></button>`).join('');
+ <span class="route-symbol">${room.icon}</span><span class="route-card-body"><span class="route-card-heading"><b>${room.name}</b><span class="route-badge route-badge--${room.id}">${room.tag}</span></span><small>${room.desc}</small></span><span aria-hidden="true">›</span></button>`).join('');
  }
  function merchantActions(items){
   return items.map(({item,already,available,affordable})=>action('buy:'+item.id,
@@ -34,15 +34,15 @@
    if(eventId==='altar'&&id==='sacrifice')description='HP-'+value+'。イベントの支払いは被弾扱いになりません。';
    if(eventId==='mirror'&&id==='swap')description='所持遺物1つを選び、風化・秘宝から3択。';
    if(eventId==='chest'&&id==='open')description=hasRelics?'失敗してもHP1で生存。':'めぼしい遺物は残っていないようだ（当選時は塔貨+'+value+'・引き直し+1）。失敗してもHP1で生存。';
-   if(eventId==='sanctuary'&&id==='resonate')description='共鳴相方のスキルを引き当てて1つ習得。';
-   if(eventId==='sanctuary'&&id==='train')description='習得済みスキル1つをLv.+1。';
-   if(eventId==='sanctuary'&&id==='pray')description='最大HPの25%を回復。';
-   if(eventId==='forge'&&id==='polish')description='未研磨の所持遺物1つを研磨（✦）。';
-   if(eventId==='forge'&&id==='temper')description='塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。';
-   if(eventId==='forge'&&id==='scrap')description='塔貨+'+value+'。';
-   if(eventId==='scales'&&id==='toSouls')description='塔貨16枚を消費し、魂の欠片+'+value+' ✧を得る。';
-   if(eventId==='scales'&&id==='toCoins')description='現在HPの20%（死亡しない）を払い、塔貨+'+value+'・引き直し+1。';
-   if(eventId==='scales'&&id==='leave')description='障壁+10を得て先へ進む。';
+   if(eventId==='sanctuary'&&id==='resonate')description="習得済みスキルに共鳴するスキルを1つ習得。";
+   if(eventId==='sanctuary'&&id==='train')description="習得済みスキル1つをLv.+1。";
+   if(eventId==='sanctuary'&&id==='pray')description="最大HPの25%を回復。";
+   if(eventId==='forge'&&id==='polish')description="未研磨の所持遺物1つを研磨（✦）。";
+   if(eventId==='forge'&&id==='temper')description="塔貨15枚を消費し、この挑戦の基礎攻撃力+3・障壁+15。";
+   if(eventId==='forge'&&id==='scrap')description="塔貨+"+value+"。";
+   if(eventId==='scales'&&id==='toSouls')description="塔貨16枚を消費し、魂の欠片+"+value+" ✧を得る。";
+   if(eventId==='scales'&&id==='toCoins')description="代償を払い、塔貨+"+value+"・引き直し+1。";
+   if(eventId==='scales'&&id==='leave')description="障壁+10を得て先へ進む。";
    return action('event:'+id,label,description,!available);
   }).join('');
  }
@@ -57,26 +57,26 @@
   };
   if(stage==='result'){
    view.description=result;
-   view.actionsHtml=action('continue','次の階へ進む')+(id==='merchant'&&!locked?merchantActions(items):'');
+   view.actionsHtml=action('continue','次の階へ')+(id==='merchant'&&!locked?merchantActions(items):'');
   }else if(id==='merchant'&&stage?.startsWith('target:')){
    view.title=targetItem.name;view.description=targetItem.cost+' 🪙';
    view.actionsHtml=targetActions(targets,{merchant:true,breakthrough:targetItem.id==='breakthrough',disabled:status.coins<targetItem.cost})+
-    action('back','← 商品一覧に戻る');
+    action('back','戻る');
   }else if(id==='event'&&stage==='target:sanctuary_train'){
-   view.title='共鳴の聖堂 — スキル強化';view.descriptionHidden=true;
-   view.actionsHtml=targetActions(targets)+action('back','← 聖堂の選択に戻る');
+   view.title='共鳴の聖堂';view.descriptionHidden=true;
+   view.actionsHtml=targetActions(targets)+action('back','戻る');
   }else if(id==='event'&&stage==='target:forge_polish'){
-   view.title='古の金床 — 遺物研磨';view.descriptionHidden=true;
-   view.actionsHtml=targetActions(targets)+action('back','← 金床の選択に戻る');
+   view.title='古の金床';view.descriptionHidden=true;
+   view.actionsHtml=targetActions(targets)+action('back','戻る');
   }else if(id==='rest'){
    view.actionsHtml=action('rest:heal','🔥 休息','最大HPの35%を回復')+
     action('rest:meditate','🛡 瞑想','障壁+20、スキル報酬の引き直し+1');
   }else if(id==='merchant'){
-   view.actionsHtml=merchantActions(items)+action('leave','購入せず先へ進む');
+   view.actionsHtml=merchantActions(items)+action('leave','立ち去る');
   }else if(id==='event'&&stage==='mirror'){
    view.description='交換が確定するまで、元の遺物は失われません。';
    view.actionsHtml=held.map(relic=>action('mirror:'+relic.id,relic.icon+' '+relic.name,relic.desc)).join('')+
-    action('back','鏡の前に戻る');
+    action('back','戻る');
   }else if(id==='event'){
    view.actionsHtml=eventActions(event.id,options);
   }

@@ -1,0 +1,30 @@
+.copy-editor{margin:0;padding:24px;color:#e7edf8;background:#0b1221;font-family:system-ui,sans-serif}
+.editor-header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.editor-header h1{font-size:24px;margin:4px 0}.editor-header p{color:#b5c3da;margin:5px 0}
+.eyebrow{font-size:11px;letter-spacing:.12em}.editor-tools{display:flex;gap:8px;flex-wrap:wrap}
+.copy-editor button,.file-button{font:inherit;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid #526783;background:#22314b;color:#edf3ff;cursor:pointer}
+.copy-editor button.primary{background:#415477;border-color:#e5c67c;color:#fff0bd}
+.copy-editor button:focus-visible,.file-button:focus-within{outline:3px solid #edcf88;outline-offset:2px}
+.file-button{display:inline-flex;align-items:center}.file-button input{width:1px;height:1px;opacity:0;position:absolute}
+.editor-status{color:#bce5d0;min-height:1.5em;font-size:13px}
+.editor-layout{display:grid;grid-template-columns:190px minmax(280px,1fr) minmax(280px,390px);gap:20px;align-items:start;max-width:1400px}
+#entryList{display:flex;flex-direction:column;gap:5px}#entryList button{text-align:left}
+#entryList button[aria-current=true]{background:#3c4260;border-color:#edcf88}
+.editor-panel,.preview-panel{min-width:0;border:1px solid #334765;border-radius:12px;padding:18px;background:#121e32}
+.editor-panel h2,.preview-panel h2{font-size:17px;margin:0 0 16px}.editor-panel-top{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.field-editor{margin:18px 0}.field-editor label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}
+.visibility-toggle{font-size:13px;white-space:nowrap}.visibility-toggle input{margin-right:6px;accent-color:#b9dbcf}
+.copy-editor textarea,.sample-input{box-sizing:border-box;width:100%;max-width:100%;padding:10px;border:1px solid #586d8d;border-radius:7px;background:#0b1425;color:#eef3ff;font:inherit;font-size:14px}
+.copy-editor textarea{min-height:92px;resize:vertical}.field-editor.is-hidden textarea{opacity:.6}
+.editor-help{font-size:12px;color:#a8bad1;line-height:1.7;overflow-wrap:anywhere}
+.copy-editor details{margin-top:16px}.copy-editor summary{cursor:pointer;color:#c2cee1}
+#sampleEditors label{display:block;font-size:12px;margin:10px 0}.sample-input{margin-top:5px}
+.copy-preview{padding:14px;background:#0c1528;border-radius:10px;margin-top:10px;min-width:0;overflow-wrap:anywhere}
+.copy-preview .room-choice{box-sizing:border-box;cursor:default}.copy-preview .room-choice:hover{transform:none}
+.copy-preview .reward-card{width:100%;min-height:240px;box-sizing:border-box;text-align:left}
+.copy-preview .reward-card>*{white-space:pre-wrap}.copy-preview h3{margin:16px 0;font-size:18px}
+.copy-preview .preview-empty{font-size:13px;color:#a8bad1}.original-preview{border-top:1px solid #334765;padding-top:16px}
+@media(max-width:1000px){.editor-layout{grid-template-columns:155px minmax(240px,1fr)}.preview-panel{grid-column:2}}
+@media(max-width:620px){.copy-editor{padding:12px}.editor-layout{display:flex;flex-direction:column;gap:12px}.editor-layout>*{box-sizing:border-box;width:100%}
+ #entryList{flex-direction:row;overflow-x:auto;padding-bottom:6px}#entryList button{white-space:nowrap;flex-shrink:0}
+ .editor-panel,.preview-panel{padding:14px}.editor-header h1{font-size:22px}.editor-panel-top{flex-wrap:wrap}}

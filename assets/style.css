@@ -158,8 +158,14 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 .route-symbol{flex-shrink:0;width:46px;height:46px;border-radius:11px;background:#33405e;display:grid;place-items:center;font-size:25px}
 .route-card-body{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
 .route-card-body b{font-size:15px;color:#ffe0a4}
+.route-card-heading{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
+.route-badge{display:inline-flex;align-items:center;flex-shrink:0;border:1px solid currentColor;border-radius:5px;
+ padding:1px 7px;font-size:10px;line-height:1.5;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.route-badge--rest{color:#a3e6c0;background:#1c4038}
+.route-badge--event{color:#dfc3ff;background:#3c2d59}
+.route-badge--trial{color:#ffb9c0;background:#512d39}
+.route-badge--merchant{color:#ffe0a4;background:#4b3c27}
 .route-card-body small,.room-choice small{font-size:11px;line-height:1.5;color:#bdd0e8}
-.route-warning{color:#a6b0c8;font-size:10px;line-height:1.4}
 .route-card>span:last-child,.room-choice>span:last-child{margin-left:auto;font-size:24px;color:#f1d8a8}
 .room-choice{min-height:63px}
 .room-choice>span:first-child{flex:1;display:flex;flex-direction:column;gap:5px}
@@ -173,7 +179,6 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
  .route-symbol{width:39px;height:39px;font-size:22px}
  .route-card-body b{font-size:13px}
  .route-card-body small,.room-choice small{font-size:10px}
- .route-warning{font-size:9px}
  .room-choice{min-height:61px;padding:9px}
 }
 @media(prefers-reduced-motion:reduce){.route-card,.room-choice{transition:none}}
@@ -198,7 +203,7 @@ body{background:radial-gradient(ellipse at 56% -18%,#2f2b4e 0,transparent 55%),r
 @font-face{
  font-family:"Checkpoint Period Display";
  src:local("CP period"),local("チェックポイント．（ピリオド）"),
-     url("./fonts/cp-period-display.woff2?v=8") format("woff2");
+     url("./fonts/cp-period-display.woff2?v=9") format("woff2");
  font-style:normal;font-weight:400;font-display:swap
 }
 .brand h1,.modal h2,.floorlabel,.panel-title,.modal-kicker,.stat .num,.stat .label,.righthead .combo-heading,#trackLabel,.credits-title{

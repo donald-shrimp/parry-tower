@@ -2,11 +2,27 @@
 
 ## 現在の状態
 
+v1.0.2の本番公開指示を受領。UI文言・岐路バッジ・保存済みB編集内容・C04〜C07・ローカル文言エディタをまとめて配信する。共鳴説明は「習得済みスキルに共鳴するスキルを1つ習得。」が最終形。ゲーム仕様と保存形式は維持。リリース候補の全Node530件、画像8件、フォント2件、構文、生成一致、バランス試算が成功。Chrome320/390/1280pxで保存済み文言・補正後報酬・Lv比較・岐路バッジ・下段削除・横はみ出しなしを確認。本編中断/再読込/4拍復帰、80FヒヨコDevの保存分離、8ツール/file://起動も成功。新しい「歌」と分離済みview/skillsの文字を表示フォントへ収録（1,232文字、CSSフォント版9）。証跡はscratchのv102-node-final.log、v102-balance.log、verify-user-copy.cjs、verify-v102-routes.cjs、verify-final-entries.cjs。PR/main統合、タグ、CI/Pages、ライブ配信確認を進める。
+
+以下のローカル候補・未公開の記述は各変更作成時の記録。
+
+最新：ユーザー保存済みの .local-only/copy-editor/project.json（updatedAt 1794036754634、SHA256 47bee793eeb4c198e2f9dae9b328d4268e6b8b1242ebdcaa061f11143c2d2d4a）を本編のローカル候補へ採用した。祈り3種と金床/祭器の上下文言、B10の「現在：そのスキルの効果」、B11下段非表示を反映。B10の上段/効果、B12は原文と同じため維持。ユーザー編集ファイルは変更していない。C04〜C07、Aとバッジの既存方針も維持。全Node530件、構文/生成一致/diff check成功。Chrome320/390/1280pxで保存文言・補正後報酬額・他スキルの効果表示・非表示見出しを確認。scratchのuser-copy-node.log、verify-user-copy.cjs、user-copy-sanctuary.pngが証跡。未公開。
+
+後続のユーザー指定により、共鳴の下段から「ランダムに」を削除し「習得済みスキルに共鳴するスキルを1つ習得。」へ修正。保存済み編集データのB01.lowerも同じ内容へ更新（更新前をproject.backup.jsonに保存）。再表示で修正前の文言へ戻らないようupdatedAtも更新。初回採用の上記ハッシュは修正前の記録。抽選や進行は変更しない。
+
+最新のローカル候補：Bの短縮をすべて元に戻し、CはC04〜C07だけ採用。共鳴表示、操作欄、報酬のLv比較、スキン見出し、商人の結果文を復元。Aの短縮・英語小見出し・色バッジ・岐路下段削除は維持。B編集用のcopy-editor.htmlを追加し、上段/下段編集、表示切替、原文比較、数値見本、下書き、JSON入出力、ローカルファイル保存を用意した。編集はゲームへ自動適用しない。
+
+文言エディタ：http://127.0.0.1:8016/copy-editor.html（serve-local.jsを8016で起動済み）。保存先は作業ツリー内の .local-only/copy-editor/project.json、直前版はproject.backup.json。ユーザーが「保存」後に反映を頼んだら、このファイルを読み、本編の対応箇所へ採用する。データを勝手に初期化しない。詳細はCOPY_EDITOR.md。
+
+検証：全Node530件、構文/生成一致、diff check成功。Chrome390/1280pxで編集、段の非表示/復元、保存/再読込、JSON出力/入力、項目リセット、差込値の見本を確認。ブラウザー検証は別の一時フォルダーと専用プロファイルで行い、実際のユーザー編集ファイルは未作成。scratchのcopy-editor-node.log、verify-copy-editor.cjs、copy-editor-desktop.pngが証跡。未公開。
+
+公開中はv1.0.1（PR #42、196f778）。現在はui/route-type-badgesでローカルのUI候補を作成。ユーザー指定により英語小見出しは維持し、岐路カードのSAFE/MYSTERY/DANGER/TRADEを部屋名の横の色付きバッジへ移動した。その他の文言短縮は[棚卸し](./UI_COPY_AUDIT.md)の候補段階。今回のバッジは未公開。Chrome320/390/1280pxの4F/8Fで各バッジ、説明・注意文、経路選択、横はみ出しなしを確認。全Node527件、生成一致/diff checkも成功。scratchのroute-badges-node.log、verify-route-badges.cjsと390pxのスクリーンショットが証跡。
+
 v1.0.0はPR #41（e99c226）で公開済み。ユーザー承認済みの紅蓮処刑変更をv1.0.1として公開する。敵HP35%以下、炎上蓄積×1の追撃、蓄積は維持。スキル説明と版/生成物を同期し、35%境界・連続発動・小瓶との合算・残りHP6を炎で倒す回帰ケースを追加。全Node527件、画像8件、フォント2件、構文/生成一致/バランス試算が成功。Chromeでも通常PARRY後の残りHP6を炎が削り切ることを確認。証跡はscratchのv101-node.log、verify-v101-burn.cjs。低fpsで継続ダメージが遅くなる別件は今回の対象外。
 
 [段階的リファクタリング](./REFACTOR_PLAN.md)の段階0〜5Cを実装・検証し、ユーザーの公開指示に従い [v1.0.0](./V100.md) として統合する。主担当が計画・実装・差分確認を行った。
 
-- ブランチ：fix/crimson-execution（v1.0.1）
+- ブランチ：ui/route-type-badges（ローカルUI候補）
 - 作業ツリー：E:/Development/parry-tower/parry-tower/.local-only/worktrees/shop-upgrade-display
 - プレビュー：[本編](http://127.0.0.1:8015/) / [Dev](http://127.0.0.1:8015/dev.html) / [工房](http://127.0.0.1:8015/art-studio.html)
 - 配信先：[本編](https://donald-shrimp.github.io/parry-tower/) / [Dev](https://donald-shrimp.github.io/parry-tower/dev.html)。前版は db87a1c（PR #40、v0.9.9）。公開結果は [main の CI と Pages](https://github.com/donald-shrimp/parry-tower/actions?query=branch%3Amain) を参照。

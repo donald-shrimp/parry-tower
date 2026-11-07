@@ -5,7 +5,7 @@
 (function(root){
  'use strict';
  // BEGIN GENERATED ASSET CONTRACT
- const BUILD='v1.0.1';
+ const BUILD='v1.0.2';
  const REQUIRED_ASSETS=["style.css","diagnostics.js","encounters.js","enemy-motions.js","progression.js","combat-math.js","combat-health.js","skills.js","shop-view.js","codex-view.js","run-state.js","relics.js","rewards-view.js","room-view.js","routes.js","events.js","combat-sfx.js","stage-music.js","final-boss-music.js","music.js","audio-clock.js","audio-session.js","player-settings.js","run-checkpoint.js","save-store.js","character-renderer.js","game.js"];
  const MODULES={"encounters":"ParryEncounters","motions":"ParryEnemyMotions","progression":"ParryProgression","combatMath":"ParryCombatMath","combatHealth":"ParryCombatHealth","skills":"ParrySkills","shopView":"ParryShopView","codexView":"ParryCodexView","runState":"ParryRunState","relics":"ParryRelics","rewardsView":"ParryRewardsView","roomView":"ParryRoomView","routes":"ParryRoutes","events":"ParryEvents","stageMusic":"ParryStageMusic","finalBossMusic":"ParryFinalBossMusic","music":"ParryMusic","clock":"ParryAudioClock","audioSession":"ParryAudioSession","settings":"ParryPlayerSettings","checkpoint":"ParryRunCheckpoint","saveStore":"ParrySaveStore","characterRenderer":"ParryCharacterRenderer"};
  // END GENERATED ASSET CONTRACT
