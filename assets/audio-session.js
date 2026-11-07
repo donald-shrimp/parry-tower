@@ -11,7 +11,7 @@
   let enabled=true,bgm=100,sfx=100,devVolume=1;
   const score={
    active:false,origin:0,visualOriginPerf:0,beat:60/112,nextStep:0,musicStartStep:0,
-   boss:false,theme:0,music:'crypt',bus:null,noise:null,
+   boss:false,latter:false,theme:0,music:'crypt',bus:null,noise:null,
    get bpm(){return Math.round(60/this.beat)}
   };
 
@@ -97,11 +97,11 @@
    }catch(e){return null}
   }
 
-  function startScore({beat,id,boss,startStep=0}){
+  function startScore({beat,id,boss,latter=false,startStep=0}){
    score.beat=beat;
    const ac=prepareScore();
    if(!ac){score.active=false;return false}
-   score.active=true;score.boss=boss;score.music=id;score.musicStartStep=startStep;
+   score.active=true;score.boss=boss;score.latter=!!latter;score.music=id;score.musicStartStep=startStep;
    score.origin=ac.currentTime+LOOKAHEAD;score.visualOriginPerf=now()+170;
    score.nextStep=0;score.theme++;
    score.bus.gain.cancelScheduledValues(ac.currentTime);

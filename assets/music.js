@@ -138,7 +138,7 @@
   }
  }
 
- function playStep(ac,{destination,noiseBuffer,id,step,at,beat,boss=false,movement=1,startStep=0,countIn=false,arrangement=false}){
+ function playStep(ac,{destination,noiseBuffer,id,step,at,beat,boss=false,latter=false,movement=1,startStep=0,countIn=false,arrangement=false}){
   let musicStep=step;
   if(royal?.get(id)){
    // Lookahead may queue the first downbeat while the count-in is still visible.
@@ -149,10 +149,11 @@
   }else{
    if(countIn)return;
    if(stages&&id!=='crypt'){
-    for(const event of stages.step(id,step,beat,boss))
+    for(const event of stages.step(id,step,beat,boss,latter))
      playStageEvent(ac,destination,noiseBuffer,event,at+event.offset);
    }else{
     playCrypt(ac,destination,noiseBuffer,step,at,beat,boss);
+    if(latter&&stages){for(const event of stages.step('crypt',step,beat,boss,true))playStageEvent(ac,destination,noiseBuffer,event,at+event.offset);}
    }
   }
   if(arrangement)playArrangement(ac,destination,noiseBuffer,musicStep,at,beat);

@@ -80,7 +80,7 @@ let upgradeTab='loadout',upgradeReturnMode='title',bonusView='items';
 const ENEMIES=P.monsters.slice(0,4);
 const BOSS=P.byId.guardian;
 let game={mode:'title'},w=800,h=500,dpr=1,lastT=performance.now(),particles=[],texts=[],shake=0,flash=0,flashColor='#fff',audioEnabled=true,choiceSet=[],cuePlayed=false;
-let devMusicTheme='auto',devMusicAudition=false;
+let devMusicTheme='auto',devMusicAudition=false,devMusicLatter=null;
 
 // Visual effects use the wall-clock only; never modify AudioContext, strike timestamps or hitboxes.
 let clashFX=null;
@@ -178,7 +178,7 @@ $('latencySlider').addEventListener('input',e=>{latencyOffset=Number(e.target.va
 function playMusicStep(ac,step,at){
  if(!audioEnabled)return;
  MUSIC?.playStep(ac,{
-  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,
+  destination:score.bus,noiseBuffer:score.noise,id:score.music,step,at,beat:score.beat,boss:score.boss,latter:score.latter,
   movement:game.enemy?.phase||1,startStep:score.musicStartStep,countIn:game.mode==='phase'&&game.phaseStage==='countin',
   arrangement:devMusicAudition||['combat','phase'].includes(game?.mode)
  });
@@ -194,10 +194,12 @@ function startScore(enemy){
  attackPresentation.cues.clear();attackPresentation.contact=null;
  const beat=60/encounterBpm(enemy),boss=!!enemy.boss;
  const selected=DEV_MODE&&devMusicTheme!=='auto'?MUSIC?.get(devMusicTheme):MUSIC?.forEncounter(game.floor||1,enemy);
+ const latter=selected?.floor==null&&(DEV_MODE&&devMusicLatter!==null?devMusicLatter:P.positionInZone(game.floor||1)>=5);
  const startStep=selected?.floor!=null&&game.mode==='phase'&&game.phaseStage==='countin'?FINAL_PHASE_COUNT_BEATS*2:0;
- if(!audio.startScore({beat,id:selected?.id||'crypt',boss,startStep}))return;
+ if(!audio.startScore({beat,id:selected?.id||'crypt',boss,latter,startStep}))return;
  audioClock.reset();
- $('trackLabel').textContent=(selected&&!selected.original?selected.name:boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE')+' · '+score.bpm+' BPM';
+ const titleText=selected&&!selected.original?(score.latter&&selected.latterName?selected.latterName:selected.name):score.latter&&selected?.latterName?selected.latterName:boss?'BOSS / IRON WALTZ':enemy.kind==='rogue'?'SHADOW BREAKS':'DUNGEON GROOVE';
+ $('trackLabel').textContent=titleText+' · '+score.bpm+' BPM';
  scheduleScore();
 }
 function readAudioClock(){
@@ -542,6 +544,7 @@ function createGameController(){
   stopScore();
   devMusicAudition=false;
   devMusicTheme='auto';
+  devMusicLatter=null;
   clashFX=null;
   game={mode:'title',floor:1,maxHp:65,hp:65,shield:0,lv:{},relics:[],towerCoins:0,combo:0,perfects:0,damage:0,charge:0};
   setMode('title');
@@ -550,7 +553,7 @@ function createGameController(){
  }
  function start(practice=false,practiceKey=null,devOptions=null){
   const runSkin=DEV_MODE?devPreviewSkin:permanent.equippedSkin,runEffects=DEV_MODE?!!devOptions?.skinEffects:true;
-  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';}
+  if(DEV_MODE){if(score.active&&(devMusicAudition||score.music!=='crypt'))stopScore();devMusicAudition=false;devMusicTheme=MUSIC?.get(devOptions?.musicId)?devOptions.musicId:'auto';devMusicLatter=typeof devOptions?.latter==='boolean'?devOptions.latter:null;}
   if(practice&&((!book.seen[practiceKey]&&!(DEV_MODE&&devOptions?.allowUnseenPractice))||!P.findByKey(practiceKey)))return;
   if(practice)populatePracticeEnemies(practiceKey,DEV_MODE&&devOptions?.allowUnseenPractice);
   const initialLevels=practice?{}:PR.initialLevels(permanent,SKILLS);
@@ -2596,22 +2599,22 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.mode=
   musicReviews(){return MUSIC?.list().filter(piece=>piece.floor!=null)||[]},
   previewMusic(id,variant='normal'){
    const piece=MUSIC?.get(id);
-   if(!audioEnabled||!piece||!['normal','boss'].includes(variant))return false;
-   gameController.title();devMusicTheme=id;devMusicAudition=true;startScore({kind:'knight',boss:piece.floor!=null||variant==='boss'});
+   if(!audioEnabled||!piece||!['normal','latter','boss'].includes(variant))return false;
+   gameController.title();devMusicTheme=id;devMusicAudition=true;devMusicLatter=piece.floor==null&&(variant==='latter'||variant==='boss');startScore({kind:'knight',boss:piece.floor!=null||variant==='boss'});
    if(!score.active)devMusicAudition=false;return score.active;
   },
-  stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;return true},
+  stopMusic(){if(!devMusicAudition)return false;stopScore();devMusicAudition=false;devMusicLatter=null;return true},
   practiceMusic(id,variant='normal'){
-   const theme=MUSIC?.get(id);if(!theme||!['normal','boss'].includes(variant))return false;
-   const zone=P.zoneForFloor(theme.from),floor=theme.floor??theme.from+(variant==='boss'?4:0);
+   const theme=MUSIC?.get(id);if(!theme||!['normal','latter','boss'].includes(variant))return false;
+   const zone=P.zoneForFloor(theme.from),floor=theme.floor??theme.from+(variant==='boss'?4:variant==='latter'?5:0);
    const enemy=theme.floor!=null||variant==='boss'?zone.boss:zone.fixed[1];
    const key=enemy+(theme.floor===80?':elite':':normal');
-   gameController.title();gameController.start(true,key,{floor,allowUnseenPractice:true,musicId:id});return true;
+   gameController.title();gameController.start(true,key,{floor,allowUnseenPractice:true,musicId:id,latter:theme.floor==null&&(variant==='latter'||variant==='boss')});return true;
   },
   musicState(){
    const beats=score.active&&audio.context?Math.max(0,(audio.context.currentTime-score.origin)/score.beat-score.musicStartStep/2):0;
    const bars=MUSIC?.get(score.music)?.bars||8;
-   return {active:score.active,audition:devMusicAudition,id:score.music,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
+   return {active:score.active,audition:devMusicAudition,id:score.music,latter:!!score.latter,bpm:score.bpm,bars,bar:Math.floor(beats/4)%bars+1,beat:Math.floor(beats)%4+1};
   },
   getSfxVolume:audio.getDevSfxVolume,
   setSfxVolume:audio.setDevSfxVolume,

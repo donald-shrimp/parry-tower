@@ -55,4 +55,33 @@ test('every candidate loops deterministically on the same beat grid with finite 
  }
  assert.equal(new Set(fingerprints).size,7,'all seven new arrangements differ');
  for(const input of [['missing',0,.5],['forge',-1,.5],['forge',.5,.5],['forge',0,NaN],['forge',0,0]])assert.deepEqual(music.step(...input),[]);
+ const latterPrints=[];
+ for(const [i,s]of music.themes.entries()){
+  assert.equal(s.latterFrom,i*10+5);assert.ok(s.latterName&&s.latterDescription&&s.latterInstruments&&Array.isArray(s.latterPoints));
+  for(const bpm of [88,100,112,124,136,148])for(const boss of [false,true]){
+   const events=[];
+   for(let n=0;n<64;n++){
+    const row=music.step(s.id,n,60/bpm,boss,true);assert.deepEqual(row,music.step(s.id,n+64,60/bpm,boss,true));assert.ok(row.length<=12);
+    let volume=0;
+    for(const e of row){
+     assert.ok(['tone','bell','noise'].includes(e.kind));assert.ok(Number.isFinite(e.duration)&&e.duration>0&&e.duration<3);
+     assert.ok(e.volume>0&&e.volume<.4);assert.ok(e.offset>=0&&Number.isFinite(e.offset));
+     assert.ok(e.offset===0||Math.abs(e.offset-30/bpm)<1e-10);
+     if(e.kind!=='noise')assert.ok(e.frequency>=25&&e.frequency<=2000);
+     else assert.ok(e.cutoff>=100&&e.cutoff<=8000);
+     volume+=e.volume*(e.kind==='bell'?1.265:1);
+    }
+    assert.ok(volume<1.25);events.push(row);
+   }
+   assert.ok(events.every((row,idx)=>idx%2||row.length>0));
+   if(bpm===112&&!boss){
+    latterPrints.push(JSON.stringify(events));
+    if(!s.original){
+     const baseEvents=Array.from({length:64},(_,n)=>music.step(s.id,n,60/bpm,false,false));
+     assert.notDeepEqual(events,baseEvents,s.id+' latter arrangement must evolve from base');
+    }
+   }
+  }
+ }
+ assert.equal(new Set(latterPrints).size,8,'all eight latter-half stage arrangements are distinct');
 });
